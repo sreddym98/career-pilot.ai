@@ -1,0 +1,8 @@
+{
+  "name": "careerpilot-frontend-tests",
+  "private": true,
+  "description": "21 test files that verify web/index.html. Run: npm install && bash run-all.sh",
+  "devDependencies": {
+    "jsdom": "^30.0.0"
+  }
+}

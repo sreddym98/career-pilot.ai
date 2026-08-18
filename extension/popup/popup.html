@@ -1,0 +1,29 @@
+<!DOCTYPE html><html><meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+<body>
+<header>
+  <div class="logo">✈</div>
+  <div><b>CareerPilot Autofill</b><span id="ats">checking page…</span></div>
+</header>
+
+<main>
+  <div id="state"></div>
+  <button id="fill" class="primary" disabled>Fill this form</button>
+  <div id="result"></div>
+</main>
+
+<footer>
+  <div class="note">Never submits for you. Salary, sponsorship, and demographic
+  questions are always left for you to answer.</div>
+  <a href="#" id="settings">Settings</a>
+</footer>
+
+<div id="panel" hidden>
+  <label>API address</label>
+  <input id="apiBase" placeholder="https://api.careerpilot.ai">
+  <label>Session token</label>
+  <input id="token" type="password" placeholder="paste from careerpilot.ai → Settings">
+  <button id="save" class="primary">Save</button>
+</div>
+<script src="popup.js"></script>
+</body></html>

@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "careerpilot.ai Autofill",
+  "version": "1.0.0",
+  "description": "Fills job application forms from your CareerPilot profile. Never submits on your behalf.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.myworkdayjobs.com/*",
+    "https://boards.greenhouse.io/*",
+    "https://job-boards.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://jobs.ashbyhq.com/*",
+    "https://*.icims.com/*",
+    "https://*.smartrecruiters.com/*",
+    "https://*.careerpilot.ai/*",
+    "http://localhost:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.myworkdayjobs.com/*",
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://*.icims.com/*",
+        "https://*.smartrecruiters.com/*"
+      ],
+      "js": [
+        "content/detect.js",
+        "content/fill.js"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "CareerPilot Autofill"
+  },
+  "icons": {
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "author": "Santosh Reddy Mamindla",
+  "homepage_url": "https://careerpilot.ai"
+}

@@ -1,0 +1,40 @@
+CareerPilot AI
+Copyright (c) 2026 Santosh Reddy Mamindla. All rights reserved.
+
+This product includes third-party open-source software. Each component
+remains under its own license; those licenses apply only to the components
+listed and grant no rights to CareerPilot AI itself.
+
+SERVER (Python)
+  FastAPI                 MIT        https://github.com/fastapi/fastapi
+  Uvicorn                 BSD-3      https://github.com/encode/uvicorn
+  SQLAlchemy              MIT        https://github.com/sqlalchemy/sqlalchemy
+  Pydantic                MIT        https://github.com/pydantic/pydantic
+  psycopg                 LGPL-3.0   https://github.com/psycopg/psycopg
+  Alembic                 MIT        https://github.com/sqlalchemy/alembic
+  python-jose             MIT        https://github.com/mpdavis/python-jose
+  anthropic-sdk-python    MIT        https://github.com/anthropics/anthropic-sdk-python
+  stripe-python           MIT        https://github.com/stripe/stripe-python
+  requests                Apache-2.0 https://github.com/psf/requests
+  httpx                   BSD-3      https://github.com/encode/httpx
+  redis-py                MIT        https://github.com/redis/redis-py
+
+WEB (loaded from CDN at runtime, not bundled)
+  PDF.js                  Apache-2.0 https://github.com/mozilla/pdf.js
+  Mammoth.js              BSD-2      https://github.com/mwilliamson/mammoth.js
+  JSZip                   MIT/GPLv3  https://github.com/Stuk/jszip
+
+FONTS (Google Fonts, SIL Open Font License 1.1)
+  Fraunces, Inter, JetBrains Mono
+
+DATA SOURCES
+  Job data is retrieved from publicly documented APIs and public job-board
+  feeds. No content is scraped. Job postings remain the property of their
+  respective employers and posting platforms. CareerPilot AI stores only
+  what is needed to index and link to them, and links to the original
+  posting rather than reproducing it in full.
+
+  psycopg is LGPL-3.0. Used as an unmodified dependency over a standard
+  interface, which does not affect the licensing of this Software. If you
+  ever modify psycopg itself, LGPL obligations attach to that modified
+  component.

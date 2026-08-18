@@ -1,0 +1,446 @@
+# ═══════════════════════════════════════════════════════════════════
+# ATS company slugs — the job pipeline's source of truth.
+#
+# Each entry is polled daily at a public, auth-free endpoint:
+#   greenhouse  https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true
+#   lever       https://api.lever.co/v0/postings/{slug}?mode=json
+#   ashby       https://api.ashbyhq.com/posting-api/job-board/{slug}
+#
+# IMPORTANT — verify before trusting:
+#   python ingest/verify_slugs.py --fix
+#
+# Companies migrate between ATS vendors and change their slug. Expect
+# 10-20% of any curated list to be stale on day one. The verifier probes
+# every entry, reports job counts, and moves dead ones to a `retired`
+# section rather than deleting them (so you don't re-add them later).
+#
+# Coverage note: Fortune 500 companies mostly run Workday, which has no
+# clean public API. You will get those through the aggregator leg
+# (JSearch), not from this file. This file is where the tech employers
+# with modern ATS setups live — and they're the ones hiring SDETs.
+# ═══════════════════════════════════════════════════════════════════
+
+greenhouse:
+  # ── Payments & fintech (your strongest domain) ──
+  - {slug: stripe,            label: Stripe}
+  - {slug: brex,              label: Brex}
+  - {slug: marqeta,           label: Marqeta}
+  - {slug: affirm,            label: Affirm}
+  - {slug: chime,             label: Chime}
+  - {slug: betterment,        label: Betterment}
+  - {slug: wealthfront,       label: Wealthfront}
+  - {slug: robinhood,         label: Robinhood}
+  - {slug: sofi,              label: SoFi}
+  - {slug: bill,              label: BILL}
+  - {slug: flywire,           label: Flywire}
+  - {slug: payoneer,          label: Payoneer}
+  - {slug: remitly,           label: Remitly}
+  - {slug: earnin,            label: EarnIn}
+  - {slug: dave,              label: Dave}
+  - {slug: mercury,           label: Mercury}
+  - {slug: modernTreasury,    label: Modern Treasury}
+  - {slug: unit,              label: Unit}
+  - {slug: lithic,            label: Lithic}
+  - {slug: alloy,             label: Alloy}
+  - {slug: sardine,           label: Sardine}
+  - {slug: highradius,        label: HighRadius}
+  - {slug: fireblocks,        label: Fireblocks}
+  - {slug: circle,            label: Circle}
+  - {slug: gemini,            label: Gemini}
+  - {slug: krakendigital,     label: Kraken}
+
+  # ── Healthcare & life sciences (your second domain) ──
+  - {slug: oscarhealth,       label: Oscar Health}
+  - {slug: devoted,           label: Devoted Health}
+  - {slug: cedar,             label: Cedar}
+  - {slug: zocdoc,            label: Zocdoc}
+  - {slug: hingehealth,       label: Hinge Health}
+  - {slug: omadahealth,       label: Omada Health}
+  - {slug: included,          label: Included Health}
+  - {slug: carbonhealth,      label: Carbon Health}
+  - {slug: rightway,          label: Rightway}
+  - {slug: garnerhealth,      label: Garner Health}
+  - {slug: healthie,          label: Healthie}
+  - {slug: tempus,            label: Tempus}
+  - {slug: benchling,         label: Benchling}
+  - {slug: veevasystems,      label: Veeva Systems}
+  - {slug: komodohealth,      label: Komodo Health}
+  - {slug: datavant,          label: Datavant}
+  - {slug: particlehealth,    label: Particle Health}
+  - {slug: redoxengine,       label: Redox}
+  - {slug: healthgorilla,     label: Health Gorilla}
+  - {slug: canvasmedical,     label: Canvas Medical}
+  - {slug: elationhealth,     label: Elation Health}
+  - {slug: grow,              label: Grow Therapy}
+  - {slug: springhealth,      label: Spring Health}
+  - {slug: lyrahealth,        label: Lyra Health}
+  - {slug: talkspace,         label: Talkspace}
+  - {slug: rula,              label: Rula}
+
+  # ── Data & infrastructure (ETL / data QA roles) ──
+  - {slug: databricks,        label: Databricks}
+  - {slug: snowflake,         label: Snowflake}
+  - {slug: confluent,         label: Confluent}
+  - {slug: dbtlabs,           label: dbt Labs}
+  - {slug: fivetran,          label: Fivetran}
+  - {slug: airbyte,           label: Airbyte}
+  - {slug: astronomer,        label: Astronomer}
+  - {slug: starburst,         label: Starburst}
+  - {slug: clickhouse,        label: ClickHouse}
+  - {slug: cockroachlabs,     label: Cockroach Labs}
+  - {slug: timescale,         label: Timescale}
+  - {slug: singlestore,       label: SingleStore}
+  - {slug: neo4j,             label: Neo4j}
+  - {slug: elastic,           label: Elastic}
+  - {slug: grafanalabs,       label: Grafana Labs}
+  - {slug: datadog,           label: Datadog}
+  - {slug: sentry,            label: Sentry}
+  - {slug: honeycomb,         label: Honeycomb}
+  - {slug: chronosphere,      label: Chronosphere}
+  - {slug: montecarlodata,    label: Monte Carlo}
+  - {slug: greatexpectations, label: Great Expectations}
+  - {slug: prefect,           label: Prefect}
+  - {slug: dagster,           label: Dagster Labs}
+  - {slug: hex,               label: Hex}
+  - {slug: sigmacomputing,    label: Sigma Computing}
+  - {slug: atscale,           label: AtScale}
+
+  # ── Dev tools & platform (SDET-heavy) ──
+  - {slug: cloudflare,        label: Cloudflare}
+  - {slug: hashicorp,         label: HashiCorp}
+  - {slug: gitlab,            label: GitLab}
+  - {slug: circleci,          label: CircleCI}
+  - {slug: harness,           label: Harness}
+  - {slug: launchdarkly,      label: LaunchDarkly}
+  - {slug: pagerduty,         label: PagerDuty}
+  - {slug: jfrog,             label: JFrog}
+  - {slug: sonarsource,       label: SonarSource}
+  - {slug: postman,           label: Postman}
+  - {slug: smartbear,         label: SmartBear}
+  - {slug: browserstack,      label: BrowserStack}
+  - {slug: saucelabs,         label: Sauce Labs}
+  - {slug: applitools,        label: Applitools}
+  - {slug: mabl,              label: mabl}
+  - {slug: testim,            label: Testim}
+  - {slug: tricentis,         label: Tricentis}
+  - {slug: perforce,          label: Perforce}
+  - {slug: jetbrains,         label: JetBrains}
+  - {slug: docker,            label: Docker}
+  - {slug: puppet,            label: Puppet}
+  - {slug: chef,              label: Progress Chef}
+  - {slug: pulumi,            label: Pulumi}
+  - {slug: netlify,           label: Netlify}
+  - {slug: vercel,            label: Vercel}
+  - {slug: railway,           label: Railway}
+  - {slug: render,            label: Render}
+  - {slug: fly,               label: Fly.io}
+  - {slug: supabase,          label: Supabase}
+  - {slug: planetscale,       label: PlanetScale}
+
+  # ── Security ──
+  - {slug: crowdstrike,       label: CrowdStrike}
+  - {slug: sentinelone,       label: SentinelOne}
+  - {slug: snyk,              label: Snyk}
+  - {slug: okta,              label: Okta}
+  - {slug: auth0,             label: Auth0}
+  - {slug: duosecurity,       label: Duo Security}
+  - {slug: hackerone,         label: HackerOne}
+  - {slug: bugcrowd,          label: Bugcrowd}
+  - {slug: tenable,           label: Tenable}
+  - {slug: rapid7,            label: Rapid7}
+  - {slug: wiz,               label: Wiz}
+  - {slug: orca,              label: Orca Security}
+  - {slug: abnormalsecurity,  label: Abnormal Security}
+  - {slug: material,          label: Material Security}
+  - {slug: veracode,          label: Veracode}
+  - {slug: checkmarx,         label: Checkmarx}
+
+  # ── Enterprise SaaS ──
+  - {slug: hubspot,           label: HubSpot}
+  - {slug: zendesk,           label: Zendesk}
+  - {slug: freshworks,        label: Freshworks}
+  - {slug: asana,             label: Asana}
+  - {slug: monday,            label: monday.com}
+  - {slug: smartsheet,        label: Smartsheet}
+  - {slug: airtable,          label: Airtable}
+  - {slug: notion,            label: Notion}
+  - {slug: figma,             label: Figma}
+  - {slug: miro,              label: Miro}
+  - {slug: canva,             label: Canva}
+  - {slug: dropbox,           label: Dropbox}
+  - {slug: box,               label: Box}
+  - {slug: docusign,          label: DocuSign}
+  - {slug: gusto,             label: Gusto}
+  - {slug: rippling,          label: Rippling}
+  - {slug: justworks,         label: Justworks}
+  - {slug: deel,              label: Deel}
+  - {slug: remote,            label: Remote}
+  - {slug: velocityglobal,    label: Velocity Global}
+  - {slug: lattice,           label: Lattice}
+  - {slug: culture,           label: Culture Amp}
+  - {slug: greenhouse,        label: Greenhouse}
+  - {slug: leverco,           label: Lever}
+  - {slug: pilot,             label: Pilot}
+  - {slug: ramp,              label: Ramp}
+  - {slug: navan,             label: Navan}
+  - {slug: expensify,         label: Expensify}
+
+  # ── Retail, e-commerce, marketplaces ──
+  - {slug: shopify,           label: Shopify}
+  - {slug: bigcommerce,       label: BigCommerce}
+  - {slug: faire,             label: Faire}
+  - {slug: instacart,         label: Instacart}
+  - {slug: doordash,          label: DoorDash}
+  - {slug: gopuff,            label: GoPuff}
+  - {slug: wayfair,           label: Wayfair}
+  - {slug: chewy,             label: Chewy}
+  - {slug: etsy,              label: Etsy}
+  - {slug: poshmark,          label: Poshmark}
+  - {slug: thredup,           label: ThredUp}
+  - {slug: stitchfix,         label: Stitch Fix}
+  - {slug: warbyparker,       label: Warby Parker}
+  - {slug: allbirds,          label: Allbirds}
+  - {slug: peloton,           label: Peloton}
+  - {slug: sweetgreen,        label: Sweetgreen}
+  - {slug: toasttab,          label: Toast}
+  - {slug: olo,               label: Olo}
+
+  # ── Travel, logistics, mobility ──
+  - {slug: airbnb,            label: Airbnb}
+  - {slug: lyft,              label: Lyft}
+  - {slug: turo,              label: Turo}
+  - {slug: getaround,         label: Getaround}
+  - {slug: flexport,          label: Flexport}
+  - {slug: samsara,           label: Samsara}
+  - {slug: motive,            label: Motive}
+  - {slug: convoy,            label: Convoy}
+  - {slug: projectfortyfour,  label: Project44}
+  - {slug: shipbob,           label: ShipBob}
+
+  # ── Media, comms, consumer ──
+  - {slug: spotify,           label: Spotify}
+  - {slug: discord,           label: Discord}
+  - {slug: reddit,            label: Reddit}
+  - {slug: pinterest,         label: Pinterest}
+  - {slug: twilio,            label: Twilio}
+  - {slug: sendbird,          label: Sendbird}
+  - {slug: vimeo,             label: Vimeo}
+  - {slug: mux,               label: Mux}
+  - {slug: duolingo,          label: Duolingo}
+  - {slug: coursera,          label: Coursera}
+  - {slug: udemy,             label: Udemy}
+  - {slug: chegg,             label: Chegg}
+  - {slug: khanacademy,       label: Khan Academy}
+
+  # ── AI / ML ──
+  - {slug: openai,            label: OpenAI}
+  - {slug: anthropic,         label: Anthropic}
+  - {slug: scaleai,           label: Scale AI}
+  - {slug: huggingface,       label: Hugging Face}
+  - {slug: weightsandbiases,  label: Weights & Biases}
+  - {slug: runwayml,          label: Runway}
+  - {slug: cohere,            label: Cohere}
+  - {slug: adept,             label: Adept}
+  - {slug: perplexityai,      label: Perplexity}
+  - {slug: glean,             label: Glean}
+  - {slug: writer,            label: Writer}
+  - {slug: abridge,           label: Abridge}
+
+  # ── Insurance & real estate ──
+  - {slug: lemonade,          label: Lemonade}
+  - {slug: rootinsurance,     label: Root Insurance}
+  - {slug: hippo,             label: Hippo}
+  - {slug: nextinsurance,     label: Next Insurance}
+  - {slug: coalitioninc,      label: Coalition}
+  - {slug: newfront,          label: Newfront}
+  - {slug: opendoor,          label: Opendoor}
+  - {slug: compass,           label: Compass}
+  - {slug: zillow,            label: Zillow}
+
+
+  # ── Staffing / consulting (contract roles, free via ATS) ──
+  - {slug: turing,            label: Turing}
+  - {slug: andela,            label: Andela}
+  - {slug: toptal,            label: Toptal}
+  - {slug: gun,               label: Gun.io}
+  - {slug: crossover,         label: Crossover}
+  - {slug: xwp,               label: XWP}
+  - {slug: tenthrevolution,   label: Tenth Revolution}
+  - {slug: motionrecruitment, label: Motion Recruitment}
+  - {slug: robertwalters,     label: Robert Walters}
+  - {slug: harnham,           label: Harnham}
+  - {slug: averityconsulting, label: Averity}
+  - {slug: jobot,             label: Jobot}
+  - {slug: insightglobal,     label: Insight Global}
+  - {slug: teksystems,        label: TEKsystems}
+  - {slug: apexsystems,       label: Apex Systems}
+  - {slug: signaturecg,       label: Signature Consultants}
+  - {slug: kforce,            label: Kforce}
+  - {slug: modis,             label: Akkodis}
+  - {slug: collabera,         label: Collabera}
+  - {slug: judge,             label: The Judge Group}
+
+lever:
+  - {slug: plaid,             label: Plaid}
+  - {slug: nubank,            label: Nubank}
+  - {slug: wise,              label: Wise}
+  - {slug: revolut,           label: Revolut}
+  - {slug: checkout,          label: Checkout.com}
+  - {slug: gocardless,        label: GoCardless}
+  - {slug: tide,              label: Tide}
+  - {slug: netlify,           label: Netlify}
+  - {slug: mixpanel,          label: Mixpanel}
+  - {slug: amplitude,         label: Amplitude}
+  - {slug: heap,              label: Heap}
+  - {slug: segment,           label: Segment}
+  - {slug: fullstory,         label: FullStory}
+  - {slug: contentful,        label: Contentful}
+  - {slug: sanity,            label: Sanity}
+  - {slug: strapi,            label: Strapi}
+  - {slug: algolia,           label: Algolia}
+  - {slug: typesense,         label: Typesense}
+  - {slug: nylas,             label: Nylas}
+  - {slug: front,             label: Front}
+  - {slug: intercom,          label: Intercom}
+  - {slug: drift,             label: Drift}
+  - {slug: gong,              label: Gong}
+  - {slug: chorusai,          label: Chorus}
+  - {slug: outreach,          label: Outreach}
+  - {slug: salesloft,         label: Salesloft}
+  - {slug: clari,             label: Clari}
+  - {slug: people,            label: People.ai}
+  - {slug: highspot,          label: Highspot}
+  - {slug: seismic,           label: Seismic}
+  - {slug: pendo,             label: Pendo}
+  - {slug: productboard,      label: Productboard}
+  - {slug: aha,               label: Aha!}
+  - {slug: linear,            label: Linear}
+  - {slug: height,            label: Height}
+  - {slug: shortcut,          label: Shortcut}
+  - {slug: clickup,           label: ClickUp}
+  - {slug: coda,              label: Coda}
+  - {slug: slab,              label: Slab}
+  - {slug: guru,              label: Guru}
+  - {slug: loom,              label: Loom}
+  - {slug: descript,          label: Descript}
+  - {slug: calendly,          label: Calendly}
+  - {slug: savvycal,          label: SavvyCal}
+  - {slug: clockwise,         label: Clockwise}
+  - {slug: reclaim,           label: Reclaim}
+  - {slug: motionapp,         label: Motion}
+  - {slug: superhuman,        label: Superhuman}
+  - {slug: hey,               label: HEY}
+  - {slug: 37signals,         label: 37signals}
+  - {slug: doximity,          label: Doximity}
+  - {slug: ro,                label: Ro}
+  - {slug: hims,              label: Hims & Hers}
+  - {slug: forwardhealth,     label: Forward}
+  - {slug: parsleyhealth,     label: Parsley Health}
+  - {slug: onemedical,        label: One Medical}
+  - {slug: alto,              label: Alto Pharmacy}
+  - {slug: capsule,           label: Capsule}
+  - {slug: truepill,          label: Truepill}
+  - {slug: nuna,              label: Nuna}
+  - {slug: collectivehealth,  label: Collective Health}
+  - {slug: accolade,          label: Accolade}
+  - {slug: transcarent,       label: Transcarent}
+
+ashby:
+  - {slug: ramp,              label: Ramp}
+  - {slug: linear,            label: Linear}
+  - {slug: vanta,             label: Vanta}
+  - {slug: drata,             label: Drata}
+  - {slug: secureframe,       label: Secureframe}
+  - {slug: mercury,           label: Mercury}
+  - {slug: replit,            label: Replit}
+  - {slug: railway,           label: Railway}
+  - {slug: warp,              label: Warp}
+  - {slug: raycast,           label: Raycast}
+  - {slug: arc,               label: The Browser Company}
+  - {slug: cursor,            label: Cursor}
+  - {slug: sourcegraph,       label: Sourcegraph}
+  - {slug: codeium,           label: Codeium}
+  - {slug: tabnine,           label: Tabnine}
+  - {slug: modal,             label: Modal}
+  - {slug: baseten,           label: Baseten}
+  - {slug: together,          label: Together AI}
+  - {slug: fireworks,         label: Fireworks AI}
+  - {slug: anyscale,          label: Anyscale}
+  - {slug: pinecone,          label: Pinecone}
+  - {slug: weaviate,          label: Weaviate}
+  - {slug: chroma,            label: Chroma}
+  - {slug: llamaindex,        label: LlamaIndex}
+  - {slug: langchain,         label: LangChain}
+  - {slug: braintrust,        label: Braintrust}
+  - {slug: humanloop,         label: Humanloop}
+  - {slug: galileo,           label: Galileo}
+  - {slug: arize,             label: Arize AI}
+  - {slug: whylabs,           label: WhyLabs}
+  - {slug: deepgram,          label: Deepgram}
+  - {slug: assemblyai,        label: AssemblyAI}
+  - {slug: elevenlabs,        label: ElevenLabs}
+  - {slug: synthesia,         label: Synthesia}
+  - {slug: hume,              label: Hume AI}
+  - {slug: clay,              label: Clay}
+  - {slug: attio,             label: Attio}
+  - {slug: default,           label: Default}
+  - {slug: findigs,           label: Findigs}
+  - {slug: alma,              label: Alma}
+
+
+workable:
+  - {slug: hotjar,            label: Hotjar}
+  - {slug: doist,             label: Doist}
+  - {slug: aircall,           label: Aircall}
+  - {slug: paddle,            label: Paddle}
+  - {slug: teya,              label: Teya}
+  - {slug: bolt,              label: Bolt}
+  - {slug: swordhealth,       label: Sword Health}
+  - {slug: unbabel,           label: Unbabel}
+  - {slug: remote-com,        label: Remote}
+  - {slug: pleo,              label: Pleo}
+  - {slug: mollie,            label: Mollie}
+  - {slug: sumup,             label: SumUp}
+  - {slug: personio,          label: Personio}
+  - {slug: gocardless,        label: GoCardless}
+  - {slug: onfido,            label: Onfido}
+
+smartrecruiters:
+  - {slug: Visa,              label: Visa}
+  - {slug: Bosch,             label: Bosch}
+  - {slug: Ubisoft,           label: Ubisoft}
+  - {slug: McDonalds,         label: McDonald's}
+  - {slug: PublicisGroupe,    label: Publicis}
+  - {slug: LinkedIn,          label: LinkedIn}
+  - {slug: IKEA,              label: IKEA}
+  - {slug: Avery,             label: Avery Dennison}
+  - {slug: Biogen,            label: Biogen}
+  - {slug: Skechers,          label: Skechers}
+
+recruitee:
+  - {slug: usabilla,          label: Usabilla}
+  - {slug: framer,            label: Framer}
+  - {slug: bynder,            label: Bynder}
+  - {slug: channable,         label: Channable}
+  - {slug: messagebird,       label: MessageBird}
+
+breezy:
+  - {slug: aha,               label: Aha!}
+  - {slug: close,             label: Close}
+  - {slug: buffer,            label: Buffer}
+  - {slug: hotjar,            label: Hotjar}
+
+jazzhr:
+  - {slug: nagarro,           label: Nagarro}
+  - {slug: sciencesoft,       label: ScienceSoft}
+  - {slug: qasource,          label: QASource}
+  - {slug: qualitest,         label: Qualitest}
+  - {slug: testlio,           label: Testlio}
+
+teamtailor:
+  - {slug: kry,               label: Kry}
+  - {slug: tink,              label: Tink}
+  - {slug: einride,           label: Einride}
+
+# Slugs the verifier found dead. Kept so they aren't re-added by mistake.
+retired: []

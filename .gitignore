@@ -1,0 +1,77 @@
+# ═══════════════════════════════════════════════════════════════
+#  SECRETS — never commit these. If one slips through, rotating the
+#  key is the only real fix; deleting the commit is not enough,
+#  because GitHub keeps unreachable objects and forks retain them.
+# ═══════════════════════════════════════════════════════════════
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
+credentials.*
+service-account*.json
+**/config.local.*
+
+# Databases and dumps
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+careerpilot.db
+dev.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.tox/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build output
+web/dist/
+extension/*.zip
+extension/*.crx
+*.pem
+
+# Logs and scratch
+*.log
+logs/
+tmp/
+.tmp/
+scratch/
+
+# Generated resumes — these contain personal data
+*.docx
+!docs/**/*.docx

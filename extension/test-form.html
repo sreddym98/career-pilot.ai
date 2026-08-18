@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en"><meta charset="utf-8">
+<title>CareerPilot Autofill — test form</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F6F7FB;color:#0B0D14;padding:28px 20px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:24px;letter-spacing:-.02em;margin-bottom:6px}
+.sub{color:#3A4152;margin-bottom:20px;line-height:1.65}
+.banner{background:#EEF0FE;border:1.5px solid #C6C9FA;border-radius:12px;padding:15px;margin-bottom:22px;font-size:13px;line-height:1.7}
+.banner b{color:#4F46E5}
+.banner ol{margin:8px 0 0 20px}
+.banner code{background:#fff;padding:1px 6px;border-radius:4px;font:12px ui-monospace,monospace;color:#4F46E5}
+section{background:#fff;border:1px solid #E7E8F0;border-radius:14px;padding:22px;margin-bottom:16px}
+h2{font-size:15px;margin-bottom:4px}
+.ats{font:11px ui-monospace,monospace;color:#7B8496;margin-bottom:16px;text-transform:uppercase;letter-spacing:.08em}
+.field{margin-bottom:14px}
+label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;color:#3A4152}
+input,textarea{width:100%;padding:9px 12px;border:1.5px solid #D3D6E2;border-radius:9px;font:inherit;font-size:13.5px;background:#fff}
+textarea{min-height:70px;resize:vertical}
+.hold{border-left:3px solid #FCD34D;padding-left:12px;background:#FFFBEB;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:14px}
+.hold label{color:#B45309}
+.hint{font-size:11.5px;color:#7B8496;margin-top:4px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;margin-bottom:18px}
+.legend span{display:flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:4px;border:2px solid}
+.sw.f{border-color:#4F46E5;background:#EEF0FE}
+.sw.h{border-color:#D97706;background:#FFFBEB}
+button[type=submit]{background:#4F46E5;color:#fff;border:none;padding:12px 26px;border-radius:10px;font:600 14px inherit;cursor:pointer}
+.warn{background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:12px;font-size:12.5px;color:#B91C1C;margin-top:14px;line-height:1.6}
+</style>
+<body><div class="wrap">
+
+<h1>CareerPilot Autofill — test form</h1>
+<p class="sub">A mock application using the real field names Greenhouse, Workday, Lever, and iCIMS use. Nothing here submits anywhere.</p>
+
+<div class="banner">
+  <b>How to test</b>
+  <ol>
+    <li>Load the extension: <code>chrome://extensions</code> → Developer mode → Load unpacked → pick the <code>extension</code> folder</li>
+    <li>Start your API: <code>make dev</code> (or point Settings at your deployed URL)</li>
+    <li>Click the ✈ icon in your toolbar → <b>Fill this form</b></li>
+  </ol>
+</div>
+
+<div class="legend">
+  <span><i class="sw f"></i> Filled automatically</span>
+  <span><i class="sw h"></i> Deliberately left for you</span>
+</div>
+
+<form id="application_form" onsubmit="event.preventDefault();document.getElementById('r').textContent='Submit intercepted — this page never sends anything. Note the extension did NOT click this for you.';">
+
+<section>
+  <h2>Greenhouse-style fields</h2>
+  <div class="ats">boards.greenhouse.io</div>
+  <div class="field"><label for="first_name">First Name *</label><input id="first_name" name="job_application[first_name]"></div>
+  <div class="field"><label for="last_name">Last Name *</label><input id="last_name" name="job_application[last_name]"></div>
+  <div class="field"><label for="email">Email *</label><input id="email" type="email" name="job_application[email]"></div>
+  <div class="field"><label for="phone">Phone</label><input id="phone" name="job_application[phone]"></div>
+  <div class="field"><label for="q_linkedin">LinkedIn Profile</label><input id="q_linkedin" name="job_application[answers][linkedin]"></div>
+  <div class="field"><label for="q_github">GitHub</label><input id="q_github" name="job_application[answers][github]"></div>
+  <div class="field"><label for="cover">Cover Letter</label><textarea id="cover" name="cover_letter"></textarea></div>
+</section>
+
+<section>
+  <h2>Workday-style fields</h2>
+  <div class="ats">acme.myworkdayjobs.com · matched on data-automation-id</div>
+  <div class="field"><label for="wd1">Legal First Name</label><input id="wd1" data-automation-id="legalNameSection_firstName"></div>
+  <div class="field"><label for="wd2">Legal Last Name</label><input id="wd2" data-automation-id="legalNameSection_lastName"></div>
+  <div class="field"><label for="wd3">Email Address</label><input id="wd3" type="email" data-automation-id="email"></div>
+  <div class="field"><label for="wd4">Phone Number</label><input id="wd4" data-automation-id="phone-number"></div>
+  <div class="field"><label for="wd5">City</label><input id="wd5" data-automation-id="addressSection_city"></div>
+</section>
+
+<section>
+  <h2>iCIMS-style fields</h2>
+  <div class="ats">acme.icims.com · opaque ids, matched via &lt;label for&gt;</div>
+  <div class="field"><label for="f1">First Name</label><input id="f1"></div>
+  <div class="field"><label for="f2">Last Name</label><input id="f2"></div>
+  <div class="field"><label for="f3">Email Address</label><input id="f3" type="email"></div>
+  <div class="field"><label for="f4">Mobile Number</label><input id="f4"></div>
+</section>
+
+<section>
+  <h2>Questions it refuses to answer</h2>
+  <div class="ats">these stay blank and turn amber</div>
+  <div class="hold"><label for="q_salary">Desired Salary / Expected Rate</label><input id="q_salary" name="job_application[answers][salary]">
+    <div class="hint">Your number to pick. An agent guessing it can cost you thousands.</div></div>
+  <div class="hold"><label for="q_visa">Will you now or in the future require visa sponsorship?</label><input id="q_visa">
+    <div class="hint">A wrong answer here disqualifies the application outright.</div></div>
+  <div class="hold"><label for="q_auth">Are you legally authorized to work in the United States?</label><input id="q_auth">
+    <div class="hint">Same reason — answer it yourself.</div></div>
+  <div class="hold"><label for="q_start">Requested Start Date</label><input id="q_start">
+    <div class="hint">Depends on your notice period.</div></div>
+  <div class="hold"><label for="q_gender">Gender (voluntary)</label><input id="q_gender">
+    <div class="hint">Voluntary disclosure — your choice, never pre-filled.</div></div>
+  <div class="hold"><label for="q_vet">Veteran Status (voluntary)</label><input id="q_vet"></div>
+</section>
+
+<section>
+  <h2>Already typed — must not be overwritten</h2>
+  <div class="ats">a field you filled in yourself</div>
+  <div class="field"><label for="prefilled">Email</label><input id="prefilled" type="email" value="my.own.address@example.com">
+    <div class="hint">Run the fill — this value should stay exactly as it is.</div></div>
+</section>
+
+<button type="submit">Submit Application</button>
+<div class="warn" id="r">The extension will never click this button. Filling and submitting are separate on purpose — you review before anything is sent in your name.</div>
+</form>
+</div></body></html>

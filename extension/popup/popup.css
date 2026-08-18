@@ -1,0 +1,25 @@
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:320px;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0B0D14;background:#F6F7FB}
+header{display:flex;gap:10px;align-items:center;padding:14px;background:#fff;border-bottom:1px solid #E7E8F0}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(145deg,#6D63F5,#4F46E5);color:#fff;display:grid;place-items:center;font-size:14px}
+header b{display:block;font-size:13.5px}
+header span{font-size:11px;color:#7B8496;font-family:ui-monospace,monospace}
+main{padding:14px}
+button{width:100%;padding:10px;border:none;border-radius:9px;font:600 13px inherit;cursor:pointer}
+button.primary{background:linear-gradient(145deg,#5B52E8,#4F46E5);color:#fff}
+button:disabled{background:#D3D6E2;color:#7B8496;cursor:not-allowed}
+#state{font-size:12.5px;color:#3A4152;margin-bottom:11px;line-height:1.6}
+.pill{display:inline-block;font:700 10px ui-monospace,monospace;padding:2px 7px;border-radius:5px;margin-right:5px}
+.ok{background:#ECFDF5;color:#059669}
+.warn{background:#FFFBEB;color:#D97706}
+.bad{background:#FEF2F2;color:#DC2626}
+#result{margin-top:12px;font-size:12px;line-height:1.65}
+#result ul{list-style:none;margin-top:6px}
+#result li{padding:4px 0;border-bottom:1px solid #E7E8F0}
+footer{padding:12px 14px;border-top:1px solid #E7E8F0;background:#fff}
+.note{font-size:11px;color:#7B8496;line-height:1.5;margin-bottom:7px}
+footer a{font-size:11px;color:#4F46E5;text-decoration:none}
+#panel{padding:14px;background:#fff;border-top:1px solid #E7E8F0}
+#panel label{display:block;font:700 10px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em;color:#7B8496;margin:9px 0 4px}
+#panel input{width:100%;padding:8px 10px;border:1.5px solid #D3D6E2;border-radius:8px;font-size:12.5px}
+#panel button{margin-top:11px}

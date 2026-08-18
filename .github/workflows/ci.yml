@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Scan every tracked file
+        run: bash scripts/check-secrets.sh --all
+
+  server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r server/requirements.txt
+      - name: Visa parser
+        working-directory: server
+        run: python ingest/visa_parse.py
+      - name: Billing (mocked Stripe)
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
+        run: python test_billing.py
+      - name: AI failure handling
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
+        run: python test_ai_resilience.py
+      - name: API endpoints
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
+        run: |
+          python seed.py
+          uvicorn api.main:app --port 8000 --log-level error &
+          for i in $(seq 1 40); do curl -sf localhost:8000/health && break; sleep 0.5; done
+          API=http://localhost:8000 bash test_api.sh
+
+  web:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm i -g jsdom --silent
+      - name: Syntax check
+        run: |
+          node -e "
+            const fs=require('fs');
+            const h=fs.readFileSync('web/index.html','utf8');
+            fs.writeFileSync('/tmp/a.js', h.slice(h.indexOf('<script>')+8, h.lastIndexOf('</script>')));
+          "
+          node --check /tmp/a.js
+      - name: Extension manifest
+        run: node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json'));console.log('manifest ok')"
+
+  guard:
+    name: No secrets in the frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: index.html must contain no keys
+        run: |
+          if grep -nE 'sk_(live|test)_[0-9a-zA-Z]{20,}|sk-ant-|whsec_[0-9a-zA-Z]{20,}' web/index.html; then
+            echo "::error::A secret is present in the frontend, which ships to every visitor."
+            exit 1
+          fi
+          echo "frontend is clean"
