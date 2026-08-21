@@ -23,13 +23,22 @@ from api.models import User, Application, Job
 router = APIRouter(prefix="/api/applications", tags=["applications"],
                    dependencies=[Depends(require_seeker)])
 
-STATUSES = ["queued", "preparing", "needs_input", "ready",
+STATUSES = ["opened", "skipped",
+            "queued", "preparing", "needs_input", "ready",
             "submitted", "responded", "interview", "selected", "rejected"]
 
-# What the tracker calls each stage ⇄ what the pipeline calls it.
+# What the tracker calls each stage ⇄ what the pipeline calls it. Anything not
+# listed round-trips unchanged, which is how 'opened' and 'skipped' work: they
+# are the user's own bookkeeping, with no pipeline counterpart.
+#   opened  — on the board, not applied to yet
+#   skipped — deliberately passed over, distinct from being rejected
 SHORT = {"submitted": "sent", "responded": "reply", "interview": "intv",
          "selected": "offer", "rejected": "closed"}
 LONG = {v: k for k, v in SHORT.items()}
+
+# Nothing here means the application was actually sent, so none of them should
+# stamp applied_at.
+NOT_YET_APPLIED = ("opened", "skipped", "queued", "preparing", "needs_input", "ready")
 
 MAX_TRACKED = 2000      # a tracker, not a scraper's dumping ground
 
@@ -102,15 +111,18 @@ def track(body: ApplicationIn, user: User = Depends(require_seeker),
         row = Application(user_id=user.id, company=company, title=title)
         db.add(row)
 
-    row.location = body.location
-    row.note = body.note
-    row.blocker = body.blocker
+    # Only overwrite what was actually sent. This is an upsert, and marking a
+    # posting you already tracked usually carries nothing but the new status —
+    # assigning None here would wipe the note and location you typed earlier.
+    if body.location is not None: row.location = body.location
+    if body.note is not None:     row.note = body.note
+    if body.blocker is not None:  row.blocker = body.blocker
     row.status = status
     # Only link a fingerprint we actually ingested — the column is a real
     # foreign key, and a posting found elsewhere has no row to point at.
     if body.fingerprint and db.query(Job).filter(Job.fingerprint == body.fingerprint).first():
         row.fingerprint = body.fingerprint
-    if status not in ("queued", "preparing", "needs_input", "ready") and not row.applied_at:
+    if status not in NOT_YET_APPLIED and not row.applied_at:
         row.applied_at = dt.datetime.now(dt.timezone.utc)
 
     db.commit(); db.refresh(row)
@@ -126,7 +138,7 @@ def set_status(app_id: str, body: StatusIn, user: User = Depends(require_seeker)
     row.status = _canonical(body.status)
     if body.note is not None: row.note = body.note
     if body.blocker is not None: row.blocker = body.blocker
-    if row.status not in ("queued", "preparing", "needs_input", "ready") and not row.applied_at:
+    if row.status not in NOT_YET_APPLIED and not row.applied_at:
         row.applied_at = dt.datetime.now(dt.timezone.utc)
     db.commit(); db.refresh(row)
     return _out(row)

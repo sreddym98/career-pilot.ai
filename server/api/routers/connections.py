@@ -54,7 +54,10 @@ def list_connections(user: User = Depends(require_seeker), db: Session = Depends
                            func.lower(Job.company).in_([c.lower() for c in by_company]))\
                    .group_by(Job.company).all()
         for company, n in counts:
-            openings[company.lower()] = n
+            # SQL groups by the raw column, so "Cognizant" and "cognizant"
+            # arrive as separate rows. Add them up rather than letting the
+            # second one overwrite the first.
+            openings[company.lower()] = openings.get(company.lower(), 0) + n
 
     return {"total": len(rows),
             "companies": [{"company": company,

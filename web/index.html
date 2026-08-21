@@ -2373,7 +2373,10 @@ function addSkill(){const v=$("newSkill").value.trim();
   if(!v)return; if(SKILLS.includes(v)){toast("Already there");return;}
   SKILLS.push(v);$("newSkill").value="";renderProfile();rn();saveState();}
 function delSkill(i){SKILLS.splice(i,1);renderProfile();rn();saveState();}
-function syncAuth(){$("f-auth").value=$("p-auth").value;rn();toast("Job list updated for "+$("p-auth").selectedOptions[0].text);}
+function syncAuth(){
+  WORK_AUTH_KNOWN=true;               // a deliberate choice, safe to persist
+  $("f-auth").value=$("p-auth").value;rn();saveState();
+  toast("Job list updated for "+$("p-auth").selectedOptions[0].text);}
 
 /* ═══ ROLE EDITOR ═══ */
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -3469,7 +3472,7 @@ async function authSubmit(){
     const r = await CP_API_call(`/api/auth/${up?"signup":"login"}`,
                                 {method:"POST", body:JSON.stringify(body)});
     store.set("cp_token", r.access_token);
-    applySession(r.user);
+    applySession(r.user, up);      // `up` = signing up, so keep local work
     closeAuth();
     $("au-pass").value = "";
     toast(up ? `Account created — ${ROLE_LABEL[r.user.account_type].toLowerCase()}`
@@ -3481,12 +3484,18 @@ async function authSubmit(){
   }
 }
 
+/* Everything the signed-in account touched, including SKEY — that one holds
+   positions, skills, applications AND the name/email/phone fields, so leaving
+   it behind hands the next person at this browser the last user's profile.
+   Separate from signOut() so it can be tested without navigating. */
+const ACCOUNT_KEYS = ["cp_token","cp_role","cp_bench","cp_subs",SKEY];
+function clearAccountData(){
+  ACCOUNT_KEYS.forEach(k=>store.del(k));
+  SESSION = null; SYNC_ARMED = false; SERVER_POSITIONS = [];
+}
+
 function signOut(){
-  // Drop the bench and profile caches too. They belong to the account that
-  // was signed in, and the next person at this browser must not inherit them.
-  store.del("cp_token"); store.del("cp_bench"); store.del("cp_subs");
-  store.del("cp_role");
-  SESSION = null;
+  clearAccountData();
   location.reload();
 }
 
@@ -3513,7 +3522,7 @@ async function bootSession(){
   }
 }
 
-function applySession(user){
+function applySession(user, isNewAccount){
   SESSION = user;
   document.body.dataset.role = user.account_type;
   // Remembered only to pick the right sidebar on the next reload before
@@ -3527,8 +3536,9 @@ function applySession(user){
   if(user.plan) setTxt("m-plan", user.plan[0].toUpperCase()+user.plan.slice(1));
   setMode(user.account_type);
   // Load their saved work before arming the push, so a browser sitting on
-  // demo data can't overwrite a real profile.
-  if(user.account_type === "seeker") pullSeekerData();
+  // demo data can't overwrite a real profile. On a fresh signup the local
+  // work IS theirs, so it's carried up instead of discarded.
+  if(user.account_type === "seeker") pullSeekerData(isNewAccount);
 }
 
 function renderAccountBox(){
@@ -3559,6 +3569,12 @@ let SYNC_ARMED = false;      // false until the server's copy has been loaded
 let SYNC_TIMER = null;
 let SYNC_STATE = "idle";     // idle | saving | saved | error
 
+/* The work-authorization select has `h1b` marked selected in the markup, so it
+   reads as H1B for someone who has never opened the profile page. Work
+   authorization decides which jobs are shown and what a resume claims, so it
+   only gets sent once the server told us or the user chose. */
+let WORK_AUTH_KNOWN = false;
+
 const MON3 = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
 
 /* "May 2024" → "2024-05-01". null for Present or anything unparseable, which
@@ -3583,8 +3599,14 @@ async function apiTry(path, opts){
   catch(e){ console.warn("sync:", path, e.message); throw e; }
 }
 
-/* ═══ PULL — the server's copy wins on sign-in ═══ */
-async function pullSeekerData(){
+/* ═══ PULL — the server's copy wins on sign-in ═══
+
+   `adoptLocal` is true only for a brand-new signup, where whatever you built
+   before making an account (uploaded a resume, added roles) is yours and
+   should be carried up. On a LOGIN it is false and the server is authoritative
+   even when it returns nothing, because "this account has no positions" is a
+   fact, not a reason to keep whoever used this browser last.                */
+async function pullSeekerData(adoptLocal){
   if(!SESSION || SESSION.account_type !== "seeker" || !CP_API) return;
   try{
     const p = await CP_API_call("/api/profile");
@@ -3607,17 +3629,23 @@ async function pullSeekerData(){
       RESUME_NAME = "Your saved profile";
       const drop = $("drop"); if(drop) drop.classList.add("done");
       const after = $("afterUpload"); if(after) after.style.display = "";
+    }else if(!adoptLocal){
+      // Signed in to an account with nothing saved. Start clean rather than
+      // inheriting the previous user's roles from this browser.
+      EXP = []; SKILLS = []; SERVER_POSITIONS = []; PROFILE_READY = false;
     }
 
     const set = (id,v)=>{const el=$(id); if(el && v!=null) el.value = v;};
     set("p-name", p.name); set("p-email", p.email); set("p-phone", p.phone);
     set("p-loc", p.location); set("p-li", p.linkedin);
-    if((p.work_auth||[]).length) set("p-auth", p.work_auth[0]);
+    if((p.work_auth||[]).length){ set("p-auth", p.work_auth[0]); WORK_AUTH_KNOWN = true; }
 
     const a = await CP_API_call("/api/applications");
     if(a.applications.length){
       APPS = a.applications.map(x=>({id:x.id, co:x.company, ti:x.title,
         lo:x.location||"—", st:x.short, when:x.note||""}));
+    }else if(!adoptLocal){
+      APPS = [];
     }
 
     renderProfile(); renderApps(); rn();
@@ -3642,13 +3670,16 @@ async function pushSeekerData(){
   if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
   syncBadge("saving");
   try{
-    await apiTry("/api/profile", {method:"PUT", body:JSON.stringify({
+    const profile = {
       name:  ($("p-name")?.value||"").trim() || SESSION.name || SESSION.email,
       phone: ($("p-phone")?.value||"").trim(),
       location: ($("p-loc")?.value||"").trim(),
       linkedin: ($("p-li")?.value||"").trim(),
-      work_auth: $("p-auth")?.value ? [$("p-auth").value] : [],
-    })});
+    };
+    // Omitted unless it's really been established — the API treats an absent
+    // field as "leave it alone", which is what we want here.
+    if(WORK_AUTH_KNOWN && $("p-auth")?.value) profile.work_auth = [$("p-auth").value];
+    await apiTry("/api/profile", {method:"PUT", body:JSON.stringify(profile)});
 
     await apiTry("/api/profile/skills",
                  {method:"PUT", body:JSON.stringify({skills:SKILLS.slice(0,60)})});
@@ -5147,7 +5178,10 @@ async function buildResume(){
       try{
         // Call backend API instead of Anthropic directly (avoids CORS, keeps key server-side)
         const r=await fetch(CP_API+"/api/ai/tailor",{method:"POST",
-          headers:{"Content-Type":"application/json"},signal:ctl.signal,
+          // Needs the session like every other call: /api/ai/tailor is behind
+          // current_user, so without this it 401s for real users the moment
+          // the dev fallback isn't in play.
+          headers:{"Content-Type":"application/json",...authHeaders()},signal:ctl.signal,
           body:JSON.stringify({prompt:prompt,max_tokens:tok,label:label})});
         clearTimeout(timer);
         const raw=await r.text();                       // text first — errors aren't JSON
@@ -5595,6 +5629,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   renderAccountBox,signedIn,PAGE_ROLE,ROLE_LABEL,HOME_PAGE,
   pullSeekerData,pushSeekerData,scheduleSync,syncApplication,toISODate,isServerId,
   wireProfileFields,get SYNC_ARMED(){return SYNC_ARMED},get SYNC_STATE(){return SYNC_STATE},
+  clearAccountData,ACCOUNT_KEYS,get WORK_AUTH_KNOWN(){return WORK_AUTH_KNOWN},
   setMode,candFit,bestFor,jobsFor,visaBlocked,submitTo,pickCandidate,
   renderBench,renderSubs,editCand,saveCand,removeCand,openCand,addCandSkill,
   get CAND_SKILLS(){return CAND_SKILLS},syncEdit,dropBullet,addBulletTo,dropSkillGroup,redrawDoc,wireEdits,saveState,loadState,clearState,moveRole,delRole,loadJobs,openConnect,mapJob,get LIVE(){return LIVE},get LAST(){return LAST},handleFile,DEMO_EXP,DEMO_SKILLS,PEOPLE,COURSES};

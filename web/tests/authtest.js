@@ -127,6 +127,30 @@ ok("  even pushing directly is a no-op", w3.CP.SYNC_STATE==="idle", w3.CP.SYNC_S
 await w3.CP.syncApplication({co:"X",ti:"Y",lo:"Z",st:"sent"});
 ok("  and marking an application sends nothing", w3.CP.SYNC_STATE==="idle");
 
+console.log("\n── Signing out leaves nothing behind ──");
+// The bug this guards: SKEY holds positions, skills, applications AND the
+// name/email/phone fields. Leaving it behind handed the next person at this
+// browser the previous user's profile.
+const SK="cp_state_v1";
+ok("the profile blob is cleared on sign-out", w3.CP.ACCOUNT_KEYS.includes(SK),
+   w3.CP.ACCOUNT_KEYS.join(","));
+["cp_token","cp_role","cp_bench","cp_subs"].forEach(k=>
+  ok(`  so is ${k}`, w3.CP.ACCOUNT_KEYS.includes(k)));
+w3.localStorage.setItem(SK, JSON.stringify({exp:[{co:"Previous User Inc"}]}));
+w3.localStorage.setItem("cp_token", JSON.stringify("tok"));
+w3.CP.clearAccountData();
+ok("clearing really removes the profile blob", w3.localStorage.getItem(SK)===null,
+   String(w3.localStorage.getItem(SK)));
+ok("  and the token", w3.localStorage.getItem("cp_token")===null);
+ok("  and disarms sync so nothing is pushed after", w3.CP.SYNC_ARMED===false);
+
+console.log("\n── Work authorization is never invented ──");
+// The p-auth select ships with h1b marked selected, so an untouched form
+// reads as H1B. That must not be persisted as if the user said it.
+ok("unknown until the server or the user says so", w3.CP.WORK_AUTH_KNOWN===false);
+ok("  even though the control shows a value",
+   !!w3.document.getElementById("p-auth").value, w3.document.getElementById("p-auth").value);
+
 console.log("\n── Dates the API will accept ──");
 ok('"May 2024" becomes a real date', w3.CP.toISODate("May 2024")==="2024-05-01", w3.CP.toISODate("May 2024"));
 ok('"Sep 2019" too', w3.CP.toISODate("Sep 2019")==="2019-09-01", w3.CP.toISODate("Sep 2019"));

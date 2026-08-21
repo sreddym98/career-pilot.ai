@@ -141,6 +141,25 @@ ok("  and it's gone", AP.list_applications(None, seeker, db)["total"] == 2,
 m, d = raises(404, AP.untrack, a1["id"], seeker, db)
 ok("deleting twice is a 404", m, d)
 
+print("\n── Board states the tracker actually uses ──")
+# mark() calls these from six places (opening a job, skipping one, Autopilot
+# approval). They were rejected with a 400 the client swallowed, so every one
+# of those transitions silently failed to persist.
+for short in ("opened", "skipped"):
+    a = AP.track(AP.ApplicationIn(company=f"Co-{short}", title="SDET", status=short), seeker, db)
+    ok(f"'{short}' is accepted", a["status"] == short, a["status"])
+    ok(f"  and round-trips unchanged", a["short"] == short, a["short"])
+    ok(f"  without claiming you applied", a["applied_at"] is None, a["applied_at"])
+
+# A re-mark usually carries only the new status. It must not blank the rest.
+full = AP.track(AP.ApplicationIn(company="Keeper", title="QA", location="Austin, TX",
+                                 note="Referred by Anil", status="sent"), seeker, db)
+thin = AP.track(AP.ApplicationIn(company="Keeper", title="QA", status="intv"), seeker, db)
+ok("a partial re-mark keeps the note", thin["note"] == "Referred by Anil", thin["note"])
+ok("  keeps the location", thin["location"] == "Austin, TX", thin["location"])
+ok("  and still advances the status", thin["short"] == "intv", thin["short"])
+ok("  same row", thin["id"] == full["id"])
+
 print("\n── Connections ──")
 c1 = CN.add_connection(CN.ConnectionIn(name="Anil Kumar", company="Cognizant",
                                        role="Senior QA", degree=1,
@@ -160,6 +179,14 @@ db.commit()
 lst = CN.list_connections(seeker, db)
 cog = [c for c in lst["companies"] if c["company"] == "Cognizant"][0]
 ok("open roles counted where you know someone", cog["open_roles"] == 1, cog["open_roles"])
+# SQL groups by the raw column, so a case-variant company arrives as a second
+# row. It has to add, not overwrite.
+db.add(Job(fingerprint="fp-cog-2", source="t", company="cognizant", title="QA", active=True))
+db.commit()
+lst = CN.list_connections(seeker, db)
+cog = [c for c in lst["companies"] if c["company"] == "Cognizant"][0]
+ok("  case-variant company rows are summed, not overwritten",
+   cog["open_roles"] == 2, cog["open_roles"])
 
 CN.edit_connection(c1["id"], CN.ConnectionIn(name="Anil Kumar", company="Cognizant",
                                              role="QA Manager", degree=1), seeker, db)
