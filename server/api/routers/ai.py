@@ -1,14 +1,11 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
-"""AI proxy. The ONLY place the Anthropic key is used.
+"""AI proxy using Ollama (local, free, no API key needed).
 
-The prototype called api.anthropic.com from the browser — that works
-inside Claude artifacts because the key is injected server-side, but on
-your own domain it would hand your key to every visitor. Everything
-goes through here instead.
+Ollama runs locally on http://localhost:11434 and provides fast inference
+without any cloud dependencies, API keys, or cost.
 """
-import hashlib, json
-import anthropic
+import hashlib, json, requests
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -19,12 +16,12 @@ from api.settings import settings
 from api import credits
 
 class _Transient(Exception):
-    """Retryable condition that isn't one of anthropic's typed errors."""
+    """Retryable condition that isn't one of ollama's typed errors."""
 
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-MODEL = "claude-sonnet-4-6"
+OLLAMA_URL = "http://localhost:11434"
+MODEL = "neural-chat"  # Faster and more efficient than mistral
 
 
 def _key(*parts) -> str:
@@ -46,42 +43,77 @@ def _store(db, key, result):
 
 
 def _call(prompt: str, max_tokens: int = 1400, label: str = "") -> dict:
-    """Retries transient upstream failures. Overloads and gateway errors are
-    common and almost always succeed on a second attempt — failing the whole
-    multi-call resume on the first blip wastes the user's credits."""
+    """Call Ollama locally and fail quickly so the UI can use its fallback."""
     import time
+    import re
     last = None
-    for attempt in range(1, 4):
+    for attempt in range(1, 2):
         try:
-            msg = client.messages.create(model=MODEL, max_tokens=max_tokens,
-                                         messages=[{"role": "user", "content": prompt}])
-            text = "".join(b.text for b in msg.content if b.type == "text")
-            text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+            # Call Ollama's generate endpoint
+            response = requests.post(
+                f"{OLLAMA_URL}/api/generate",
+                json={
+                    "model": MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",
+                    "options": {
+                        "num_predict": min(max_tokens, 420),
+                        "temperature": 0.3,
+                        "top_p": 0.9,
+                    },
+                },
+                 timeout=20,
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            text = data.get("response", "").strip()
+            
             if not text:
                 raise _Transient("empty response from model")
+            
+            # Try to extract JSON from the response
+            # First, remove code block markers if present
+            text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+            
+            # Try to find JSON object if it's embedded in text
+            if not text.startswith('{'):
+                # Look for JSON object in the text
+                match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text)
+                if match:
+                    text = match.group(0)
+            
+            # Attempt to parse as JSON
             try:
                 return json.loads(text)
             except json.JSONDecodeError:
-                raise HTTPException(502,
-                    f"Incomplete response{f' for {label}' if label else ''}. "
-                    f"Try a shorter job description or a lower detail level.")
+                # If JSON parsing fails, raise a transient error to retry
+                raise _Transient("response was not valid JSON")
 
-        except (_Transient, anthropic.APIConnectionError, anthropic.APITimeoutError,
-                anthropic.InternalServerError, anthropic.RateLimitError) as e:
+        except (_Transient, requests.ConnectionError, requests.Timeout) as e:
             last = e
-            if attempt == 3:
+            if attempt == 1:
                 break
-            time.sleep(0.7 * (2 ** (attempt - 1)))
+            time.sleep(1.0 * (2 ** (attempt - 1)))  # Increased backoff
+        except requests.HTTPError as e:
+            if e.response.status_code >= 500:
+                last = e
+                if attempt == 1:
+                    break
+                time.sleep(1.0 * (2 ** (attempt - 1)))
+            else:
+                raise HTTPException(400, f"Request rejected: {str(e)[:160]}")
 
-        except anthropic.AuthenticationError:
-            raise HTTPException(500, "AI service authentication failed — check ANTHROPIC_API_KEY.")
-        except anthropic.BadRequestError as e:
-            raise HTTPException(400, f"Request rejected: {getattr(e, 'message', str(e))[:160]}")
-
+    # All attempts failed
+    if isinstance(last, requests.ConnectionError):
+        raise HTTPException(503, 
+            "Ollama service is not running. Start with: ollama serve")
+    elif isinstance(last, requests.Timeout):
+        raise HTTPException(503, 
+            "Ollama is taking too long to respond. Try again in a moment.")
+    
     kind = type(last).__name__ if last else "unknown"
-    if isinstance(last, anthropic.RateLimitError):
-        raise HTTPException(429, "Rate limited upstream. Wait a moment and retry — "
-                                 "your completed sections are kept.")
     raise HTTPException(503, f"AI service temporarily unavailable ({kind}). "
                              f"Retry in a moment — completed sections are kept.")
 
@@ -92,6 +124,20 @@ class TailorReq(BaseModel):
     specialization: str = ""
     emphasis: str = "balanced"
     depth: str = "exactly 10 to 12"
+
+
+class PromptReq(BaseModel):
+    prompt: str
+    max_tokens: int = 1400
+    label: str = ""
+
+
+@router.post("/tailor")
+def tailor(req: PromptReq, user: User = Depends(current_user),
+           db: Session = Depends(get_db)):
+    """Single AI call with any prompt. Used by the resume builder frontend."""
+    result = _call(req.prompt, req.max_tokens, req.label)
+    return {"data": result}
 
 
 @router.post("/resume")

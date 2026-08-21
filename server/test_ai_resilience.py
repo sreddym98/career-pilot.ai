@@ -1,105 +1,110 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
-"""Upstream failure handling in the AI proxy. No network, no credits spent."""
-import os, sys, types, json
+"""Ollama proxy failure handling. No network or local model required."""
+import os
+import sys
+
 os.environ.setdefault("DATABASE_URL", "sqlite:///./ai_test.db")
 os.environ.setdefault("ENV", "dev")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-P = F = 0; fails = []
-def ok(n, c, x=""):
-    global P, F
-    if c: P += 1
-    else: F += 1; fails.append(f"{n}  →  {x}")
-
-import anthropic, httpx
 from fastapi import HTTPException
+import requests
 import api.routers.ai as AI
 
-# anthropic's exceptions need a real httpx.Response to construct
-def _resp(code):
-    req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
-    return httpx.Response(code, request=req)
+P = F = 0
+fails = []
 
-def E(cls, code, msg="err"):
-    return cls(msg, response=_resp(code), body=None)
 
-calls = {"n": 0}
+def ok(name, condition, detail=""):
+    global P, F
+    if condition:
+        P += 1
+    else:
+        F += 1
+        fails.append(f"{name} -> {detail}")
 
-def mock_client(behaviour):
-    calls["n"] = 0
-    class M:
-        class messages:
-            @staticmethod
-            def create(**kw):
-                calls["n"] += 1
-                return behaviour(calls["n"])
-    AI.client = M()
 
-def good(text):
-    return types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text=text)])
+class Response:
+    def __init__(self, status=200, body=None):
+        self.status_code = status
+        self._body = body if body is not None else {"response": '{"summary":"ok"}'}
 
-print("\n╔═══ AI PROXY — upstream failures ═══╗\n")
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            error = requests.HTTPError(f"HTTP {self.status_code}")
+            error.response = self
+            raise error
 
-# transient then success
-def flaky(n):
-    if n < 3: raise E(anthropic.InternalServerError, 500, "overloaded")
-    return good('{"summary":"ok"}')
-mock_client(flaky)
+    def json(self):
+        return self._body
+
+
+calls = {"count": 0}
+original_post = AI.requests.post
+
+
+def mock_post(behavior):
+    calls["count"] = 0
+
+    def post(*args, **kwargs):
+        calls["count"] += 1
+        return behavior(calls["count"], args, kwargs)
+
+    AI.requests.post = post
+
+
+print("\nAI PROXY - Ollama failure handling\n")
 try:
-    r = AI._call("x", 100, "test")
-    ok("recovers after 2 transient failures", r == {"summary": "ok"})
-    ok("  took 3 attempts", calls["n"] == 3, f"{calls['n']}")
-except Exception as e:
-    ok("recovers after 2 transient failures", False, f"{type(e).__name__}: {e}")
+    mock_post(lambda count, args, kwargs: Response(500))
+    try:
+        AI._call("x", 100)
+        ok("server error raises", False)
+    except HTTPException as error:
+        ok("server error -> 503 without a long retry", error.status_code == 503 and calls["count"] == 1, calls["count"])
 
-# persistent 5xx
-mock_client(lambda n: (_ for _ in ()).throw(E(anthropic.InternalServerError, 500, "down")))
-try:
-    AI._call("x", 100, "test"); ok("persistent 5xx raises", False)
-except HTTPException as e:
-    ok("persistent 5xx → 503", e.status_code == 503, str(e.status_code))
-    ok("  message is actionable", "temporarily unavailable" in e.detail and "kept" in e.detail, e.detail[:80])
-    ok("  retried 3x", calls["n"] == 3, f"{calls['n']}")
+    mock_post(lambda count, args, kwargs: Response(500))
+    try:
+        AI._call("x", 100)
+        ok("persistent server error raises", False)
+    except HTTPException as error:
+        ok("persistent server error -> 503", error.status_code == 503, error.status_code)
+        ok("  makes one request", calls["count"] == 1, calls["count"])
 
-# rate limit
-mock_client(lambda n: (_ for _ in ()).throw(E(anthropic.RateLimitError, 429, "slow down")))
-try:
-    AI._call("x", 100); ok("rate limit raises", False)
-except HTTPException as e:
-    ok("rate limit → 429", e.status_code == 429, str(e.status_code))
-    ok("  says sections are kept", "kept" in e.detail)
+    mock_post(lambda count, args, kwargs: Response(400))
+    try:
+        AI._call("x", 100)
+        ok("bad request raises", False)
+    except HTTPException as error:
+        ok("bad request -> 400 without retry", error.status_code == 400 and calls["count"] == 1, calls["count"])
 
-# auth — must NOT retry
-mock_client(lambda n: (_ for _ in ()).throw(E(anthropic.AuthenticationError, 401, "bad key")))
-try:
-    AI._call("x", 100); ok("auth error raises", False)
-except HTTPException as e:
-    ok("auth → 500, no retry", e.status_code == 500 and calls["n"] == 1, f"{e.status_code}, {calls['n']} calls")
-    ok("  names the env var", "ANTHROPIC_API_KEY" in e.detail)
+    def disconnected(count, args, kwargs):
+        raise requests.ConnectionError("Ollama offline")
 
-# bad request — must NOT retry
-mock_client(lambda n: (_ for _ in ()).throw(E(anthropic.BadRequestError, 400, "too long")))
-try:
-    AI._call("x", 100); ok("bad request raises", False)
-except HTTPException as e:
-    ok("400 → no retry", e.status_code == 400 and calls["n"] == 1, f"{calls['n']} calls")
+    mock_post(disconnected)
+    try:
+        AI._call("x", 100)
+        ok("connection failure raises", False)
+    except HTTPException as error:
+        ok("connection failure -> actionable 503", error.status_code == 503 and "Ollama" in error.detail, error.detail)
 
-# malformed JSON — surfaced clearly, not as a parse error
-mock_client(lambda n: good("this is not json at all"))
-try:
-    AI._call("x", 100, "Mastercard"); ok("bad JSON raises", False)
-except HTTPException as e:
-    ok("malformed JSON → 502", e.status_code == 502)
-    ok("  names the failing section", "Mastercard" in e.detail, e.detail[:70])
-    ok("  suggests a fix", "lower detail" in e.detail or "shorter" in e.detail)
+    mock_post(lambda count, args, kwargs: Response(body={"response": "```json\n{\"summary\":\"fenced\"}\n```"}))
+    ok("strips markdown fences", AI._call("x", 100) == {"summary": "fenced"})
 
-# markdown fences tolerated
-mock_client(lambda n: good('```json\n{"summary":"fenced"}\n```'))
-ok("strips markdown fences", AI._call("x", 100) == {"summary": "fenced"})
+    mock_post(lambda count, args, kwargs: Response(body={"response": "not JSON"}))
+    try:
+        AI._call("x", 100, "Summary")
+        ok("invalid model JSON raises", False)
+    except HTTPException as error:
+        ok("invalid model JSON -> 503", error.status_code == 503 and calls["count"] == 1, calls["count"])
+finally:
+    AI.requests.post = original_post
 
 print("\n" + "=" * 48)
 print(f"PASS {P}    FAIL {F}")
-if F: print("\nFAILURES"); [print("  ✗ " + f) for f in fails]
-else: print("✓ ALL GREEN")
-os.path.exists("ai_test.db") and os.remove("ai_test.db")
+if F:
+    print("\nFAILURES")
+    for failure in fails:
+        print("  x " + failure)
+    raise SystemExit(1)
+print("ALL GREEN")

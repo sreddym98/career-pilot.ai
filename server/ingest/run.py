@@ -13,7 +13,12 @@ It will tell you plainly when you're short and what to add.
 import argparse, hashlib, os, re, sys, time, datetime as dt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SERVER_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if __package__ in (None, ""):
+    # Direct execution makes this file's directory first on sys.path, which
+    # otherwise resolves `ingest` to ingest.py instead of the package.
+    sys.path = [path for path in sys.path if path != os.path.dirname(os.path.abspath(__file__))]
+    sys.path.insert(0, SERVER_ROOT)
 
 from ingest import sources, scheduler
 from ingest.visa_parse import parse_visa
@@ -35,6 +40,8 @@ WANTED = re.compile(
 
 # Broader net for the aggregator leg, where titles are messier
 WANTED_LOOSE = re.compile(r"\b(sdet|qa|test|quality|automation)\b", re.I)
+PLACEHOLDER_TITLE = re.compile(
+    r"^(test|test job|test job title|test req|quality checker|qa tester entry level)$", re.I)
 
 AGG_QUERIES = [
     "SDET jobs in USA", "QA automation engineer jobs in USA",
@@ -67,8 +74,15 @@ def norm_loc(s):
     return "".join(c for c in " ".join(parts) if c.isalnum())[:24] + state
 
 
-def fingerprint(co, title, loc):
-    return hashlib.sha256(f"{norm(co)}|{norm(title)}|{norm_loc(loc)}".encode()).hexdigest()[:20]
+def fingerprint(co, title, loc, source="", source_id=""):
+    """Keep each ATS posting distinct while still deduplicating repeated pulls.
+
+    A company can publish the same title in multiple countries or remote
+    regions. Title/location normalization alone merges those postings and can
+    cause a single SQLAlchemy flush to insert duplicate primary keys.
+    """
+    stable_id = f"{source}|{source_id}" if source and source_id else f"{norm(co)}|{norm(title)}|{norm_loc(loc)}"
+    return hashlib.sha256(stable_id.encode()).hexdigest()[:20]
 
 
 STAFFING_SUB = ["staffing", "consulting", "consultancy", "infotech", "recruit", "placement",
@@ -143,10 +157,11 @@ def load_boards():
 def upsert(db, rec, now):
     title = (rec.get("title") or "").strip()
     company = (rec.get("company") or "").strip()
-    if not title or not company:
+    if not title or not company or PLACEHOLDER_TITLE.match(title):
         return None
     desc = rec.get("description") or ""
-    fp = fingerprint(company, title, rec.get("location", ""))
+    fp = fingerprint(company, title, rec.get("location", ""),
+                     rec.get("source", ""), rec.get("source_id", ""))
     row = db.get(Job, fp)
 
     if row:
@@ -176,6 +191,34 @@ def upsert(db, rec, now):
         required_skills=[], posted_at=None,
         first_seen=now, last_seen=now, seen_count=1, active=True))
     return "new"
+
+
+def clean_live_board(db):
+    """Deactivate sample data and exact duplicate source records.
+
+    The API board must contain only postings from live connectors. A seed row
+    is useful during first-run development but should never compete with a
+    verified employer link after the first ingestion succeeds.
+    """
+    seeded = db.query(Job).filter(Job.source == "seed", Job.active.is_(True)).update(
+        {"active": False}, synchronize_session=False)
+    placeholders = 0
+    for row in db.query(Job).filter(Job.active.is_(True)).all():
+        if PLACEHOLDER_TITLE.match((row.title or "").strip()):
+            row.active = False
+            placeholders += 1
+    duplicates = 0
+    seen = set()
+    rows = db.query(Job).filter(Job.active.is_(True)).order_by(Job.first_seen.desc()).all()
+    for row in rows:
+        key = (row.source, row.source_id)
+        if not row.source_id or key not in seen:
+            seen.add(key)
+            continue
+        row.active = False
+        duplicates += 1
+    db.commit()
+    return {"seeded": seeded, "placeholders": placeholders, "duplicates": duplicates}
 
 
 def pull(fn, *a, **kw):
@@ -323,11 +366,13 @@ def main():
             errs += e
         cutoff = now - dt.timedelta(days=10)
         closed = db.query(Job).filter(Job.last_seen < cutoff, Job.active.is_(True))\
-                   .update({"active": False}, synchronize_session=False)
+            .update({"active": False}, synchronize_session=False)
         db.commit()
+        cleaned = clean_live_board(db)
         print(f"  new {total['new']}  relisted {total['relisted']}  seen {total['seen']}  "
               f"filtered-out {total['skipped']}  closed {closed}  "
-              f"errors {len(errs)}  in {time.time()-t0:.0f}s")
+              f"removed seed {cleaned['seeded']}  placeholders {cleaned['placeholders']}  "
+              f"duplicates {cleaned['duplicates']}  errors {len(errs)}  in {time.time()-t0:.0f}s")
         if errs[:5]:
             for x in errs[:5]: print(f"    ! {x}")
         return total

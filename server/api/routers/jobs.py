@@ -1,6 +1,6 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from api.db import get_db
@@ -70,7 +70,8 @@ def list_jobs(
 @router.get("/{fingerprint}")
 def get_job(fingerprint: str, db: Session = Depends(get_db), user=Depends(optional_user)):
     j = db.query(Job).get(fingerprint)
-    if not j: return {"error": "not found"}
+    if not j:
+        raise HTTPException(404, "Job not found")
     refs = []
     if user:
         refs = [{"name": c.name, "role": c.role, "degree": c.degree}

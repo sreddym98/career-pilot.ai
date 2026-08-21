@@ -61,7 +61,7 @@ if not db.query(Position).filter(Position.user_id == u.id).count():
                     started_on=dt.date(2024,5,1), bullets=["Built Playwright automation for payments"]))
     db.commit()
 
-AI.client = types.SimpleNamespace(messages=types.SimpleNamespace(create=_mk))
+I._call = lambda *args, **kwargs: MOCK.copy()
 before = credits_before = u.credits_used or 0
 r = I.generate_mock_interview(I.InterviewIn(job_title="Senior SDET", company="Acme",
                                             jd="Looking for Playwright and Kafka experience.",
@@ -81,8 +81,7 @@ db.refresh(u)
 ok("credit was spent", (u.credits_used or 0) == before + 1, f"{u.credits_used} vs {before+1}")
 
 print("── Cached on repeat — no second spend, no second AI call ──")
-calls_before = None
-AI.client.messages.create = lambda **k: (_ for _ in ()).throw(AssertionError("should not call AI again"))
+I._call = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not call AI again"))
 r2 = I.generate_mock_interview(I.InterviewIn(job_title="Senior SDET", company="Acme",
                                              jd="Looking for Playwright and Kafka experience.",
                                              skills=["Playwright","Kafka"]), u, db)
@@ -91,7 +90,7 @@ db.refresh(u)
 ok("  no second credit spent", (u.credits_used or 0) == before + 1)
 
 print("── Different JD → different cache key, spends again ──")
-AI.client.messages.create = _mk
+I._call = lambda *args, **kwargs: MOCK.copy()
 r3 = I.generate_mock_interview(I.InterviewIn(job_title="Senior SDET", company="Acme",
                                              jd="Completely different JD asking for Selenium instead.",
                                              skills=["Selenium"]), u, db)
@@ -120,7 +119,7 @@ if not db.query(Position).filter(Position.user_id == u3.id).count():
                     bullets=["Built API test suites for payments"]))
     db.commit()
 before3 = u3.credits_used or 0
-AI.client.messages.create = _mk
+I._call = lambda *args, **kwargs: MOCK.copy()
 I.generate_mock_interview(I.InterviewIn(job_title="SDET", jd="Fresh unique JD for pro test xyz123"), u3, db)
 db.refresh(u3)
 ok("pro plan generation doesn't touch the free-tier credit meter", (u3.credits_used or 0) == before3)

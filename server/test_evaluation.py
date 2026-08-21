@@ -128,7 +128,7 @@ MOCK_REPORT = {
 }
 def _mk_msg(**k):
     return types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text=json.dumps(MOCK_REPORT))])
-AI.client = types.SimpleNamespace(messages=types.SimpleNamespace(create=_mk_msg))
+EV._call = lambda *args, **kwargs: MOCK_REPORT.copy()
 rep = EV.run_evaluation(eval_id, u, db)
 ok("report generated", rep.get("readiness_score") == 62)
 ok("  covers experience", "experience_review" in rep)
@@ -138,8 +138,7 @@ ok("  gives concrete next steps", len(rep["next_steps"]) >= 3)
 ok("  honest, not just validating", rep["goal_alignment"]["realistic"] is False)
 
 print("── cached on repeat view (no second AI call) ──")
-calls_before = None
-AI.client.messages.create = lambda **k: (_ for _ in ()).throw(AssertionError("should not call AI again"))
+EV._call = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not call AI again"))
 rep2 = EV.run_evaluation(eval_id, u, db)
 ok("second call served from cache", rep2["readiness_score"] == 62)
 

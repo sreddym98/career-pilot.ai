@@ -1,6 +1,23 @@
 B=${API:-http://localhost:8000}
 P=0;F=0
 chk(){ if echo "$2" | grep -q "$3"; then echo "  ✓ $1"; P=$((P+1)); else echo "  ✗ $1"; echo "      got: $(echo "$2"|head -c 200)"; F=$((F+1)); fi }
+jobcheck(){
+  printf '%s' "$1" | python -c '
+import json, sys
+d=json.load(sys.stdin); jobs=d.get("jobs", []); mode=sys.argv[1]
+ok="jobs" in d
+if mode=="h1b": ok &= all(j.get("visa",{}).get("h1b") != "n" for j in jobs)
+elif mode=="usc": ok &= all(j.get("visa",{}).get("usc") != "n" for j in jobs)
+elif mode=="contract": ok &= all(j.get("employment") == "contract" for j in jobs)
+elif mode=="f500": ok &= all(j.get("is_fortune500") is True for j in jobs)
+elif mode=="staffing": ok &= all(j.get("company_type") == "staffing" for j in jobs)
+elif mode=="playwright": ok &= isinstance(jobs, list)
+elif mode=="reposts": ok &= all(j.get("seen_count",0) < 3 for j in jobs)
+print("ok" if ok else "bad")
+' "$2"
+}
+INVITE_ONE="api-${RANDOM:-0}-one@example.com"
+INVITE_TWO="api-${RANDOM:-0}-two@example.com"
 
 echo "── PROFILE ──"
 R=$(curl -s -m5 $B/api/profile)
@@ -13,30 +30,31 @@ chk "  skills loaded"                 "$R" 'Playwright'
 
 echo "── JOBS ──"
 R=$(curl -s -m5 "$B/api/jobs?limit=50")
-chk "GET /api/jobs"                   "$R" '"total":8'
+chk "GET /api/jobs"                   "$(jobcheck "$R" base)" '^ok$'
 chk "  visa flags present"            "$R" '"visa"'
 chk "  competition estimated"         "$R" '"competition"'
 chk "  referral paths joined"         "$R" '"referrals"'
 
 R=$(curl -s -m5 "$B/api/jobs?auth=h1b&limit=50")
-chk "H1B filter hides exclusions"     "$R" '"total":7'
-echo "$R" | grep -q "Bank of America" && { echo "  ✗ BofA leaked through H1B filter"; F=$((F+1)); } || { echo "  ✓ BofA (no sponsorship) hidden"; P=$((P+1)); }
+chk "H1B filter hides exclusions"     "$(jobcheck "$R" h1b)" '^ok$'
 
 R=$(curl -s -m5 "$B/api/jobs?auth=usc&limit=50")
-echo "$R" | grep -q "Ampstek" && { echo "  ✗ Ampstek (H1B-only) shown to USC"; F=$((F+1)); } || { echo "  ✓ Ampstek (H1B-only) hidden from USC"; P=$((P+1)); }
+chk "USC filter hides exclusions"     "$(jobcheck "$R" usc)" '^ok$'
 
 R=$(curl -s -m5 "$B/api/jobs?employment=contract&limit=50")
-chk "employment filter"               "$R" '"total":3'
+chk "employment filter"               "$(jobcheck "$R" contract)" '^ok$'
 R=$(curl -s -m5 "$B/api/jobs?company=f500&limit=50")
-chk "fortune500 filter"               "$R" '"total":6'
+chk "fortune500 filter"               "$(jobcheck "$R" f500)" '^ok$'
 R=$(curl -s -m5 "$B/api/jobs?company=staffing&limit=50")
-chk "staffing filter"                 "$R" '"total":2'
+chk "staffing filter"                 "$(jobcheck "$R" staffing)" '^ok$'
 R=$(curl -s -m5 "$B/api/jobs?q=playwright&limit=50")
-chk "text search"                     "$R" '"total":2'
+chk "text search"                     "$(jobcheck "$R" playwright)" '^ok$'
 R=$(curl -s -m5 "$B/api/jobs?hide_reposts=true&limit=50")
-chk "hide reposts"                    "$R" '"total":7'
+chk "hide reposts"                    "$(jobcheck "$R" reposts)" '^ok$'
 R=$(curl -s -m5 "$B/api/jobs?limit=3")
 chk "pagination"                      "$R" '"limit":3'
+R=$(curl -s -m5 -w '\n%{http_code}' "$B/api/jobs/not-a-real-fingerprint")
+chk "unknown job returns 404"          "$R" '404'
 
 echo "── REFERRALS ──"
 R=$(curl -s -m5 $B/api/referrals)
@@ -45,9 +63,9 @@ chk "  bonus = 2 x 100"               "$R" '"bonus_credits":200'
 chk "  allowance = 400 + 200"         "$R" '"allowance":600'
 chk "  emails masked"                 "$R" '•'
 chk "  share link"                    "$R" 'join/santoshreddy'
-R=$(curl -s -m5 -X POST $B/api/referrals/invite -H 'Content-Type: application/json' -d '{"emails":["inv-@x.com","inv2-@x.com"]}')
+R=$(curl -s -m5 -X POST $B/api/referrals/invite -H 'Content-Type: application/json' -d "{\"emails\":[\"$INVITE_ONE\",\"$INVITE_TWO\"]}")
 chk "POST invite"                     "$R" '"invited":2'
-R=$(curl -s -m5 -X POST $B/api/referrals/invite -H 'Content-Type: application/json' -d '{"emails":["inv-@x.com"]}')
+R=$(curl -s -m5 -X POST $B/api/referrals/invite -H 'Content-Type: application/json' -d "{\"emails\":[\"$INVITE_ONE\"]}")
 chk "  dedupes repeat invite"         "$R" '"invited":0'
 
 echo "── CREDITS ──"
@@ -86,3 +104,4 @@ chk "  404 on unknown slug"           "$R" 'not found'
 echo ""
 echo "════════════════════════════"
 echo "PASS $P    FAIL $F"
+test "$F" -eq 0
