@@ -27,6 +27,14 @@ jobs:
       - name: Visa parser
         working-directory: server
         run: python ingest/visa_parse.py
+      - name: Sign-in and account separation
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
+        run: python test_auth.py
+      - name: Seeker profile, applications, connections
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
+        run: python test_seeker.py
       - name: Billing (mocked Stripe)
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }

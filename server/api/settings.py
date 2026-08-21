@@ -3,7 +3,7 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql+psycopg://postgres:dev@localhost:5432/careerpilot"
+    DATABASE_URL: str = "sqlite:////Users/santoshreddy/career-pilot.ai/server/dev.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     ANTHROPIC_API_KEY: str = ""
     SUPABASE_URL: str = ""
@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     STRIPE_PRICE_PRO_6MO: str = ""
     STRIPE_PRICE_EVAL: str = ""
     RAPIDAPI_KEY: str = ""
+    GMAIL_CLIENT_ID: str = ""
+    GMAIL_CLIENT_SECRET: str = ""
+    GMAIL_REDIRECT_URI: str = "http://localhost:8000/api/integrations/gmail/callback"
+    INTEGRATION_ENCRYPTION_KEY: str = ""
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_VERIFY_SERVICE_SID: str = ""
+    # Signs sessions we issue ourselves (email + password sign-in). Independent
+    # of SUPABASE_JWT_SECRET so both can be live at once during a migration.
+    AUTH_SECRET: str = ""
+    AUTH_TOKEN_DAYS: int = 7
     FRONTEND_URL: str = "http://localhost:3000"
     ENV: str = "dev"
     class Config:
@@ -24,6 +35,38 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
+
+
+def auth_secret() -> str:
+    """The key our own sessions are signed with.
+
+    In dev we derive a stable throwaway key so `git clone && make dev` gets you
+    a working login with nothing to configure — the same bargain SQLite and the
+    AI demo mode already make. In prod an unset AUTH_SECRET is a hard failure,
+    because the fallback would be a publicly known signing key.
+    """
+    if settings.AUTH_SECRET:
+        return settings.AUTH_SECRET
+    if settings.ENV == "dev":
+        return "dev-only-insecure-signing-key-do-not-use-in-production"
+    raise RuntimeError(
+        "AUTH_SECRET is not set. Generate one with:\n"
+        "  python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )
+
+
+# ── Account types ────────────────────────────────────────────────────────────
+# A seeker is looking for their own next role; a recruiter places other people.
+# These are separate accounts, not a toggle: the two products share a job feed
+# and almost nothing else, and letting one session hold both roles is how you
+# end up leaking one recruiter's bench into another user's profile page.
+ACCOUNT_TYPES = ("seeker", "recruiter")
+DEFAULT_ACCOUNT_TYPE = "seeker"
+
+# How many people a recruiter may keep on their bench. Signing up is free so
+# the product can be evaluated with real candidates; the cap is what the paid
+# plan lifts. None = no ceiling.
+BENCH_LIMITS = {"free": 3, "pro": 3, "recruiter": 10, "enterprise": None}
 
 # Generation allowances. Each AI call costs ~$0.02-0.05, so "unlimited"
 # would lose money on power users. State the number instead of throttling quietly.
