@@ -27,13 +27,17 @@ jobs:
       - name: Visa parser
         working-directory: server
         run: python ingest/visa_parse.py
+      # Own databases on purpose. These exercise the signed-out dev fallback,
+      # which creates dev@careerpilot.local — on the shared ci.db that would
+      # front-run seed.py and leave the API endpoint tests reading a user
+      # seeded by the wrong code path.
       - name: Sign-in and account separation
         working-directory: server
-        env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
+        env: { DATABASE_URL: "sqlite:///./ci_auth.db", ENV: dev }
         run: python test_auth.py
       - name: Seeker profile, applications, connections
         working-directory: server
-        env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
+        env: { DATABASE_URL: "sqlite:///./ci_seeker.db", ENV: dev }
         run: python test_seeker.py
       - name: Billing (mocked Stripe)
         working-directory: server
