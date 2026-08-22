@@ -79,12 +79,23 @@ def run():
     tables = init_db()
     db = SessionLocal()
 
+    DEV = dict(name="Santosh Reddy", slug="santoshreddy",
+               headline="Sr. SDET / QA Automation Engineer", location="St. Louis, MO",
+               work_auth=["h1b"], plan="pro", referral_code="santoshreddy")
+
     u = db.query(User).filter(User.email == "dev@careerpilot.local").first()
     if not u:
-        u = User(email="dev@careerpilot.local", name="Santosh Reddy", slug="santoshreddy",
-                 headline="Sr. SDET / QA Automation Engineer", location="St. Louis, MO",
-                 work_auth=["h1b"], plan="pro", referral_code="santoshreddy")
+        u = User(email="dev@careerpilot.local", **DEV)
         db.add(u); db.commit(); db.refresh(u)
+    else:
+        # Anything that hits the API before seeding runs creates this same
+        # account through the dev fallback in api/auth.py, which knows nothing
+        # about the slug or referral code the fixtures expect. Reconcile rather
+        # than skip, or seeding silently becomes a no-op that leaves the
+        # account half-configured.
+        for field, value in DEV.items():
+            setattr(u, field, value)
+        db.commit(); db.refresh(u)
 
     if not db.query(Position).filter(Position.user_id == u.id).count():
         for co, role, s_, f_, loc, bl in [

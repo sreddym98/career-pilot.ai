@@ -1,3 +1,5 @@
+
+still faling
 <!DOCTYPE html>
 <!--
   careerpilot.ai
@@ -108,6 +110,67 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .note.bad{background:var(--rose-s);border-color:var(--rose-l);color:var(--rose)}
 .acts{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
 .acts .btn{flex:1;min-width:132px}
+
+/* ── sign in ──
+   Above the modal layer: if the session expires while a dialog is open, the
+   thing asking you to sign in again has to be the thing on top. */
+.authgate{position:fixed;inset:0;background:var(--paper);z-index:400;display:none;
+  align-items:flex-start;justify-content:center;padding:40px 18px;overflow-y:auto}
+.authgate.on{display:flex}
+.authcard{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  max-width:430px;width:100%;padding:30px 30px 26px;box-shadow:var(--sh2);margin:auto}
+.authbrand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.authbrand .mark{width:30px;height:30px;border-radius:9px;overflow:hidden;flex-shrink:0;
+  box-shadow:0 2px 5px rgba(61,89,64,.32), inset 0 1px 0 rgba(255,255,255,.4)}
+.authbrand .mark svg{width:100%;height:100%;display:block}
+.authbrand span{font-family:var(--d);font-weight:600;font-size:17px;letter-spacing:-.02em}
+.authbrand em{font-style:normal;color:var(--moss);font-weight:500}
+.authcard h2{font-size:21px;margin-bottom:5px}
+.authlede{color:var(--ink2);font-size:14px;margin-bottom:20px}
+
+.authtabs{display:flex;gap:3px;padding:3px;background:var(--sunk);border-radius:10px;
+  box-shadow:inset 0 1px 2px rgba(30,33,28,.06);margin-bottom:20px}
+.authtab{flex:1;padding:8px;border-radius:8px;font-size:13.5px;color:var(--ink2);transition:.16s}
+.authtab.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--sh)}
+
+/* The role picker is the most consequential control on the page — these are
+   separate accounts, not a preference — so it gets real estate, not a select. */
+.rolepick{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px}
+.roleopt{border:1.5px solid var(--line2);border-radius:var(--r2);padding:13px 12px;
+  text-align:left;transition:.15s;background:var(--card)}
+.roleopt:hover{border-color:var(--moss-l);background:var(--moss-s)}
+.roleopt.on{border-color:var(--moss);background:var(--moss-s)}
+.roleopt b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
+.roleopt small{display:block;font-size:12px;color:var(--ink3);line-height:1.45}
+.rolenote{font-size:12.5px;color:var(--ink3);margin:-8px 0 18px;line-height:1.5}
+
+.autherr{background:var(--rose-s);border:1px solid var(--rose-l);color:var(--rose);
+  border-radius:var(--r2);padding:10px 13px;font-size:13.5px;margin-bottom:14px;display:none}
+.autherr.on{display:block}
+.authfoot{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--ink3);text-align:center}
+.authfoot a{color:var(--moss2);cursor:pointer}
+
+/* ── save indicator ──
+   Only ever visible to a signed-in seeker. Silence means localStorage, which
+   is the honest signal when there's no account to save to. */
+.syncdot{position:fixed;bottom:18px;right:18px;z-index:150;font:11px var(--m);
+  letter-spacing:.06em;text-transform:uppercase;padding:6px 11px;border-radius:20px;
+  border:1px solid var(--line2);background:var(--card);color:var(--ink3);
+  box-shadow:var(--sh);opacity:0;transition:opacity .2s;pointer-events:none}
+.syncdot.saving{opacity:1}
+.syncdot.saved{opacity:1;border-color:var(--moss-l);background:var(--moss-s);color:var(--moss2)}
+.syncdot.error{opacity:1;border-color:var(--rose-l);background:var(--rose-s);color:var(--rose)}
+
+/* ── who's signed in, pinned under the nav ── */
+.sbuser{flex-shrink:0;padding:11px 12px;margin:0 10px 8px;border-top:1px solid var(--line)}
+.sbuname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbumail{font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sburole{font:9.5px var(--m);letter-spacing:.07em;text-transform:uppercase;color:var(--moss2);
+  background:var(--moss-s);border-radius:20px;padding:2px 7px;display:inline-block;margin-top:5px}
+.sbsignout{font-size:12.5px;color:var(--ink3);margin-top:8px;display:block;text-align:left}
+.sbsignout:hover{color:var(--clay)}
+.sbsignin{width:100%;margin-top:2px}
 
 /* ── resume drop: the one thing that sets up everything ── */
 .drop{border:1.5px dashed var(--line2);border-radius:var(--r);padding:34px 22px;text-align:center;background:var(--card);transition:.18s;cursor:pointer;display:block}
@@ -730,6 +793,61 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .entcta{flex-shrink:0;min-width:200px}
 </style>
 <div class="appshell">
+<div class="syncdot" id="syncDot" aria-live="polite"></div>
+
+<!-- ══ SIGN IN ══
+     Hidden until asked for. The app runs on demo data with no account at all,
+     which is the whole point of the landing experience — you can see what it
+     does before you tell it who you are. -->
+<div class="authgate" id="authGate" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <div class="authcard">
+    <div class="authbrand"><i class="mark"><svg viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="alg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#7FA87C"/><stop offset="1" stop-color="#3D5940"/></linearGradient></defs>
+        <path d="M16 3 L27 26 L16 20 L5 26 Z" fill="url(#alg)"/>
+        <path d="M16 3 L16 20 L5 26 Z" fill="#fff" opacity=".22"/>
+      </svg></i><span>careerpilot<em>.ai</em></span></div>
+
+    <div class="authtabs" role="tablist">
+      <button class="authtab on" id="authTabIn" onclick="authTab('in')">Sign in</button>
+      <button class="authtab" id="authTabUp" onclick="authTab('up')">Create account</button>
+    </div>
+
+    <h2 id="authTitle">Welcome back</h2>
+    <p class="authlede" id="authLede">Pick up where you left off.</p>
+
+    <div class="autherr" id="authErr" role="alert"></div>
+
+    <div id="authRolePick" style="display:none">
+      <div class="rolepick" role="radiogroup" aria-label="Account type">
+        <button class="roleopt on" data-role="seeker" onclick="pickRole('seeker')" role="radio" aria-checked="true">
+          <b>I'm job hunting</b><small>Find roles, tailor a resume, track applications</small></button>
+        <button class="roleopt" data-role="recruiter" onclick="pickRole('recruiter')" role="radio" aria-checked="false">
+          <b>I place people</b><small>Run a bench, match candidates to requirements</small></button>
+      </div>
+      <p class="rolenote">This can't be changed later — the two are separate
+        accounts sharing one job feed. If you do both, keep two.</p>
+    </div>
+
+    <div class="fld" id="authNameFld" style="display:none">
+      <label for="au-name">Your name</label>
+      <input id="au-name" autocomplete="name" placeholder="Sam Rivera"></div>
+    <div class="fld"><label for="au-email">Email</label>
+      <input id="au-email" type="email" autocomplete="email" placeholder="you@company.com"
+             onkeydown="if(event.key==='Enter')authSubmit()"></div>
+    <div class="fld"><label for="au-pass">Password</label>
+      <input id="au-pass" type="password" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')authSubmit()">
+      <small id="authPassHint" style="display:none">At least 8 characters.</small></div>
+
+    <button class="btn btn-p" id="authGo" style="width:100%" onclick="authSubmit()">Sign in</button>
+
+    <div class="authfoot">
+      <a onclick="closeAuth()">Keep looking around instead</a>
+    </div>
+  </div>
+</div>
+
 <aside class="sidebar" id="sidebar">
   <div class="sblogo"><i class="mark"><svg viewBox="0 0 32 32" aria-hidden="true">
       <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
@@ -802,6 +920,10 @@ select.sel:focus{border-color:var(--moss);outline:none}
         <span>Support</span></button>
     </div>
   </nav>
+
+  <div class="sbuser" id="sbUser">
+    <button class="btn btn-g btn-s sbsignin" onclick="openAuth('in')">Sign in</button>
+  </div>
 
   <button class="sbcollapse" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">
     <svg viewBox="0 0 20 20"><path d="M12.5 4l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1891,6 +2013,9 @@ function saveState(){
     recruiters:J.filter(j=>j.rec&&j.rec.e).map(j=>({id:j.id,e:j.rec.e})),
     savedAt:Date.now(),
   });
+  // localStorage stays the immediate write either way; for a signed-in seeker
+  // this also queues the same change to the server. No-op when signed out.
+  scheduleSync();
 }
 function loadState(){
   const st=store.get(SKEY);
@@ -1910,6 +2035,39 @@ function loadState(){
 }
 function clearState(){ store.del(SKEY); location.reload(); }
 let RESUME_NAME="your resume";
+
+async function hydrateLiveProfile(){
+  if(!CP_API||PROFILE_READY)return;
+  // /api/profile is seeker-only and 403s for a recruiter. Skip rather than
+  // fire a request we know the server will refuse.
+  if(store.get("cp_role","") === "recruiter")return;
+  // With a session, pullSeekerData does this properly — and also loads
+  // applications and arms syncing. Don't race it.
+  if(store.get("cp_token",""))return;
+  try{
+    const r=await fetch(`${CP_API}/api/profile`,{headers:authHeaders()});
+    if(!r.ok)return;
+    const p=await r.json();
+    if(!Array.isArray(p.positions)||!p.positions.length)return;
+    const month=iso=>{
+      if(!iso)return "Present";
+      const d=new Date(`${iso}T00:00:00`);
+      return Number.isNaN(d.getTime())?iso:d.toLocaleString("en-US",{month:"short",year:"numeric"});
+    };
+    EXP=p.positions.map(x=>({id:x.id,co:x.company,role:x.role,from:month(x.started_on),
+      to:month(x.finished_on),loc:x.location||"",b:x.bullets||[]}));
+    SKILLS=p.skills||[];
+    PROFILE_READY=true;
+    RESUME_NAME="Profile from CareerPilot";
+    if(p.name)$("p-name").value=p.name;
+    if(p.location)$("p-loc").value=p.location;
+    $("drop").classList.add("done");
+    $("afterUpload").style.display="";
+    renderProfile();
+    rn();
+    saveState();
+  }catch(_){ }
+}
 
 /* ═══ HELPERS ═══ */
 const $=id=>document.getElementById(id);
@@ -1953,6 +2111,14 @@ window.addEventListener("resize", ()=>{
 });
 
 function go(p){
+  // A page belonging to the other product is not reachable on this account.
+  // Mostly this catches restored state — the page you were last on, saved
+  // before you signed in as the other kind of user.
+  const need = PAGE_ROLE[p];
+  if(SESSION && need && need !== SESSION.account_type){
+    toast(`That's a ${need} feature — your account is a ${SESSION.account_type}.`);
+    p = HOME_PAGE[SESSION.account_type];
+  }
   document.querySelectorAll(".pg").forEach(x=>x.classList.remove("on"));
   const pg=$("p-"+p); if(pg)pg.classList.add("on");
   document.querySelectorAll(".sbi[data-p]").forEach(b=>b.classList.toggle("on", b.dataset.p===p));
@@ -1965,7 +2131,7 @@ function go(p){
   if(p==="people")renderPeople();
   if(p==="refer")renderRefer();
   if(p==="apps")renderApps();
-  if(p==="autopilot")renderAutopilot();
+  if(p==="autopilot"){renderAutopilot();refreshAutopilotIntegrations();}
   if(p==="support")renderSupport();
   if(p==="interview")renderInterviewPage();
 }
@@ -2207,7 +2373,10 @@ function addSkill(){const v=$("newSkill").value.trim();
   if(!v)return; if(SKILLS.includes(v)){toast("Already there");return;}
   SKILLS.push(v);$("newSkill").value="";renderProfile();rn();saveState();}
 function delSkill(i){SKILLS.splice(i,1);renderProfile();rn();saveState();}
-function syncAuth(){$("f-auth").value=$("p-auth").value;rn();toast("Job list updated for "+$("p-auth").selectedOptions[0].text);}
+function syncAuth(){
+  WORK_AUTH_KNOWN=true;               // a deliberate choice, safe to persist
+  $("f-auth").value=$("p-auth").value;rn();saveState();
+  toast("Job list updated for "+$("p-auth").selectedOptions[0].text);}
 
 /* ═══ ROLE EDITOR ═══ */
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -2305,7 +2474,7 @@ function deb(){clearTimeout(debT);debT=setTimeout(()=>{LIVE?loadJobs():rn();},25
    Customers never see or configure this. A setup screen is available at
    ?setup=1 for your own use on staging.
    ═══════════════════════════════════════════════════════════════ */
-const API_ENDPOINT = "";
+const API_ENDPOINT = "http://localhost:8000";
 
 const CP_API = API_ENDPOINT || store.get("cp_api","") || "";
 const DEMO   = !CP_API;
@@ -2331,7 +2500,10 @@ async function loadJobs(){
   }finally{ LOADING=false; }
 }
 let TOTAL_LIVE=0;
-const authHeaders=()=>{const t=localStorage.getItem("cp_token");return t?{Authorization:`Bearer ${t}`}:{};};
+/* Through `store`, never localStorage directly: store.set() JSON-encodes, so a
+   raw getItem hands back a token still wrapped in quote marks and every
+   request goes out as `Bearer "eyJ..."`. */
+const authHeaders=()=>{const t=store.get("cp_token","");return t?{Authorization:`Bearer ${t}`}:{};};
 
 function mapJob(x,i){
   const c=x.comp||{};
@@ -2416,7 +2588,7 @@ function rn(){
   }
 
   $("list").innerHTML = r.length ? r.map(j=>`
-    <div class="job" data-jid="${j.id}" onclick="openJob(${j.id})" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openJob(${j.id})">
+    <div class="job" data-jid="${j.id}" onclick='openJob(${jid(j)})' role="button" tabindex="0" onkeydown='if(event.key==="Enter")openJob(${jid(j)})'>
       <div class="jt">
         <div class="lg2">${j.co[0]}</div>
         <div style="flex:1;min-width:0">
@@ -2443,8 +2615,8 @@ function rn(){
         ${MODE==="recruiter"?benchTag(j):appliedTag(j)}
         ${MODE==="recruiter"
           ? `<button class="btn btn-p btn-s" onclick="pickCandidate('${String(j.id).replace(/'/g,"")}')">Submit someone</button>`
-          : `<button class="btn btn-p btn-s" onclick="applyTo(${jid(j)})">${applyLabel(j)}</button>`}
-        <button class="btn btn-g btn-s" onclick="openJob(${jid(j)})">Details</button>
+          : `<button class="btn btn-p btn-s" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>`}
+        <button class="btn btn-g btn-s" onclick='openJob(${jid(j)})'>Details</button>
       </div>
     </div>`).join("")
     : `<div class="empty"><h3>Nothing matches</h3><p>Try clearing a filter, or set work authorization to "Any".</p></div>`;
@@ -2546,9 +2718,9 @@ function buildJobDetailHTML(j, closeFn){
       ${MODE==="recruiter"
         ? `<button class="btn btn-p" onclick="pickCandidate('${String(j.id).replace(/'/g,"")}')">Submit someone</button>
            <button class="btn btn-g" onclick="go('bench')">Open bench</button>`
-        : `<button class="btn btn-p" onclick="applyTo(${jid(j)})">${applyLabel(j)}</button>
-           <button class="btn btn-g" onclick="tailorFor(${jid(j)})">Tailor my resume</button>
-           <button class="btn btn-g" onclick="closeM();go('interview');prefillInterviewFromJob(J.find(x=>x.id===${jid(j)}))">Practice interview</button>`}
+          : `<button class="btn btn-p" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>
+            <button class="btn btn-g" onclick='tailorFor(${jid(j)})'>Tailor my resume</button>
+            <button class="btn btn-g" onclick='closeM();go("interview");prefillInterviewFromJob(J.find(x=>x.id===${jid(j)}))'>Practice interview</button>`}
     </div>
 
     ${MODE==="recruiter"?bestForBlock(j):""}
@@ -2690,6 +2862,7 @@ function mark(j,st,note){
   const rec={co:j.co,ti:j.ti,lo:j.lo,st,when:note||"Just now",_id:j.id};
   if(i>=0)APPS[i]={...APPS[i],...rec}; else APPS.unshift(rec);
   renderApps(); saveState();
+  syncApplication(rec);        // discrete event — goes now, not on the debounce
 }
 
 /* Ask on return — the moment you actually know the answer. */
@@ -2845,17 +3018,17 @@ ${$("p-phone")?.value||""} · ${$("p-email")?.value||""}`;
 
     <div class="resumetailorbar">
       <span id="resume-tailor-badge"><span class="tag q">Generic — not tailored for this role</span></span>
-      <button class="btn btn-g btn-s" id="qt-btn" onclick="quickTailorForEmail(${jid(j)})">✦ Tailor for this role</button>
+      <button class="btn btn-g btn-s" id="qt-btn" onclick='quickTailorForEmail(${jid(j)})'>✦ Tailor for this role</button>
     </div>
 
     <div class="emailflow">
       <div class="efhead" id="ef-head">Two steps, then attach and send</div>
-      <div class="efrow" id="step-resume" onclick="handleResumeStep(${jid(j)})">
+      <div class="efrow" id="step-resume" onclick='handleResumeStep(${jid(j)})'>
         <div class="efnum">1</div>
         <div class="efcheck"><svg viewBox="0 0 20 20" class="efcheckon"><path d="M4 10l4 4 8-8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div class="eftext"><b>Download your resume</b>
           <span>Your general profile — tailor it above for a stronger match.</span></div>
-        <button class="btn btn-g btn-s" onclick="event.stopPropagation();handleResumeStep(${jid(j)})">Download</button>
+        <button class="btn btn-g btn-s" onclick='event.stopPropagation();handleResumeStep(${jid(j)})'>Download</button>
       </div>
       <div class="efrow" id="step-cover" onclick="downloadCoverLetter(J.find(x=>String(x.id)==='${String(j.id).replace(/'/g,"")}'),this.querySelector('button'))">
         <div class="efnum">2</div>
@@ -2867,7 +3040,7 @@ ${$("p-phone")?.value||""} · ${$("p-email")?.value||""}`;
     </div>
 
     <div class="attachbox" id="attachbox">
-      <button class="btn btn-p" id="share-attach-btn" style="width:100%" onclick="shareAttachEmail(${jid(j)})" disabled>
+      <button class="btn btn-p" id="share-attach-btn" style="width:100%" onclick='shareAttachEmail(${jid(j)})' disabled>
         📎 Attach &amp; open in Mail — one tap
       </button>
       <p class="apsmall" id="attach-note" style="margin-top:8px">Download the file(s) above first. On phones and supporting browsers this attaches them directly when your mail app opens.</p>
@@ -2883,7 +3056,7 @@ ${$("p-phone")?.value||""} · ${$("p-email")?.value||""}`;
     <div class="fld"><label>Subject</label><input id="r-sub" value="${esc(subject)}"></div>
     <div class="fld"><label>Message</label><textarea id="r-body" style="height:230px;font-size:13.5px;line-height:1.65">${esc(body)}</textarea></div>
     <div class="acts">
-      <button class="btn btn-p" id="send-email-btn" onclick="sendMail(${jid(j)})" disabled title="Download your resume first">Open in email</button>
+      <button class="btn btn-p" id="send-email-btn" onclick='sendMail(${jid(j)})' disabled title="Download your resume first">Open in email</button>
       <button class="btn btn-g" onclick="copyBody(this)">Copy message</button></div>
     <p style="font-size:12px;color:var(--ink3);margin-top:10px;line-height:1.5">Opens your email app with the subject and recipient filled in. Use Attach above or attach manually, then send.</p>
   </div>`;
@@ -3162,7 +3335,11 @@ function renderRefer(){
     +`<p style="font-size:13px;color:var(--ink3);margin-top:12px">Addresses are partly hidden — enough to recognise who, never the full thing.</p>`;
   setTxt("m-plan", total>150 ? "Free+" : "Free");
 }
-function copyRef(){navigator.clipboard?.writeText("https://careerpilot.ai/join/santoshreddy");toast("Link copied");}
+ function copyRef(){
+   const url="https://careerpilot.ai/join/santoshreddy";
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(url).catch(()=>{});
+   toast("Link copied");
+ }
 function shareRef(where){
   const url=encodeURIComponent("https://careerpilot.ai/join/santoshreddy");
   const txt=encodeURIComponent("Been using CareerPilot for my job search — it filters by visa status and matches on what your resume actually shows. Free to start:");
@@ -3172,7 +3349,7 @@ function shareRef(where){
 }
 
 /* ═══ BILLING ═══ */
-const API_BASE=localStorage.getItem("cp_api")||"";
+const API_BASE=CP_API;
 const PLAN_PRICES = {pro:"$119.99/mo", recruiter:"$169.99/mo"};
 let SELECTED_TERM = 1;   // months — 1, 3, or 6, chosen via the term picker
 
@@ -3193,9 +3370,8 @@ async function subscribe(plan){
   const termLabel = plan==="pro" && SELECTED_TERM>1 ? ` (${SELECTED_TERM}-month term)` : "";
   if(!API_BASE){toast(`Would start checkout for ${PLAN_PRICES[plan]||plan}${termLabel} — connect your API to go live`);return;}
   try{
-    const tok=localStorage.getItem("cp_token");
     const termParam = plan==="pro" ? `&term=${SELECTED_TERM}` : "";
-    const r=await fetch(`${API_BASE}/api/billing/checkout?plan=${plan}${termParam}`,{method:"POST",headers:tok?{Authorization:`Bearer ${tok}`}:{}});
+    const r=await fetch(`${API_BASE}/api/billing/checkout?plan=${plan}${termParam}`,{method:"POST",headers:authHeaders()});
     if(r.status===503){toast((await r.json()).detail||"Billing isn't set up yet");return;}
     if(!r.ok)throw new Error("Couldn't start checkout");
     window.location=(await r.json()).url;
@@ -3203,11 +3379,378 @@ async function subscribe(plan){
 }
 async function manageBilling(){
   if(!API_BASE){toast("Connect your API first");return;}
-  try{const tok=localStorage.getItem("cp_token");
-    const r=await fetch(`${API_BASE}/api/billing/portal`,{method:"POST",headers:tok?{Authorization:`Bearer ${tok}`}:{}});
+  try{
+    const r=await fetch(`${API_BASE}/api/billing/portal`,{method:"POST",headers:authHeaders()});
     if(!r.ok){toast("No subscription to manage");return;}
     window.location=(await r.json()).url;
   }catch(e){toast(e.message);}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCOUNTS — job seeker, or recruiter
+
+   Two products sharing one job feed. Which one you get is a property of
+   the account, fixed at signup, and the server enforces it (403, not a
+   hidden nav item) — see api/access.py.
+
+   Signed out, none of this applies: the app runs on demo data and the
+   mode switch works the way it always has, because being able to see
+   what the thing does before handing over an email is the point.
+   ═══════════════════════════════════════════════════════════════ */
+
+let SESSION = null;                    // null = signed out / demo
+let AUTH_TAB = "in";                   // "in" | "up"
+let AUTH_ROLE = "seeker";              // role picked on the signup tab
+
+const ROLE_LABEL = {seeker:"Job seeker", recruiter:"Recruiter"};
+const HOME_PAGE  = {seeker:"jobs", recruiter:"bench"};
+
+/* Which product each page belongs to. null = both sides use it. Keeps a
+   stale nav click from landing a recruiter on the resume builder. */
+const PAGE_ROLE = {
+  jobs:null, apps:null, refer:null, plan:null, support:null,
+  autopilot:"seeker", me:"seeker", resume:"seeker", interview:"seeker",
+  learn:"seeker", people:"seeker",
+  bench:"recruiter", subs:"recruiter",
+};
+
+const signedIn = () => !!SESSION;
+
+/* ═══ THE SIGN-IN SCREEN ═══ */
+function openAuth(tab){ authTab(tab||"in"); $("authGate").classList.add("on");
+  setTimeout(()=>$("au-email")&&$("au-email").focus(),50); }
+function closeAuth(){ $("authGate").classList.remove("on"); authError(""); }
+
+function authTab(t){
+  AUTH_TAB = t;
+  const up = t === "up";
+  $("authTabIn").classList.toggle("on", !up);
+  $("authTabUp").classList.toggle("on", up);
+  setTxt("authTitle", up ? "Create your account" : "Welcome back");
+  setTxt("authLede",  up ? "Tell us which side of the table you're on."
+                         : "Pick up where you left off.");
+  setTxt("authGo",    up ? "Create account" : "Sign in");
+  $("authRolePick").style.display = up ? "" : "none";
+  $("authNameFld").style.display  = up ? "" : "none";
+  $("authPassHint").style.display = up ? "" : "none";
+  const pw = $("au-pass");
+  if(pw) pw.autocomplete = up ? "new-password" : "current-password";
+  authError("");
+}
+
+function pickRole(r){
+  AUTH_ROLE = r;
+  document.querySelectorAll(".roleopt").forEach(b=>{
+    const on = b.dataset.role === r;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-checked", on ? "true" : "false");
+  });
+}
+
+function authError(msg){
+  const e = $("authErr"); if(!e) return;
+  e.textContent = msg || "";
+  e.classList.toggle("on", !!msg);
+}
+
+async function authSubmit(){
+  const email = ($("au-email").value||"").trim();
+  const pass  = $("au-pass").value||"";
+  const up    = AUTH_TAB === "up";
+
+  if(!email || !email.includes("@")) return authError("Enter the email you want to sign in with.");
+  if(!pass) return authError("Enter your password.");
+  if(up && pass.length < 8) return authError("Passwords need at least 8 characters.");
+  if(!CP_API) return authError("No backend is connected, so there's nothing to sign in to yet.");
+
+  const btn = $("authGo");
+  btn.disabled = true; setTxt("authGo", up ? "Creating…" : "Signing in…");
+  try{
+    const body = up
+      ? {email, password:pass, name:($("au-name").value||"").trim(), account_type:AUTH_ROLE}
+      : {email, password:pass};
+    const r = await CP_API_call(`/api/auth/${up?"signup":"login"}`,
+                                {method:"POST", body:JSON.stringify(body)});
+    store.set("cp_token", r.access_token);
+    applySession(r.user, up);      // `up` = signing up, so keep local work
+    closeAuth();
+    $("au-pass").value = "";
+    toast(up ? `Account created — ${ROLE_LABEL[r.user.account_type].toLowerCase()}`
+             : `Signed in as ${r.user.name||r.user.email}`);
+  }catch(e){
+    authError(e.message || "That didn't work. Try again.");
+  }finally{
+    btn.disabled = false; setTxt("authGo", up ? "Create account" : "Sign in");
+  }
+}
+
+/* Everything the signed-in account touched, including SKEY — that one holds
+   positions, skills, applications AND the name/email/phone fields, so leaving
+   it behind hands the next person at this browser the last user's profile.
+   Separate from signOut() so it can be tested without navigating. */
+const ACCOUNT_KEYS = ["cp_token","cp_role","cp_bench","cp_subs",SKEY];
+function clearAccountData(){
+  ACCOUNT_KEYS.forEach(k=>store.del(k));
+  SESSION = null; SYNC_ARMED = false; SERVER_POSITIONS = [];
+}
+
+function signOut(){
+  clearAccountData();
+  location.reload();
+}
+
+/* ═══ APPLYING A SESSION ═══ */
+async function bootSession(){
+  const tok = store.get("cp_token","");
+  if(!tok || !CP_API) return renderAccountBox();
+  // Paint the side we saw last time so a recruiter doesn't watch the seeker
+  // sidebar flash past on every reload. Corrected below if it's wrong.
+  const remembered = store.get("cp_role","");
+  if(remembered && remembered !== MODE){
+    const sw = document.querySelector(".modesw");
+    if(sw) sw.style.display = "none";
+    setMode(remembered);
+  }
+  try{
+    const r = await CP_API_call("/api/auth/session");
+    applySession(r.user);
+  }catch(e){
+    // Expired or revoked. Drop it and fall back to demo rather than
+    // trapping someone behind a wall they can't argue with.
+    store.del("cp_token");
+    renderAccountBox();
+  }
+}
+
+function applySession(user, isNewAccount){
+  SESSION = user;
+  document.body.dataset.role = user.account_type;
+  // Remembered only to pick the right sidebar on the next reload before
+  // /api/auth/session answers. Never trusted for access — the server decides.
+  store.set("cp_role", user.account_type);
+  // The mode switch is a demo affordance. A real account already answered
+  // this question, and the server won't honour a different answer anyway.
+  const sw = document.querySelector(".modesw");
+  if(sw) sw.style.display = "none";
+  renderAccountBox();
+  if(user.plan) setTxt("m-plan", user.plan[0].toUpperCase()+user.plan.slice(1));
+  setMode(user.account_type);
+  // Load their saved work before arming the push, so a browser sitting on
+  // demo data can't overwrite a real profile. On a fresh signup the local
+  // work IS theirs, so it's carried up instead of discarded.
+  if(user.account_type === "seeker") pullSeekerData(isNewAccount);
+}
+
+function renderAccountBox(){
+  const box = $("sbUser"); if(!box) return;
+  if(!SESSION){
+    box.innerHTML = `<button class="btn btn-g btn-s sbsignin" onclick="openAuth('in')">Sign in</button>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="sbuname">${esc(SESSION.name||SESSION.email.split("@")[0])}</div>
+    <div class="sbumail">${esc(SESSION.email)}</div>
+    <span class="sburole">${esc(ROLE_LABEL[SESSION.account_type]||SESSION.account_type)}</span>
+    <a class="sbsignout" onclick="signOut()">Sign out</a>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SYNC — the "For me" side, persisted
+
+   Signed out, everything below is inert and the app behaves exactly as it
+   always has: localStorage, demo data, no requests.
+
+   Signed in, the rule is PULL FIRST, PUSH AFTER. A browser that has been
+   sitting on seed data must never push it over a real account, so nothing
+   is sent until the initial pull has finished and SYNC_ARMED flips true.
+   ═══════════════════════════════════════════════════════════════ */
+
+let SYNC_ARMED = false;      // false until the server's copy has been loaded
+let SYNC_TIMER = null;
+let SYNC_STATE = "idle";     // idle | saving | saved | error
+
+/* The work-authorization select has `h1b` marked selected in the markup, so it
+   reads as H1B for someone who has never opened the profile page. Work
+   authorization decides which jobs are shown and what a resume claims, so it
+   only gets sent once the server told us or the user chose. */
+let WORK_AUTH_KNOWN = false;
+
+const MON3 = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+
+/* "May 2024" → "2024-05-01". null for Present or anything unparseable, which
+   is exactly what the API wants for a role you're still in. */
+function toISODate(label){
+  if(!label || /present/i.test(String(label))) return null;
+  const m = String(label).trim().match(/^([A-Za-z]{3,})\s+(\d{4})$/);
+  if(!m) return null;
+  const i = MON3.indexOf(m[1].slice(0,3).toLowerCase());
+  if(i < 0) return null;
+  return `${m[2]}-${String(i+1).padStart(2,"0")}-01`;
+}
+
+/* Server position ids are UUIDs; demo rows use small integers. Anything that
+   isn't a UUID has never been saved, so it needs a POST rather than a PUT. */
+const isServerId = id => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id);
+
+/* Fire-and-forget. A sync failure must never take the page down with it. */
+async function apiTry(path, opts){
+  if(!SESSION || !CP_API) return null;
+  try{ return await CP_API_call(path, opts); }
+  catch(e){ console.warn("sync:", path, e.message); throw e; }
+}
+
+/* ═══ PULL — the server's copy wins on sign-in ═══
+
+   `adoptLocal` is true only for a brand-new signup, where whatever you built
+   before making an account (uploaded a resume, added roles) is yours and
+   should be carried up. On a LOGIN it is false and the server is authoritative
+   even when it returns nothing, because "this account has no positions" is a
+   fact, not a reason to keep whoever used this browser last.                */
+async function pullSeekerData(adoptLocal){
+  if(!SESSION || SESSION.account_type !== "seeker" || !CP_API) return;
+  try{
+    const p = await CP_API_call("/api/profile");
+
+    if(Array.isArray(p.positions) && p.positions.length){
+      const month = iso => {
+        if(!iso) return "Present";
+        const d = new Date(`${iso}T00:00:00`);
+        return Number.isNaN(d.getTime()) ? iso
+          : d.toLocaleString("en-US",{month:"short",year:"numeric"});
+      };
+      EXP = p.positions.map(x=>({id:x.id, co:x.company, role:x.role,
+        from:month(x.started_on), to:month(x.finished_on),
+        loc:x.location||"", b:x.bullets||[]}));
+      // What the server currently holds — anything not in EXP at the next
+      // push has been deleted here and needs deleting there.
+      SERVER_POSITIONS = p.positions.map(x=>x.id);
+      SKILLS = p.skills || [];
+      PROFILE_READY = true;
+      RESUME_NAME = "Your saved profile";
+      const drop = $("drop"); if(drop) drop.classList.add("done");
+      const after = $("afterUpload"); if(after) after.style.display = "";
+    }else if(!adoptLocal){
+      // Signed in to an account with nothing saved. Start clean rather than
+      // inheriting the previous user's roles from this browser.
+      EXP = []; SKILLS = []; SERVER_POSITIONS = []; PROFILE_READY = false;
+    }
+
+    const set = (id,v)=>{const el=$(id); if(el && v!=null) el.value = v;};
+    set("p-name", p.name); set("p-email", p.email); set("p-phone", p.phone);
+    set("p-loc", p.location); set("p-li", p.linkedin);
+    if((p.work_auth||[]).length){ set("p-auth", p.work_auth[0]); WORK_AUTH_KNOWN = true; }
+
+    const a = await CP_API_call("/api/applications");
+    if(a.applications.length){
+      APPS = a.applications.map(x=>({id:x.id, co:x.company, ti:x.title,
+        lo:x.location||"—", st:x.short, when:x.note||""}));
+    }else if(!adoptLocal){
+      APPS = [];
+    }
+
+    renderProfile(); renderApps(); rn();
+  }catch(e){
+    // A recruiter hitting this would 403; anyone else just keeps local state.
+    console.warn("Couldn't load your saved profile:", e.message);
+  }finally{
+    // Armed either way. If the pull failed we still want later edits saved
+    // rather than silently stranded in this one browser.
+    SYNC_ARMED = true;
+  }
+}
+
+/* ═══ PUSH — debounced, because typing a headline is many keystrokes ═══ */
+function scheduleSync(){
+  if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
+  clearTimeout(SYNC_TIMER);
+  SYNC_TIMER = setTimeout(pushSeekerData, 1200);
+}
+
+async function pushSeekerData(){
+  if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
+  syncBadge("saving");
+  try{
+    const profile = {
+      name:  ($("p-name")?.value||"").trim() || SESSION.name || SESSION.email,
+      phone: ($("p-phone")?.value||"").trim(),
+      location: ($("p-loc")?.value||"").trim(),
+      linkedin: ($("p-li")?.value||"").trim(),
+    };
+    // Omitted unless it's really been established — the API treats an absent
+    // field as "leave it alone", which is what we want here.
+    if(WORK_AUTH_KNOWN && $("p-auth")?.value) profile.work_auth = [$("p-auth").value];
+    await apiTry("/api/profile", {method:"PUT", body:JSON.stringify(profile)});
+
+    await apiTry("/api/profile/skills",
+                 {method:"PUT", body:JSON.stringify({skills:SKILLS.slice(0,60)})});
+
+    await pushPositions();
+    syncBadge("saved");
+  }catch(e){
+    syncBadge("error");
+  }
+}
+
+/* Reconcile the whole list: create what's new, update what moved, remove what
+   the user deleted. Positions are small and few — a diff would be more code
+   than it saves, and more ways to drift out of step. */
+async function pushPositions(){
+  const keep = [];
+  for(const e of EXP){
+    const started = toISODate(e.from);
+    if(!started || !e.co || !e.role || !(e.b||[]).length) continue;  // API would reject it
+    const body = JSON.stringify({
+      company:e.co, role:e.role, started_on:started,
+      finished_on:toISODate(e.to), location:e.loc||null, bullets:e.b,
+    });
+    try{
+      if(isServerId(e.id)){
+        await apiTry(`/api/positions/${e.id}`, {method:"PUT", body});
+        keep.push(e.id);
+      }else{
+        const r = await apiTry("/api/positions", {method:"POST", body});
+        if(r && r.id){ e.id = r.id; keep.push(r.id); }   // adopt the server's id
+      }
+    }catch(err){ /* one bad row shouldn't stop the rest */ }
+  }
+  SERVER_POSITIONS.filter(id=>!keep.includes(id)).forEach(id=>{
+    apiTry(`/api/positions/${id}`, {method:"DELETE"}).catch(()=>{});
+  });
+  SERVER_POSITIONS = keep;
+}
+let SERVER_POSITIONS = [];
+
+/* Applications are discrete events, so they go immediately rather than on the
+   debounce — you mark one and close the tab. */
+async function syncApplication(app){
+  if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
+  try{
+    await apiTry("/api/applications", {method:"POST", body:JSON.stringify({
+      company:app.co, title:app.ti, location:app.lo==="—"?null:app.lo,
+      status:app.st, note:app.when||null,
+      fingerprint: typeof app._id === "string" ? app._id : null,
+    })});
+  }catch(e){ /* stays in localStorage; the next full sync is not blocked */ }
+}
+
+/* The name/phone/location fields had no change handler at all — they were only
+   ever read when something else happened to call saveState(), so typing your
+   name and reloading lost it. */
+function wireProfileFields(){
+  ["p-name","p-email","p-phone","p-loc","p-li"].forEach(id=>{
+    const el = $(id); if(!el) return;
+    el.addEventListener("input", saveState);
+  });
+}
+
+function syncBadge(state){
+  SYNC_STATE = state;
+  const el = $("syncDot"); if(!el) return;
+  el.className = "syncdot " + state;
+  el.textContent = state === "saving" ? "Saving…"
+                 : state === "saved"  ? "Saved"
+                 : state === "error"  ? "Not saved" : "";
+  if(state === "saved") setTimeout(()=>{ if(SYNC_STATE==="saved") syncBadge("idle"); }, 2200);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3275,6 +3818,10 @@ function initBench(){ if(!BENCH) BENCH = SEED_BENCH.map(c=>({...c})); }
 function saveBench(){ store.set("cp_bench",BENCH); store.set("cp_subs",SUBS); }
 
 function setMode(m){
+  // A signed-in account is one product or the other. There is no toggle to
+  // honour here — the server would refuse the other side's endpoints anyway,
+  // so silently correcting beats rendering a UI that 403s on every click.
+  if(SESSION) m = SESSION.account_type;
   MODE = m; store.set("cp_mode", m);
   document.body.dataset.mode = m;
   document.querySelectorAll("[data-only]").forEach(el=>{
@@ -4048,6 +4595,17 @@ function initAP(){
 }
 function saveAP(){ store.set("cp_autopilot", AP); }
 
+async function refreshAutopilotIntegrations(){
+  try{
+    const status=await CP_API_call("/api/integrations/status");
+    const changed=AP.gmailConnected!==status.gmail.connected||AP.phoneVerified!==status.phone.verified;
+    AP.gmailConnected=status.gmail.connected;
+    AP.phoneVerified=status.phone.verified;
+    if(changed){saveAP();renderAutopilot();}
+    return status;
+  }catch(_){return null;}
+}
+
 const HOUR_LABEL = h => {
   const ampm = h < 12 ? "AM" : "PM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
@@ -4061,9 +4619,9 @@ function renderAutopilot(){
     : `<span class="apdot"></span>Off`);
 
   const steps = [
-    {k:"gmailConnected", label:"Connect Gmail", sub:"Applications are prepared using your Gmail identity for replies.", cta:"Connect Gmail", fn:"connectGmailStub"},
-    {k:"resumeConfirmed", label:"Confirm your resume", sub:"Autopilot tailors every application from what's on your profile.", cta:"Review profile", fn:"()=>go('me')"},
-    {k:"phoneVerified", label:"Verify phone", sub:"Required before anything is prepared on your behalf.", cta:"Verify", fn:"verifyPhoneStub"},
+    {k:"gmailConnected", label:"Connect Gmail", sub:"Google OAuth grants send permission only after you approve it.", cta:"Connect Gmail", fn:"connectGmail"},
+    {k:"resumeConfirmed", label:"Confirm your resume", sub:"Autopilot uses the roles and bullets in your profile.", cta:"Confirm resume", fn:"confirmAutopilotResume"},
+    {k:"phoneVerified", label:"Verify phone", sub:"A Twilio SMS code confirms this account before preparation begins.", cta:"Verify phone", fn:"openPhoneVerification"},
   ];
   const done = steps.filter(s=>AP[s.k]).length;
   setTxt("ap-setup-count", `${done}/${steps.length} complete`);
@@ -4109,7 +4667,7 @@ function renderAutopilot(){
       </div>
       <div class="rt" style="display:flex;gap:7px;flex-shrink:0">
         <button class="btn btn-g btn-s" onclick="previewQueued(${i})">Preview</button>
-        <button class="btn btn-p btn-s" onclick="approveQueued(${i})">Send</button>
+        <button class="btn btn-p btn-s" onclick="approveQueued(${i})">Approve</button>
       </div>
     </div>`).join("")
     : `<div class="empty" style="padding:30px 20px"><h3>Nothing waiting</h3><p>${AP.on?"Your next run will prepare fresh matches at your next slot.":"Turn Autopilot on to start preparing applications."}</p></div>`);
@@ -4120,13 +4678,41 @@ function renderAutopilot(){
     : `<div class="empty" style="padding:30px 20px"><h3>No runs yet</h3><p>Once Autopilot is on, every weekday run lands here.</p></div>`);
 }
 
-function connectGmailStub(){
-  AP.gmailConnected = true; saveAP(); renderAutopilot();
-  toast("Gmail connected — used only to send applications you approve");
+async function connectGmail(){
+  try{
+    const r=await CP_API_call("/api/integrations/gmail/start");
+    const popup=window.open(r.authorization_url,"careerpilot_gmail","width=520,height=700");
+    if(!popup){toast("Allow pop-ups to connect Gmail");return;}
+    const timer=setInterval(async()=>{
+      const status=await refreshAutopilotIntegrations();
+      if(status?.gmail.connected||popup.closed){clearInterval(timer);}
+    },1500);
+  }catch(e){toast(e.message||"Couldn't start Gmail connection");}
 }
-function verifyPhoneStub(){
-  AP.phoneVerified = true; saveAP(); renderAutopilot();
-  toast("Phone verified");
+function confirmAutopilotResume(){
+  if(!PROFILE_READY){toast("Add your resume before confirming it");go("me");return;}
+  AP.resumeConfirmed=true;saveAP();renderAutopilot();toast("Resume confirmed for Autopilot");
+}
+function openPhoneVerification(){
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Verify phone</h2><p style="color:var(--ink2);font-size:14px;margin-top:3px">We'll send a one-time SMS code.</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb"><div class="fld"><label>Mobile number</label><input id="pv-phone" placeholder="+19195551234" inputmode="tel"></div><div id="pv-code-wrap" style="display:none" class="fld"><label>Verification code</label><input id="pv-code" placeholder="6-digit code" inputmode="numeric"></div><div id="pv-error"></div><div class="acts"><button class="btn btn-p" id="pv-send" onclick="startPhoneVerification()">Send code</button><button class="btn btn-g" onclick="closeM()">Cancel</button></div></div>`);openM();
+}
+async function startPhoneVerification(){
+  const phone=$("pv-phone").value.trim();
+  const error=$("pv-error");
+  try{
+    await CP_API_call("/api/integrations/phone/start",{method:"POST",body:JSON.stringify({phone})});
+    $("pv-code-wrap").style.display="";
+    $("pv-send").textContent="Verify code";
+    $("pv-send").onclick=confirmPhoneVerification;
+    error.innerHTML="<div class=\"note good\">Code sent. It expires according to your Twilio Verify policy.</div>";
+  }catch(e){error.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;}
+}
+async function confirmPhoneVerification(){
+  const phone=$("pv-phone").value.trim(), code=$("pv-code").value.trim(), error=$("pv-error");
+  try{
+    await CP_API_call("/api/integrations/phone/confirm",{method:"POST",body:JSON.stringify({phone,code})});
+    AP.phoneVerified=true;saveAP();closeM();renderAutopilot();toast("Phone verified");
+  }catch(e){error.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;}
 }
 
 function addSlot(){
@@ -4229,9 +4815,9 @@ function approveQueued(i){
   const q = AP.queue[i]; if(!q) return;
   const j = J.find(x=>x.id===q.jobId);
   AP.queue.splice(i,1); saveAP();
-  if(j) mark(j, "sent", "Sent via Autopilot");
+  if(j) mark(j, "opened", "Approved for manual application");
   renderAutopilot();
-  toast(`Sent to ${q.co}`);
+  toast(`Approved for ${q.co} — open the posting to submit it`);
 }
 
 /* The friction-killer: one tap clears the whole batch. Each item still
@@ -4243,11 +4829,11 @@ function approveAllQueued(){
   if(!n) return;
   AP.queue.forEach(q=>{
     const j = J.find(x=>x.id===q.jobId);
-    if(j) mark(j, "sent", "Sent via Autopilot");
+    if(j) mark(j, "opened", "Approved for manual application");
   });
   AP.queue = [];
   saveAP(); renderAutopilot();
-  toast(`${n} application${n>1?"s":""} sent`);
+  toast(`${n} application${n>1?"s":""} approved for manual submission`);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -4367,75 +4953,39 @@ async function generateInterview(){
   out.innerHTML = `<div class="card"><div class="load">Building your mock interview…
     <div style="font:12px var(--m);color:var(--ink3);margin-top:8px">Reading your experience against this role</div></div></div>`;
 
-  const sleep = ms => new Promise(r=>setTimeout(r,ms));
-  const ask = async (prompt, tok) => {
-    for(let n=1;n<=3;n++){
-      const ctl = new AbortController(); const timer = setTimeout(()=>ctl.abort(), 90000);
-      try{
-        const r = await fetch("https://api.anthropic.com/v1/messages", {method:"POST",
-          headers:{"Content-Type":"application/json"}, signal: ctl.signal,
-          body: JSON.stringify({model:"claude-sonnet-4-6", max_tokens: tok, messages:[{role:"user", content: prompt}]})});
-        clearTimeout(timer);
-        const raw = await r.text();
-        if(!r.ok){
-          const e = new Error(r.status>=500 ? `The service is busy right now (${r.status}).`
-                    : r.status===429 ? "Too many requests just now."
-                    : `Request rejected (${r.status})`);
-          e.retry = r.status>=500 || r.status===429; throw e;
-        }
-        const d = JSON.parse(raw);
-        const t = (d.content||[]).filter(i=>i.type==="text").map(i=>i.text).join("");
-        const {data} = safeJSON(t);
-        if(!data) throw new Error("Response was cut short — try again.");
-        return data;
-      }catch(err){
-        clearTimeout(timer);
-        const retryable = err.name==="AbortError" || err.name==="TypeError" || err.retry;
-        if(!retryable || n===3) throw err;
-        await sleep(700*Math.pow(2,n-1));
-      }
-    }
-  };
-
   try{
     let data;
     if(DEMO){
-      await sleep(900);
+      await new Promise(r=>setTimeout(r,900));
       data = demoInterview(title, company, jd);
     }else{
-      data = await ask(`You are preparing a candidate for an interview. Build a mock interview
-from their REAL experience and the target role. This is a rehearsal
-tool — never claim certainty about what an actual interviewer will ask.
-Return ONLY minified JSON.
-
-CANDIDATE EXPERIENCE — ${fmtD(totalM())} total
-${EXP.map(e=>`- ${e.role} at ${e.co}: ${e.b.join("; ").slice(0,400)}`).join("\\n")}
-
-TARGET ROLE: ${title}${company?` at ${company}`:""}
-SKILLS: ${SKILLS.slice(0,15).join(", ")}
-${jd?`JOB DESCRIPTION:\\n${jd}`:"No JD given."}
-
-SCHEMA
-{"skills_tested":[{"skill":"","why":""}],
- "technical":[{"question":"","what_they_want":"","answer_using_your_experience":"","watch_out_for":""}],
- "behavioral":[{"question":"","framework":"","answer_using_your_experience":""}],
- "questions_to_ask_them":[""],
- "weak_spots":[""]}
-
-RULES
-- skills_tested: 5-8 items from the JD/skills, each with why it matters here.
-- technical: 5-7 questions. Every answer draws on ONE OF THE CANDIDATE'S
-  ACTUAL EXPERIENCES — name the real company. Never invent one.
-- behavioral: 4-5 questions with a one-line framework and a real-experience answer sketch.
-- questions_to_ask_them: 4-5 specific to this role, not generic.
-- weak_spots: 2-4 honest gaps between the resume and this role.
-- NEVER invent achievements or metrics not implied by their real bullets.`, 1800);
+      const r = await fetch(`${CP_API}/api/interview/mock`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json",...authHeaders()},
+        body:JSON.stringify({job_title:title,company,jd,skills:SKILLS.slice(0,15)}),
+      });
+      const raw = await r.text();
+      if(!r.ok){
+        let message=`Couldn't build the interview (${r.status}).`;
+        try{message=JSON.parse(raw).detail||message;}catch(_){}
+        const error=new Error(message); error.status=r.status; throw error;
+      }
+      try{data=JSON.parse(raw);}catch(_){throw new Error("Unexpected response from the interview service.");}
     }
     IV_LAST = {title, company, jd, data, at: Date.now()};
     store.set("cp_interview_last", IV_LAST);
     IV_REVEALED = {};
     renderInterview();
   }catch(e){
+    const unavailable=e.status===503||e.name==="AbortError"||e.name==="TypeError";
+    if(unavailable){
+      IV_LAST={title,company,jd,data:demoInterview(title,company,jd),at:Date.now(),fallback:true};
+      store.set("cp_interview_last",IV_LAST);
+      IV_REVEALED={};
+      renderInterview();
+      toast("Practice questions are ready from your profile");
+      return;
+    }
     out.innerHTML = `<div class="card">
       <h2 style="color:var(--rose)">Couldn't build it</h2>
       <p style="margin-top:6px">${esc(e.message||"Something went wrong.")}</p>
@@ -4445,35 +4995,41 @@ RULES
 }
 
 function demoInterview(title, company, jd){
-  const role0 = EXP[0] || {co:"your current company", b:["led a project"]};
-  const mySkills = SKILLS.slice(0,6);
+  const roles=EXP.length?EXP:[{co:"your current company",role:"your role",b:["describe a project from your experience"]}];
+  const mySkills=SKILLS.slice(0,8);
+  const sourceBullets=roles.flatMap(role=>(role.b||[]).map(bullet=>({role,bullet}))).filter(item=>item.bullet);
+  const exampleFor=index=>sourceBullets[index%Math.max(1,sourceBullets.length)]||{role:roles[index%roles.length],bullet:"describe a real project from this role"};
+  const technical=mySkills.slice(0,6).map((skill,index)=>{
+    const example=exampleFor(index);
+    return {
+      question:`Walk me through how you used ${skill} in a project at ${example.role.co}.`,
+      what_they_want:"Clear technical ownership, the decisions you made, and how you validated the outcome.",
+      answer_using_your_experience:`At ${example.role.co}, start from this documented work: ${example.bullet} Explain the context, your approach, validation steps, and what you learned without adding unsupported metrics.`,
+      watch_out_for:"Naming tools without explaining the problem, test design, trade-offs, or how you verified the result.",
+    };
+  });
+  const behavioral=[
+    ["Tell me about a difficult quality or delivery problem you worked through.","STAR: frame the production or release risk, your responsibility, the action, and the verified result."],
+    ["Describe a time you had to explain a quality risk to engineering or product partners.","STAR: focus on the evidence, the decision needed, and how you kept the discussion constructive."],
+    ["Tell me about a project where the initial test approach needed to change.","STAR: explain the signal that changed your approach, what you adapted, and what you would repeat next time."],
+    ["How have you balanced speed with thorough coverage in a release cycle?","Use a prioritization framework: risk, critical paths, automation coverage, and explicit residual risk."],
+  ].map(([question,framework],index)=>{
+    const example=exampleFor(index+technical.length);
+    return {question,framework,answer_using_your_experience:`Use ${example.role.co} as the setting and ground the answer in: ${example.bullet}`};
+  });
   return {
-    skills_tested: mySkills.map(s=>({skill:s, why:`Appears on your resume and is commonly probed for ${title} roles`})),
-    technical: [
-      {question:`Walk me through a ${mySkills[0]||"technical"} project you're proud of.`,
-       what_they_want:"Depth over breadth — can you go three layers deep on one real thing.",
-       answer_using_your_experience:`At ${role0.co}, ${role0.b[0]||"you led a piece of work worth walking through in detail"}.`,
-       watch_out_for:"Staying too high-level. Have the specific tools and decisions ready."},
-      {question:"How do you approach debugging a flaky test?",
-       what_they_want:"A systematic process, not a war story.",
-       answer_using_your_experience:`Reference how you've handled this at ${role0.co} if it came up.`,
-       watch_out_for:"Jumping straight to 'add a retry' without diagnosing the root cause."},
-    ],
-    behavioral: [
-      {question:"Tell me about a time you disagreed with a technical decision.",
-       framework:"STAR — situation, task, action, result",
-       answer_using_your_experience:`Pull a real example from ${role0.co} where you pushed back constructively.`},
-      {question:"Describe a project that didn't go the way you planned.",
-       framework:"STAR, with emphasis on what you'd do differently",
-       answer_using_your_experience:"Pick something real — a made-up failure story reads as fake."},
-    ],
+    skills_tested: mySkills.map(s=>({skill:s, why:`Listed in your profile and relevant to ${title} preparation.`})),
+    technical,
+    behavioral,
     questions_to_ask_them:[
       `What does success look like in this ${title} role after 90 days?`,
       "What's the biggest technical debt the team is carrying right now?",
       "How does the team decide what to automate vs. leave manual?",
+      "Which quality signals are reviewed before a release is approved?",
+      "How do engineering, product, and quality teams handle risk when timelines are tight?",
     ],
-    weak_spots: jd ? [`Skim the JD again for anything not in your top ${mySkills.length} skills — that's your gap list.`]
-                   : ["Add a job description above for a sharper read on your gaps against this specific role."],
+    weak_spots: jd ? [`Compare the job description with the ${mySkills.length} tools listed in your profile and prepare an honest learning plan for anything not shown.`]
+                   : ["Add a job description for a more precise gap analysis against this role."],
     _demo: true,
   };
 }
@@ -4588,40 +5144,80 @@ async function buildResume(){
     <div class="bar" style="max-width:280px;margin:12px auto 0"><i style="width:${Math.round(done/steps*100)}%"></i></div>
     <div style="font:12px var(--m);color:var(--ink3);margin-top:8px">${done} of ${steps}</div></div></div>`;};
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+   let localAiUnavailable=false;
+  const fallbackFor=label=>{
+    if(label==="Summary"){
+      const tools=SKILLS.filter(Boolean);
+      const group=(label,keys)=>({label,items:tools.filter(tool=>keys.some(key=>tool.toLowerCase().includes(key)))});
+      const groups=[
+        group("UI automation",["playwright","selenium","cypress","webdriver","browserstack","appium"]),
+        group("API and integration testing",["api","postman","rest","karate","swagger","oauth","jwt","wiremock","contract"]),
+        group("Data, performance, and security",["sql","etl","pyspark","jmeter","k6","blazemeter","owasp","accessibility","wcag","aria"]),
+        group("Frameworks and delivery",["bdd","cucumber","gherkin","testng","typescript","java","prometheus","dashboard"]),
+      ].filter(group=>group.items.length);
+      const used=new Set(groups.flatMap(group=>group.items));
+      const remaining=tools.filter(tool=>!used.has(tool));
+      if(remaining.length)groups.push({label:"Additional tools",items:remaining});
+      const roles=EXP.map(role=>role.role).filter(Boolean);
+      const companies=EXP.map(role=>role.co).filter(Boolean);
+      const topTools=tools.slice(0,6).join(", ")||"quality engineering tools";
+      return {
+        summary:`${$("p-name").value||"Technical professional"} brings ${fmtD(T)} of hands-on experience across ${roles.join(", ")||"quality engineering roles"}. The profile is targeted toward ${title||"senior technical"} opportunities with emphasis on ${spec||"quality engineering"}. Experience spans ${companies.join(", ")||"multiple delivery environments"}. Core tools include ${topTools}. The background covers automation work described in the source experience for each role. API, data, performance, security, and accessibility tools are organized below only where they appear in the profile. Each experience bullet remains traceable to the original role material rather than introducing unsupported projects or outcomes. The resume is structured for a hiring team to scan technical depth, delivery context, and tool alignment quickly. Review and edit any line before sending so it reflects the exact role and job description.`,
+        skill_groups:groups,
+      };
+    }
+    const role=EXP.find(e=>e.co===label);
+    return {bullets:(role?.b||[]).filter(Boolean)};
+  };
 
   const ask=async(prompt,tok,label)=>{
+    if(localAiUnavailable)return{data:fallbackFor(label),partial:true};
     let last=null;
-    for(let n=1;n<=3;n++){
-      const ctl=new AbortController(), timer=setTimeout(()=>ctl.abort(),90000);
+    for(let n=1;n<=1;n++){
+       const ctl=new AbortController(), timer=setTimeout(()=>ctl.abort(),25000);
       try{
-        const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
-          headers:{"Content-Type":"application/json"},signal:ctl.signal,
-          body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:tok,messages:[{role:"user",content:prompt}]})});
+        // Call backend API instead of Anthropic directly (avoids CORS, keeps key server-side)
+        const r=await fetch(CP_API+"/api/ai/tailor",{method:"POST",
+          // Needs the session like every other call: /api/ai/tailor is behind
+          // current_user, so without this it 401s for real users the moment
+          // the dev fallback isn't in play.
+          headers:{"Content-Type":"application/json",...authHeaders()},signal:ctl.signal,
+          body:JSON.stringify({prompt:prompt,max_tokens:tok,label:label})});
         clearTimeout(timer);
         const raw=await r.text();                       // text first — errors aren't JSON
         if(!r.ok){
           let det=raw.slice(0,140);
-          try{det=JSON.parse(raw).error?.message||det}catch(_){}
+          try{const problem=JSON.parse(raw);det=problem.detail||problem.error?.message||det}catch(_){}
           const e=new Error(r.status>=500?`The service is busy right now (${r.status}).`
             :r.status===429?"Too many requests just now."
             :r.status===401?"Authentication failed."
             :`Request rejected (${r.status}): ${det}`);
+          e.status=r.status;
+          e.detail=det;
           e.retry=r.status>=500||r.status===429||r.status===408; throw e;
         }
         let d; try{d=JSON.parse(raw)}catch(_){const e=new Error("Unexpected response from the service.");e.retry=true;throw e;}
         if(d.error){const e=new Error(d.error.message||"Service error.");e.retry=true;throw e;}
-        const t=(d.content||[]).filter(i=>i.type==="text").map(i=>i.text).join("");
-        if(!t.trim()){const e=new Error("Empty response.");e.retry=true;throw e;}
-        const {data,partial}=safeJSON(t);
+        // d.data may be already-parsed object from backend, or string that needs parsing
+        let dataStr=d.data;
+        if(typeof dataStr==="object"&&dataStr!==null){
+          // Already parsed, convert back to string for safeJSON
+          dataStr=JSON.stringify(dataStr);
+        }
+        const {data,partial}=safeJSON(dataStr||"{}");
         if(!data)throw new Error("Response was cut short — try less detail.");
         return{data,partial};
       }catch(err){
         clearTimeout(timer);
+        const unavailable=err.status===503||err.name==="AbortError"||err.name==="TypeError";
+        if(unavailable){
+           localAiUnavailable=true;
+          prog(`${label} — using your profile details while local AI is unavailable…`);
+          return{data:fallbackFor(label),partial:true};
+        }
         const ab=err.name==="AbortError", net=err.name==="TypeError";
-        last=ab?new Error("Timed out after 90 seconds."):err;
-        if(!(ab||net||err.retry)||n===3)throw last;
-        prog(`${label} — trying again (${n} of 2)…`);
-        await sleep(700*Math.pow(2,n-1));
+        last=ab?new Error("The AI response took too long. Please try again."):err;
+        throw last;
       }
     }
     throw last;
@@ -4646,10 +5242,12 @@ ${ctx}
 SCHEMA {"summary":"","skill_groups":[{"label":"","items":[""]}]}
 
 RULES
-- summary: 4-5 sentences, max 600 chars. Concrete. Name real tools and domains.
-  No "results-driven professional", no "proven track record", no filler.
+- summary: 8 concise, professional sentences, max 1,100 characters. Cover seniority,
+  domains, automation approach, API/data/performance or security work only where
+  supported, tools, delivery collaboration, and target-role alignment. No filler.
+  Never invent metrics, projects, teams, or outcomes.
 - skill_groups: 5-7 groups, 6-10 items each, grouped by function.
-- Only use skills from the list. Never invent one.`,1000,"Summary");
+- Only use skills from the list. Never invent one.`,280,"Summary");
       CACHE.header=h; partialAny=partialAny||h.partial; done++;
     }
 
@@ -4683,7 +5281,7 @@ RULES
   2-3 bullets by naming concrete tools and surfaces. Never invent projects.
 - NEVER invent metrics or percentages.
 - Strong past-tense verbs, varied.
-- Lead with what matters most for the target.`,1400,e.co);
+- Lead with what matters most for the target.`,420,e.co);
       partialAny=partialAny||rr.partial;
       const built={co:e.co,role:e.role,from:e.from,to:e.to,loc:e.loc,
                    dur:fmtD(durM(e.from,e.to)),bullets:rr.data.bullets||[]};
@@ -4704,7 +5302,7 @@ RULES
           <span style="font-size:12.5px;color:var(--ink3)">Most recruiters ask for Word</span></span>
         <div style="display:flex;gap:7px">
           <button class="btn btn-p btn-s" onclick="downloadDocx(this)">Download Word</button>
-          <button class="btn btn-g btn-s" onclick="window.print()">PDF</button>
+          <button class="btn btn-g btn-s" onclick="printResumePdf()">PDF</button>
           <button class="btn btn-g btn-s" onclick="copyDoc(this)">Copy</button>
           <button class="btn btn-g btn-s" onclick="resetCache();buildResume()">Redo</button>
         </div></div>
@@ -4752,6 +5350,31 @@ RULES
 let LAST=null;
 let LAST_DOCX_FILE=null;   // the real Blob/File from the most recent downloadDocx call
 let CURRENT_TAILOR_JOB_ID=null;   // set by tailorFor() so LAST knows its target
+
+function printResumePdf(){
+  if(!LAST){toast("Build a resume first");return;}
+  const roleHtml=LAST.roles.map(role=>`
+    <section><h3>${esc(role.co)} - ${esc(role.role)}</h3>
+      <p class="meta">${esc(role.from)} - ${esc(role.to)} | ${esc(role.loc||"")}</p>
+      <ul>${(role.bullets||[]).map(item=>`<li>${esc(item)}</li>`).join("")}</ul>
+    </section>`).join("");
+  const skills=LAST.skills.map(group=>`<p><strong>${esc(group.label)}:</strong> ${esc((group.items||[]).join(", "))}</p>`).join("");
+  const popup=window.open("about:blank","_blank");
+  if(!popup){toast("Allow pop-ups to save your PDF");return;}
+  const html=`<!doctype html><html><head><title>${esc(LAST.name)} Resume</title>
+    <style>@page{size:letter;margin:.55in}body{font:10.5pt Georgia,serif;color:#172018;line-height:1.35;margin:0}h1{font:22pt Arial,sans-serif;margin:0 0 3px}h2{font:11pt Arial,sans-serif;color:#345239;border-bottom:1px solid #78947b;margin:16px 0 6px;padding-bottom:3px;letter-spacing:.04em}h3{font:10.5pt Arial,sans-serif;margin:11px 0 1px}.contact,.meta{color:#526257;margin:0;font:9.5pt Arial,sans-serif}.meta{font-size:9pt}p{margin:5px 0}ul{margin:4px 0 8px;padding-left:18px}li{margin:2px 0}section{break-inside:avoid}</style>
+    </head><body><h1>${esc(LAST.name)}</h1><p class="contact">${esc(LAST.contact)}</p>
+    <h2>SUMMARY</h2><p>${esc(LAST.summary)}</p><h2>TECHNICAL SKILLS</h2>${skills}
+    <h2>PROFESSIONAL EXPERIENCE</h2>${roleHtml}<h2>EDUCATION</h2><p>${esc(LAST.education||"")}</p>
+    </body></html>`;
+  const url=URL.createObjectURL(new Blob([html],{type:"text/html"}));
+  popup.onload=()=>{
+    popup.focus();
+    popup.print();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  };
+  popup.location.replace(url);
+}
 
 /* Builds LAST from the raw profile, unformatted by AI. Used when someone
    wants a resume to attach RIGHT NOW rather than waiting on a tailored one —
@@ -4970,7 +5593,10 @@ if(loadState()){
   $("afterUpload").style.display="";
   renderProfile();
 }
+hydrateLiveProfile();
 setMode(MODE);
+bootSession();          // async — corrects the above once the server answers
+wireProfileFields();
 rn(); renderApps();
 // internal setup, only at ?setup=1
 if(new URLSearchParams(location.search).has("setup")) setTimeout(openConnect,400);
@@ -4998,6 +5624,12 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   get EMAIL_STEPS(){return EMAIL_STEPS},preloadLib,
   get EVAL_REPORT(){return EVAL_REPORT},get EVAL_GOALS(){return EVAL_GOALS},
   get MODE(){return MODE},get BENCH(){return BENCH},get SUBS(){return SUBS},
+  get SESSION(){return SESSION},get AUTH_TAB(){return AUTH_TAB},get AUTH_ROLE(){return AUTH_ROLE},
+  openAuth,closeAuth,authTab,pickRole,authSubmit,signOut,applySession,bootSession,
+  renderAccountBox,signedIn,PAGE_ROLE,ROLE_LABEL,HOME_PAGE,
+  pullSeekerData,pushSeekerData,scheduleSync,syncApplication,toISODate,isServerId,
+  wireProfileFields,get SYNC_ARMED(){return SYNC_ARMED},get SYNC_STATE(){return SYNC_STATE},
+  clearAccountData,ACCOUNT_KEYS,get WORK_AUTH_KNOWN(){return WORK_AUTH_KNOWN},
   setMode,candFit,bestFor,jobsFor,visaBlocked,submitTo,pickCandidate,
   renderBench,renderSubs,editCand,saveCand,removeCand,openCand,addCandSkill,
   get CAND_SKILLS(){return CAND_SKILLS},syncEdit,dropBullet,addBulletTo,dropSkillGroup,redrawDoc,wireEdits,saveState,loadState,clearState,moveRole,delRole,loadJobs,openConnect,mapJob,get LIVE(){return LIVE},get LAST(){return LAST},handleFile,DEMO_EXP,DEMO_SKILLS,PEOPLE,COURSES};

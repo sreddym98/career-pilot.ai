@@ -16,10 +16,13 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import current_user
+from api.access import require_seeker
 from api.models import User, Position, Evaluation
 from api.routers.ai import _call, _key, _cached, _store
 
-router = APIRouter(prefix="/api/evaluation", tags=["evaluation"])
+# Evaluates one person's own resume, goals and visa story — seeker only.
+router = APIRouter(prefix="/api/evaluation", tags=["evaluation"],
+                   dependencies=[Depends(require_seeker)])
 
 
 class GoalsIn(BaseModel):

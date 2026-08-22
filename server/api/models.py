@@ -2,7 +2,7 @@
 # Proprietary and confidential. See LICENSE.
 import uuid, datetime as dt
 from sqlalchemy import (Column, String, Text, Boolean, Integer, Date, DateTime,
-                        ForeignKey, SmallInteger, JSON, Index, func)
+                        ForeignKey, SmallInteger, JSON, Index, UniqueConstraint, func)
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, ARRAY as PG_ARRAY, JSONB as PG_JSONB
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.types import TypeDecorator, TEXT
@@ -45,9 +45,19 @@ class User(Base):
     id = Column(UUIDStr(), primary_key=True, default=_id)
     email = Column(String, unique=True, nullable=False, index=True)
     name = Column(String)
+    # 'seeker' finds their own next role; 'recruiter' places other people.
+    # Chosen at signup and not switchable — the two are separate products that
+    # happen to share a job feed. Authorization reads THIS column, never a
+    # token claim, so an account is exactly what the database says it is.
+    account_type = Column(String, nullable=False, default="seeker", index=True)
+    # NULL for accounts that only ever signed in through a hosted provider
+    # (Supabase/Firebase). Never populated from anything but api/passwords.py.
+    password_hash = Column(String)
     slug = Column(String, unique=True, index=True)      # careerpilot.ai/santoshreddy
     headline = Column(String)
     location = Column(String)
+    phone = Column(String)
+    linkedin = Column(String)
     summary = Column(Text)
     work_auth = Column(StrArray(), default=list)     # {'h1b'} etc.
     plan = Column(String, default="free")
@@ -143,7 +153,16 @@ class Application(Base):
     __tablename__ = "applications"
     id = Column(UUIDStr(), primary_key=True, default=_id)
     user_id = Column(UUIDStr(), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    # NULL for anything applied to outside our feed — a posting someone found
+    # on LinkedIn still belongs in their tracker, and a FK to a job we never
+    # ingested would make that impossible to record.
     fingerprint = Column(String, ForeignKey("jobs.fingerprint"))
+    # Denormalised on purpose. The tracker has to keep reading correctly after
+    # a posting is taken down and its jobs row goes inactive or is pruned.
+    company = Column(String, nullable=False, default="")
+    title = Column(String, nullable=False, default="")
+    location = Column(String)
+    note = Column(String)             # "Call scheduled", "Negotiating rate"
     status = Column(String, default="queued")
     # queued|preparing|needs_input|ready|submitted|responded|interview|selected|rejected
     blocker = Column(String)          # salary | sponsorship | suspicious_repost
@@ -193,6 +212,27 @@ class AICache(Base):
     result = Column(JSONish(), nullable=False)
     hits = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Integration(Base):
+    """A provider connection owned by one user.
+
+    The credential is encrypted before storage. The status field lets the
+    frontend distinguish "not configured", "needs verification", and a real
+    provider-confirmed connection without exposing a token to the browser.
+    """
+    __tablename__ = "integrations"
+    id = Column(UUIDStr(), primary_key=True, default=_id)
+    user_id = Column(UUIDStr(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider = Column(String, nullable=False)  # gmail | phone
+    status = Column(String, nullable=False, default="pending")
+    credential = Column(Text)
+    metadata_json = Column(JSONish())
+    verified_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (UniqueConstraint("user_id", "provider", name="uq_integrations_user_provider"),)
 
 
 class Course(Base):

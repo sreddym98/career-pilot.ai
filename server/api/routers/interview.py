@@ -13,19 +13,23 @@ interviewer will ask — the copy on every surface says "likely" and
 """
 import json
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import current_user
+from api.access import require_seeker
 from api.models import User, Position
 from api.routers.ai import _call, _key, _cached, _store
 from api import credits
 
-router = APIRouter(prefix="/api/interview", tags=["interview"])
+# Rehearsing for your own interview is a seeker feature end to end — it is
+# built from the signed-in person's own positions.
+router = APIRouter(prefix="/api/interview", tags=["interview"],
+                   dependencies=[Depends(require_seeker)])
 
 
 class InterviewIn(BaseModel):
-    job_title: str
+    job_title: str = Field(min_length=1)
     company: str = ""
     jd: str = ""             # optional — sharpens it a lot if given
     skills: list[str] = []   # what the posting asks for, if known

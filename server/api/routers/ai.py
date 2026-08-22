@@ -1,16 +1,13 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
-"""AI proxy. The ONLY place the Anthropic key is used.
+"""AI proxy using Ollama (local, free, no API key needed).
 
-The prototype called api.anthropic.com from the browser — that works
-inside Claude artifacts because the key is injected server-side, but on
-your own domain it would hand your key to every visitor. Everything
-goes through here instead.
+Ollama runs locally on http://localhost:11434 and provides fast inference
+without any cloud dependencies, API keys, or cost.
 """
-import hashlib, json
-import anthropic
+import hashlib, json, requests
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import current_user
@@ -19,12 +16,19 @@ from api.settings import settings
 from api import credits
 
 class _Transient(Exception):
-    """Retryable condition that isn't one of anthropic's typed errors."""
+    """Retryable condition that isn't one of ollama's typed errors."""
 
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-MODEL = "claude-sonnet-4-6"
+OLLAMA_URL = "http://localhost:11434"
+MODEL = "neural-chat"  # Faster and more efficient than mistral
+
+# Ceiling on a single generation. High enough for the 12-15 bullet resume
+# prompts, low enough that one request can't tie the model up indefinitely.
+TOKEN_CEILING = 4096
+# A local model emits maybe 20-40 tokens/sec, so a fixed 20s budget failed
+# every long generation on time rather than on quality. Scale with the ask.
+TIMEOUT_BASE, TIMEOUT_PER_100_TOKENS = 20, 6
 
 
 def _key(*parts) -> str:
@@ -46,42 +50,72 @@ def _store(db, key, result):
 
 
 def _call(prompt: str, max_tokens: int = 1400, label: str = "") -> dict:
-    """Retries transient upstream failures. Overloads and gateway errors are
-    common and almost always succeed on a second attempt — failing the whole
-    multi-call resume on the first blip wastes the user's credits."""
-    import time
-    last = None
-    for attempt in range(1, 4):
+    """Call Ollama locally and fail quickly so the UI can use its fallback.
+
+    One attempt, deliberately. The frontend renders a template fallback the
+    moment this 503s, so making someone sit through a retry ladder for a local
+    model that is down or confused is worse than handing them the fallback
+    straight away. test_ai_resilience.py pins the single-request behaviour.
+    """
+    import re
+    budget = max(256, min(max_tokens, TOKEN_CEILING))
+    timeout = TIMEOUT_BASE + (budget // 100) * TIMEOUT_PER_100_TOKENS
+
+    try:
+        response = requests.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "format": "json",
+                "options": {
+                    # Was hard-capped at 420, which truncated the 10-15 bullet
+                    # JSON the resume prompts ask for. The cut-off output then
+                    # failed to parse, surfacing as a 503 that looked like the
+                    # model being unavailable rather than the budget being too
+                    # small.
+                    "num_predict": budget,
+                    "temperature": 0.3,
+                    "top_p": 0.9,
+                },
+            },
+            timeout=timeout,
+        )
+        response.raise_for_status()
+
+        text = (response.json().get("response") or "").strip()
+        if not text:
+            raise _Transient("empty response from model")
+
+        text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        if not text.startswith("{"):
+            match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text)
+            if match:
+                text = match.group(0)
+
         try:
-            msg = client.messages.create(model=MODEL, max_tokens=max_tokens,
-                                         messages=[{"role": "user", "content": prompt}])
-            text = "".join(b.text for b in msg.content if b.type == "text")
-            text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-            if not text:
-                raise _Transient("empty response from model")
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                raise HTTPException(502,
-                    f"Incomplete response{f' for {label}' if label else ''}. "
-                    f"Try a shorter job description or a lower detail level.")
+            return json.loads(text)
+        except json.JSONDecodeError:
+            raise _Transient("response was not valid JSON")
 
-        except (_Transient, anthropic.APIConnectionError, anthropic.APITimeoutError,
-                anthropic.InternalServerError, anthropic.RateLimitError) as e:
-            last = e
-            if attempt == 3:
-                break
-            time.sleep(0.7 * (2 ** (attempt - 1)))
+    except requests.HTTPError as e:
+        # A 4xx is the model refusing the request itself, which is a caller
+        # problem and stays a 400. Anything else falls through to 503.
+        if e.response is not None and e.response.status_code < 500:
+            raise HTTPException(400, f"Request rejected: {str(e)[:160]}")
+        last = e
+    except (_Transient, requests.ConnectionError, requests.Timeout) as e:
+        last = e
 
-        except anthropic.AuthenticationError:
-            raise HTTPException(500, "AI service authentication failed — check ANTHROPIC_API_KEY.")
-        except anthropic.BadRequestError as e:
-            raise HTTPException(400, f"Request rejected: {getattr(e, 'message', str(e))[:160]}")
+    if isinstance(last, requests.ConnectionError):
+        raise HTTPException(503,
+            "Ollama service is not running. Start with: ollama serve")
+    if isinstance(last, requests.Timeout):
+        raise HTTPException(503,
+            "Ollama is taking too long to respond. Try again in a moment.")
 
     kind = type(last).__name__ if last else "unknown"
-    if isinstance(last, anthropic.RateLimitError):
-        raise HTTPException(429, "Rate limited upstream. Wait a moment and retry — "
-                                 "your completed sections are kept.")
     raise HTTPException(503, f"AI service temporarily unavailable ({kind}). "
                              f"Retry in a moment — completed sections are kept.")
 
@@ -92,6 +126,40 @@ class TailorReq(BaseModel):
     specialization: str = ""
     emphasis: str = "balanced"
     depth: str = "exactly 10 to 12"
+
+
+class PromptReq(BaseModel):
+    prompt: str = Field(min_length=1, max_length=24000)
+    max_tokens: int = Field(default=1400, ge=64, le=TOKEN_CEILING)
+    label: str = ""
+
+
+@router.post("/tailor")
+def tailor(req: PromptReq, user: User = Depends(current_user),
+           db: Session = Depends(get_db)):
+    """Single AI call with any prompt. Used by the resume builder frontend.
+
+    This takes a caller-supplied prompt, so it is metered like every other
+    generation. Without that it was an unmetered proxy to the model: the
+    resume builder routes all of its work through here, so a free account
+    could generate without limit and any signed-in account could send
+    arbitrary prompts.
+    """
+    key = _key("tailor", MODEL, req.prompt, req.max_tokens)
+    hit = _cached(db, key)
+    if hit is not None:
+        return {"data": hit, "cached": True}
+
+    if credits.remaining(db, user) < 1:
+        raise HTTPException(429,
+            "You're out of generations for this month. "
+            "Refer a friend for +100/month, or upgrade for more.")
+
+    result = _call(req.prompt, req.max_tokens, req.label)
+    # Charged only on success — a 503 from the model is not the user's fault.
+    credits.spend(db, user, 1)
+    _store(db, key, result)
+    return {"data": result, "cached": False}
 
 
 @router.post("/resume")
