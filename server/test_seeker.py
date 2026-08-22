@@ -32,9 +32,13 @@ import api.routers.accounts as AC
 init_db()
 db = SessionLocal()
 
-for e in ("sk@seekertest.example.com", "rc@seekertest.example.com"):
-    u = db.query(User).filter(User.email == e).first()
-    if u: db.delete(u); db.commit()
+# Every fixture this file creates, matched by domain. Listing them one by one
+# meant the ones added later (taken@, other@) survived, and the second run of
+# the file collided on the unique referral_code.
+for u in db.query(User).filter(User.email.like("%@seekertest.example.com")).all():
+    db.delete(u)
+db.query(Job).filter(Job.fingerprint.like("fp-cog-%")).delete(synchronize_session=False)
+db.commit()
 
 seeker = db.query(User).filter(User.id == AC.signup(AC.SignupIn(
     email="sk@seekertest.example.com", password="a-good-password",

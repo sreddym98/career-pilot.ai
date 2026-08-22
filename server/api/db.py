@@ -13,6 +13,14 @@ from api.settings import settings
 url = settings.DATABASE_URL
 IS_SQLITE = url.startswith("sqlite")
 
+if IS_SQLITE and settings.ENV != "dev":
+    # SQLite has no business holding production data, and reaching here means
+    # DATABASE_URL was never set rather than that anyone chose it.
+    raise RuntimeError(
+        f"ENV={settings.ENV} but DATABASE_URL is SQLite ({url}). "
+        "Set DATABASE_URL to your Postgres connection string."
+    )
+
 if IS_SQLITE:
     engine = create_engine(url, connect_args={"check_same_thread": False})
     @event.listens_for(engine, "connect")

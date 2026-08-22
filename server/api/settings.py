@@ -3,7 +3,11 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "sqlite:////Users/santoshreddy/career-pilot.ai/server/dev.db"
+    # Relative to wherever the server is started, which is server/. An absolute
+    # path to one developer's home directory is not a default anyone else — or
+    # any container — can use, and silently running production on SQLite
+    # because the variable was unset is worse than failing to start.
+    DATABASE_URL: str = "sqlite:///./dev.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     ANTHROPIC_API_KEY: str = ""
     SUPABASE_URL: str = ""

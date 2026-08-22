@@ -7,7 +7,7 @@ without any cloud dependencies, API keys, or cost.
 """
 import hashlib, json, requests
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import current_user
@@ -22,6 +22,13 @@ class _Transient(Exception):
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 OLLAMA_URL = "http://localhost:11434"
 MODEL = "neural-chat"  # Faster and more efficient than mistral
+
+# Ceiling on a single generation. High enough for the 12-15 bullet resume
+# prompts, low enough that one request can't tie the model up indefinitely.
+TOKEN_CEILING = 4096
+# A local model emits maybe 20-40 tokens/sec, so a fixed 20s budget failed
+# every long generation on time rather than on quality. Scale with the ask.
+TIMEOUT_BASE, TIMEOUT_PER_100_TOKENS = 20, 6
 
 
 def _key(*parts) -> str:
@@ -43,76 +50,71 @@ def _store(db, key, result):
 
 
 def _call(prompt: str, max_tokens: int = 1400, label: str = "") -> dict:
-    """Call Ollama locally and fail quickly so the UI can use its fallback."""
-    import time
+    """Call Ollama locally and fail quickly so the UI can use its fallback.
+
+    One attempt, deliberately. The frontend renders a template fallback the
+    moment this 503s, so making someone sit through a retry ladder for a local
+    model that is down or confused is worse than handing them the fallback
+    straight away. test_ai_resilience.py pins the single-request behaviour.
+    """
     import re
-    last = None
-    for attempt in range(1, 2):
-        try:
-            # Call Ollama's generate endpoint
-            response = requests.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json",
-                    "options": {
-                        "num_predict": min(max_tokens, 420),
-                        "temperature": 0.3,
-                        "top_p": 0.9,
-                    },
+    budget = max(256, min(max_tokens, TOKEN_CEILING))
+    timeout = TIMEOUT_BASE + (budget // 100) * TIMEOUT_PER_100_TOKENS
+
+    try:
+        response = requests.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "format": "json",
+                "options": {
+                    # Was hard-capped at 420, which truncated the 10-15 bullet
+                    # JSON the resume prompts ask for. The cut-off output then
+                    # failed to parse, surfacing as a 503 that looked like the
+                    # model being unavailable rather than the budget being too
+                    # small.
+                    "num_predict": budget,
+                    "temperature": 0.3,
+                    "top_p": 0.9,
                 },
-                 timeout=20,
-            )
-            response.raise_for_status()
-            
-            data = response.json()
-            text = data.get("response", "").strip()
-            
-            if not text:
-                raise _Transient("empty response from model")
-            
-            # Try to extract JSON from the response
-            # First, remove code block markers if present
-            text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-            
-            # Try to find JSON object if it's embedded in text
-            if not text.startswith('{'):
-                # Look for JSON object in the text
-                match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text)
-                if match:
-                    text = match.group(0)
-            
-            # Attempt to parse as JSON
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                # If JSON parsing fails, raise a transient error to retry
-                raise _Transient("response was not valid JSON")
+            },
+            timeout=timeout,
+        )
+        response.raise_for_status()
 
-        except (_Transient, requests.ConnectionError, requests.Timeout) as e:
-            last = e
-            if attempt == 1:
-                break
-            time.sleep(1.0 * (2 ** (attempt - 1)))  # Increased backoff
-        except requests.HTTPError as e:
-            if e.response.status_code >= 500:
-                last = e
-                if attempt == 1:
-                    break
-                time.sleep(1.0 * (2 ** (attempt - 1)))
-            else:
-                raise HTTPException(400, f"Request rejected: {str(e)[:160]}")
+        text = (response.json().get("response") or "").strip()
+        if not text:
+            raise _Transient("empty response from model")
 
-    # All attempts failed
+        text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        if not text.startswith("{"):
+            match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text)
+            if match:
+                text = match.group(0)
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            raise _Transient("response was not valid JSON")
+
+    except requests.HTTPError as e:
+        # A 4xx is the model refusing the request itself, which is a caller
+        # problem and stays a 400. Anything else falls through to 503.
+        if e.response is not None and e.response.status_code < 500:
+            raise HTTPException(400, f"Request rejected: {str(e)[:160]}")
+        last = e
+    except (_Transient, requests.ConnectionError, requests.Timeout) as e:
+        last = e
+
     if isinstance(last, requests.ConnectionError):
-        raise HTTPException(503, 
+        raise HTTPException(503,
             "Ollama service is not running. Start with: ollama serve")
-    elif isinstance(last, requests.Timeout):
-        raise HTTPException(503, 
+    if isinstance(last, requests.Timeout):
+        raise HTTPException(503,
             "Ollama is taking too long to respond. Try again in a moment.")
-    
+
     kind = type(last).__name__ if last else "unknown"
     raise HTTPException(503, f"AI service temporarily unavailable ({kind}). "
                              f"Retry in a moment — completed sections are kept.")
@@ -127,17 +129,37 @@ class TailorReq(BaseModel):
 
 
 class PromptReq(BaseModel):
-    prompt: str
-    max_tokens: int = 1400
+    prompt: str = Field(min_length=1, max_length=24000)
+    max_tokens: int = Field(default=1400, ge=64, le=TOKEN_CEILING)
     label: str = ""
 
 
 @router.post("/tailor")
 def tailor(req: PromptReq, user: User = Depends(current_user),
            db: Session = Depends(get_db)):
-    """Single AI call with any prompt. Used by the resume builder frontend."""
+    """Single AI call with any prompt. Used by the resume builder frontend.
+
+    This takes a caller-supplied prompt, so it is metered like every other
+    generation. Without that it was an unmetered proxy to the model: the
+    resume builder routes all of its work through here, so a free account
+    could generate without limit and any signed-in account could send
+    arbitrary prompts.
+    """
+    key = _key("tailor", MODEL, req.prompt, req.max_tokens)
+    hit = _cached(db, key)
+    if hit is not None:
+        return {"data": hit, "cached": True}
+
+    if credits.remaining(db, user) < 1:
+        raise HTTPException(429,
+            "You're out of generations for this month. "
+            "Refer a friend for +100/month, or upgrade for more.")
+
     result = _call(req.prompt, req.max_tokens, req.label)
-    return {"data": result}
+    # Charged only on success — a 503 from the model is not the user's fault.
+    credits.spend(db, user, 1)
+    _store(db, key, result)
+    return {"data": result, "cached": False}
 
 
 @router.post("/resume")
