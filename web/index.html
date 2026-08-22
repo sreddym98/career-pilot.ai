@@ -5615,7 +5615,12 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   get EF_FILES(){return EF_FILES},get LAST_DOCX_FILE(){return LAST_DOCX_FILE},
   renderAutopilot,toggleAutopilot,addSlot,removeSlot,updateSlot,addApTitle,rmApTitle,
   saveFlightPlan,runAutopilotNow,previewQueued,approveQueued,approveAllQueued,
-  connectGmailStub,verifyPhoneStub,
+  // These were named ...Stub back when they were placeholders. The real OAuth
+  // and Twilio flows replaced them, but the export kept the old names, and a
+  // shorthand property naming an undeclared binding is a ReferenceError — one
+  // that fires while building this very object, so window.CP was never
+  // assigned and every test that reaches for CP.* saw undefined.
+  connectGmail,openPhoneVerification,startPhoneVerification,confirmPhoneVerification,
   renderSupport,submitSupport,emailSupportDirect,get SUP_TICKETS(){return SUP_TICKETS},
   generateInterview,toggleReveal,renderInterviewPage,prefillInterviewFromJob,demoInterview,
   get IV_LAST(){return IV_LAST},get IV_REVEALED(){return IV_REVEALED},

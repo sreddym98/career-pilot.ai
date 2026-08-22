@@ -50,6 +50,51 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 The application asks Google only for `gmail.send`. A refresh token is encrypted server-side and never sent to the browser.
 
+### Running it locally
+
+Local development needs its own OAuth client, or a second redirect URI on the
+existing one. Google matches the redirect **exactly** — no trailing slash, and
+`127.0.0.1` is a different value from `localhost`:
+
+```text
+http://localhost:8000/api/integrations/gmail/callback
+```
+
+Then in `server/.env`:
+
+```env
+GMAIL_CLIENT_ID=...apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=...
+GMAIL_REDIRECT_URI=http://localhost:8000/api/integrations/gmail/callback
+INTEGRATION_ENCRYPTION_KEY=...        # already generated, keep it
+```
+
+Three things reliably go wrong the first time:
+
+- **`gmail.send` is a restricted scope.** While the consent screen is in
+  *Testing*, only accounts listed under **Test users** may grant it — everyone
+  else is refused with "Access blocked", which reads like a code bug and is
+  not. Add your own Google account there. Publishing the app to *Production*
+  with a restricted scope requires Google's verification review.
+- **`FRONTEND_URL` has to match where the page is actually served.** The
+  callback closes its popup with `postMessage` targeted at that exact origin;
+  if the app is on `http://localhost:3000` and `FRONTEND_URL` says anything
+  else, consent succeeds and the tab just sits there.
+- **A refresh token is only issued once per grant.** That is why the flow sends
+  `prompt=consent`. If the callback reports no refresh token, remove
+  CareerPilot at [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
+  and connect again.
+
+Verify the wiring before involving Google at all:
+
+```bash
+cd server && python test_integrations.py
+```
+
+That covers the unconfigured 503s, the consent-URL parameters, the signed
+`state` (including forgery and user-swap attempts), and that the stored refresh
+token is encrypted at rest. It never contacts Google.
+
 ## 3. Twilio Verify
 
 1. Create a Twilio account and complete its account verification.
