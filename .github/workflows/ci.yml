@@ -39,6 +39,10 @@ jobs:
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci_seeker.db", ENV: dev }
         run: python test_seeker.py
+      - name: Gmail OAuth wiring
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_integrations.db", ENV: dev }
+        run: python test_integrations.py
       - name: Billing (mocked Stripe)
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
