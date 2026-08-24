@@ -1,25 +1,53 @@
+/* CareerPilot AI — Copyright (c) 2026 Santosh Reddy Mamindla.
+   Proprietary and confidential. See LICENSE. */
+/* Same palette as the web app: warm paper and muted moss, not the cool grey
+   and indigo this started as. Fraunces and Inter can't be loaded here — MV3's
+   content security policy blocks remote fonts — so the system stack stands in
+   and only the colour system carries across. */
+:root{
+  --paper:#FAF9F5; --card:#FFFFFF; --sunk:#F3F1EA;
+  --ink:#1E211C; --ink2:#4E544A; --ink3:#8A9083;
+  --line:#E5E2D8; --line2:#D2CEC0;
+  --moss:#4C6B4F; --moss2:#3D5940; --moss-s:#EDF2EC; --moss-l:#C3D4C2;
+  --gold:#8A6D2F; --gold-s:#FAF5E8;
+  --rose:#9B4B42; --rose-s:#FAEEEC;
+  --m:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{width:320px;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0B0D14;background:#F6F7FB}
-header{display:flex;gap:10px;align-items:center;padding:14px;background:#fff;border-bottom:1px solid #E7E8F0}
-.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(145deg,#6D63F5,#4F46E5);color:#fff;display:grid;place-items:center;font-size:14px}
-header b{display:block;font-size:13.5px}
-header span{font-size:11px;color:#7B8496;font-family:ui-monospace,monospace}
+body{width:320px;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  color:var(--ink);background:var(--paper)}
+header{display:flex;gap:10px;align-items:center;padding:14px;background:var(--card);
+  border-bottom:1px solid var(--line)}
+.logo{width:30px;height:30px;border-radius:9px;overflow:hidden;flex-shrink:0;
+  box-shadow:0 2px 5px rgba(61,89,64,.32), inset 0 1px 0 rgba(255,255,255,.4)}
+.logo svg{width:100%;height:100%;display:block}
+header b{display:block;font-size:13.5px;letter-spacing:-.01em}
+header span{font-size:11px;color:var(--ink3);font-family:var(--m)}
 main{padding:14px}
 button{width:100%;padding:10px;border:none;border-radius:9px;font:600 13px inherit;cursor:pointer}
-button.primary{background:linear-gradient(145deg,#5B52E8,#4F46E5);color:#fff}
-button:disabled{background:#D3D6E2;color:#7B8496;cursor:not-allowed}
-#state{font-size:12.5px;color:#3A4152;margin-bottom:11px;line-height:1.6}
-.pill{display:inline-block;font:700 10px ui-monospace,monospace;padding:2px 7px;border-radius:5px;margin-right:5px}
-.ok{background:#ECFDF5;color:#059669}
-.warn{background:#FFFBEB;color:#D97706}
-.bad{background:#FEF2F2;color:#DC2626}
+button.primary{background:var(--moss);color:#fff;transition:.15s}
+button.primary:hover:not(:disabled){background:var(--moss2)}
+button:disabled{background:var(--line2);color:var(--ink3);cursor:not-allowed}
+.who{font-size:11.5px;color:var(--ink3);margin-bottom:9px;padding-bottom:9px;
+  border-bottom:1px solid var(--line);word-break:break-all}
+.who b{color:var(--ink2);font-weight:600}
+#state{font-size:12.5px;color:var(--ink2);margin-bottom:11px;line-height:1.6}
+#state a{color:var(--moss2)}
+.pill{display:inline-block;font:700 10px var(--m);padding:2px 7px;border-radius:5px;margin-right:5px}
+.ok{background:var(--moss-s);color:var(--moss2)}
+.warn{background:var(--gold-s);color:var(--gold)}
+.bad{background:var(--rose-s);color:var(--rose)}
 #result{margin-top:12px;font-size:12px;line-height:1.65}
 #result ul{list-style:none;margin-top:6px}
-#result li{padding:4px 0;border-bottom:1px solid #E7E8F0}
-footer{padding:12px 14px;border-top:1px solid #E7E8F0;background:#fff}
-.note{font-size:11px;color:#7B8496;line-height:1.5;margin-bottom:7px}
-footer a{font-size:11px;color:#4F46E5;text-decoration:none}
-#panel{padding:14px;background:#fff;border-top:1px solid #E7E8F0}
-#panel label{display:block;font:700 10px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em;color:#7B8496;margin:9px 0 4px}
-#panel input{width:100%;padding:8px 10px;border:1.5px solid #D3D6E2;border-radius:8px;font-size:12.5px}
+#result li{padding:4px 0;border-bottom:1px solid var(--line)}
+footer{padding:12px 14px;border-top:1px solid var(--line);background:var(--card)}
+.note{font-size:11px;color:var(--ink3);line-height:1.5;margin-bottom:7px}
+footer a{font-size:11px;color:var(--moss2);text-decoration:none}
+#panel{padding:14px;background:var(--card);border-top:1px solid var(--line)}
+#panel label{display:block;font:700 10px var(--m);text-transform:uppercase;
+  letter-spacing:.08em;color:var(--ink3);margin:9px 0 4px}
+#panel input{width:100%;padding:8px 10px;border:1.5px solid var(--line2);
+  border-radius:8px;font-size:12.5px;background:var(--card);color:var(--ink)}
+#panel input:focus{border-color:var(--moss);outline:none}
+#panel .hint{font-size:11px;color:var(--ink3);line-height:1.5;margin-top:7px}
 #panel button{margin-top:11px}
