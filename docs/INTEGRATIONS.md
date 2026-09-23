@@ -48,7 +48,14 @@ Generate the encryption key once:
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-The application asks Google only for `gmail.send`. A refresh token is encrypted server-side and never sent to the browser.
+The application asks Google for `gmail.send` and `gmail.readonly`. The Inbox view reads recent message metadata (sender, subject, date, unread state, and Gmail snippet) so users can see application replies; it does not store full message bodies. A refresh token is encrypted server-side and never sent to the browser.
+
+After the one-time platform setup, a customer only opens **Autopilot**, clicks
+**Connect Gmail**, signs into their own Google account, and approves consent.
+When they explicitly choose **Send with Gmail** from an application email, Career
+Pilot sends the approved subject, body, and generated resume attachment through
+that customer's mailbox. The application is marked sent only after Gmail
+confirms the message was accepted.
 
 ## 3. Twilio Verify
 

@@ -122,6 +122,39 @@ function fillForm(profile) {
   return out;
 }
 
+let AUTO_FILLED = false;
+
+async function autoFillSupportedForm() {
+  if (AUTO_FILLED) return true;
+  if (!window.__CP?.ats || !window.__CP?.isForm) return;
+  try {
+    const reply = await chrome.runtime.sendMessage({ type: "get_profile" });
+    if (!reply?.ok || !reply.profile?._meta?.positions) return;
+    const result = fillForm(reply.profile);
+    AUTO_FILLED = true;
+    chrome.runtime.sendMessage({ type: "autofill_complete", result });
+    return true;
+  } catch (_) {
+    // The popup still offers manual retry if the extension service worker or
+    // profile request is unavailable while this third-party page loads.
+  }
+}
+
+// detect.js runs first in the manifest. Wait one frame so frameworks that add
+// their final fields at document_idle can expose them before we inspect them.
+function startAutoFill() {
+  let tries = 0;
+  const tick = async () => {
+    tries++;
+    const done = await autoFillSupportedForm();
+    if (!done && tries < 20) setTimeout(tick, 250);
+  };
+  setTimeout(tick, 0);
+  requestAnimationFrame(tick);
+}
+
+startAutoFill();
+
 chrome.runtime.onMessage.addListener((msg, _s, reply) => {
   if (msg.type === "fill") {
     try { reply({ ok: true, result: fillForm(msg.profile) }); }

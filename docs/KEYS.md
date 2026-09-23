@@ -52,6 +52,23 @@ polling rate the scheduler uses.
 
 ---
 
+## More volume — a second independent source beyond LinkedIn/Dice
+
+### `CORESIGNAL_API_KEY` — usage-based
+
+`RAPIDAPI_KEY` (JSearch) already reaches Dice, LinkedIn, and Indeed through
+Google-for-Jobs. Coresignal's Base Jobs API is a **separate, independently
+scraped dataset** (482M+ deduplicated postings, active listings re-checked
+every 24h) — useful as a second leg for volume/redundancy, not a replacement.
+
+Search is free; each full record collected is metered, so `sources.coresignal()`
+caps collection at 25 records per query to keep cost predictable.
+
+```
+coresignal.com/pricing → sign up → dashboard → API key
+```
+
+
 ## For the AI features
 
 ### `ANTHROPIC_API_KEY`

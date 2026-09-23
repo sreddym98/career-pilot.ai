@@ -1,4 +1,4 @@
-# CareerPilot AI — install and test
+# careerpilot.ai Extension — install and test
 
 **It is not "in review".** That was placeholder copy. The extension is built
 and you can load it in about a minute.

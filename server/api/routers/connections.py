@@ -9,6 +9,7 @@ company. This is that list, kept by hand, grouped by employer.
 Deliberately not scraped from anywhere. These are real people's names and
 jobs, entered by the one person entitled to write them down.
 """
+from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func

@@ -6,6 +6,7 @@ bcrypt directly rather than through passlib — one less dependency, and
 passlib's bcrypt backend has a long-running version-detection break against
 bcrypt 4.x that produces a warning on every single hash.
 """
+from __future__ import annotations
 import bcrypt
 from fastapi import HTTPException
 

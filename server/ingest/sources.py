@@ -268,6 +268,30 @@ def remoteok():
                    url=j.get("url", ""), posted_at=j.get("date"))
 
 
+def themuse(pages=15):
+    """Public engineering feed with direct employer job landing pages.
+
+    The API does not require a key. Filtering remains in the ingestion runner
+    so only QA, SDET, test, quality, and automation roles are retained.
+    """
+    for page in range(1, pages + 1):
+        r = _get("https://www.themuse.com/api/public/jobs",
+             params={"page": page, "descending": "true"})
+        if r.status_code != 200:
+            return
+        jobs = r.json().get("results", [])
+        if not jobs:
+            return
+        for j in jobs:
+            locations = ", ".join(x.get("name", "") for x in j.get("locations", []) if x.get("name"))
+            yield _rec(source="themuse", source_id=str(j.get("id")),
+                       company=(j.get("company") or {}).get("name", ""), title=j.get("name", ""),
+                       location=locations, description=_clean(j.get("contents", "")),
+                       url=(j.get("refs") or {}).get("landing_page", ""),
+                       posted_at=j.get("publication_date"))
+        time.sleep(0.15)
+
+
 def adzuna(what, where="us", pages=3, app_id=None, app_key=None):
     """1,000 calls/month free. Aggregates a lot of US boards including
     agency postings."""
@@ -300,20 +324,54 @@ def adzuna(what, where="us", pages=3, app_id=None, app_key=None):
 #  METERED — the only reliable route to staffing-agency contracts
 # ══════════════════════════════════════════════════════════════
 
-def jsearch(query, pages=2, date_posted="today", key=None):
+def coresignal(query, location="United States", key=None, max_collect=25):
+    """Coresignal's Base Jobs API: a deduplicated global job-postings dataset,
+    scraped since 2020, every active posting re-checked within 24h. Search is
+    free; collect (the full record) is metered per job, so only the first
+    `max_collect` ids per query are expanded — keeps a single call's cost bounded."""
+    key = key or os.environ.get("CORESIGNAL_API_KEY")
+    if not key:
+        return
+    headers = {"accept": "application/json", "apikey": key, "Content-Type": "application/json"}
+    r = requests.post("https://api.coresignal.com/cdapi/v2/job_base/search/filter",
+                       headers=headers,
+                       json={"title": query, "location": location, "application_active": True},
+                       timeout=TIMEOUT)
+    if r.status_code != 200:
+        return
+    ids = r.json()
+    if not isinstance(ids, list):
+        return
+    for job_id in ids[:max_collect]:
+        cr = _get(f"https://api.coresignal.com/cdapi/v2/job_base/collect/{job_id}",
+                  headers={"accept": "application/json", "apikey": key})
+        if cr.status_code != 200:
+            continue
+        j = cr.json()
+        yield _rec(source="coresignal", source_id=str(j.get("id", job_id)),
+                   company=j.get("company_name", ""), title=j.get("title", ""),
+                   location=j.get("location", ""), employment=j.get("employment_type"),
+                   description=_clean(j.get("description", "")),
+                   url=j.get("url", ""), posted_at=j.get("created"))
+        time.sleep(0.2)
+
+
+def jsearch(query, pages=1, date_posted="today", key=None):
     """Reads Google for Jobs, which indexes Dice, Indeed, LinkedIn and the
     staffing boards. This is where contract/C2C roles actually live."""
     key = key or os.environ.get("RAPIDAPI_KEY")
     if not key:
         return
     for p in range(1, pages + 1):
-        r = _get("https://jsearch.p.rapidapi.com/search",
+        r = _get("https://jsearch.p.rapidapi.com/search-v2",
                  headers={"X-RapidAPI-Key": key, "X-RapidAPI-Host": "jsearch.p.rapidapi.com"},
                  params={"query": query, "page": p, "num_pages": 1,
                          "date_posted": date_posted, "country": "us"})
         if r.status_code != 200:
             return
-        for j in r.json().get("data", []):
+        payload = r.json().get("data", [])
+        jobs = payload.get("jobs", []) if isinstance(payload, dict) else payload
+        for j in jobs:
             yield _rec(source="jsearch", source_id=j.get("job_id"),
                        company=j.get("employer_name", ""), title=j.get("job_title", ""),
                        location=", ".join(filter(None, [j.get("job_city"), j.get("job_state")])),
@@ -326,4 +384,5 @@ def jsearch(query, pages=2, date_posted="today", key=None):
 
 
 AGGREGATORS = {"usajobs": usajobs, "remotive": remotive, "arbeitnow": arbeitnow,
-               "remoteok": remoteok, "adzuna": adzuna, "jsearch": jsearch}
+               "remoteok": remoteok, "themuse": themuse, "adzuna": adzuna, "jsearch": jsearch,
+               "coresignal": coresignal}

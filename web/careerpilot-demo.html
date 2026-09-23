@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CareerPilot AI – Futuristic Workflow</title>
+    <style>
+      :root {
+        --bg-1: #040814;
+        --bg-2: #0b1225;
+        --bg-3: #101b33;
+        --panel: rgba(10, 17, 29, 0.72);
+        --panel-strong: rgba(15, 20, 33, 0.92);
+        --line: rgba(130, 212, 255, 0.32);
+        --cyan: #7de8ff;
+        --blue: #5aa7ff;
+        --purple: #8a7dff;
+        --green: #7ef7cb;
+        --amber: #ffce6a;
+        --pink: #ff7fd4;
+        --red: #ff7d7d;
+        --text: #edf7ff;
+        --muted: #9bb9d4;
+        --shadow: rgba(63, 145, 255, 0.45);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        height: 100%;
+        font-family: Inter, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(78, 132, 255, 0.18), transparent 20%),
+          radial-gradient(circle at 80% 0%, rgba(124, 92, 255, 0.2), transparent 23%),
+          linear-gradient(135deg, var(--bg-1), var(--bg-2) 38%, var(--bg-3));
+        color: var(--text);
+        overflow: hidden;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+        background-size: 36px 36px;
+        mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+        pointer-events: none;
+      }
+
+      .shell {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        perspective: 2000px;
+      }
+
+      .hud {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .scanline {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to bottom,
+          transparent 0%,
+          rgba(125, 232, 255, 0.04) 48%,
+          transparent 100%
+        );
+        background-size: 100% 18px;
+        animation: scan 12s linear infinite;
+      }
+
+      @keyframes scan {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100%); }
+      }
+
+      .topbar {
+        position: absolute;
+        top: 24px;
+        left: 36px;
+        right: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 20;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .brand-mark {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--cyan), var(--purple));
+        box-shadow: 0 0 18px rgba(125, 232, 255, 0.8);
+      }
+
+      .status {
+        display: flex;
+        gap: 10px;
+        padding: 8px 14px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(11, 18, 37, 0.55);
+        backdrop-filter: blur(12px);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--cyan);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 16px rgba(126, 247, 203, 0.85);
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.7); opacity: 0.5; }
+      }
+
+      .content {
+        position: relative;
+        width: min(1400px, 92vw);
+        height: min(820px, 86vh);
+        display: grid;
+        grid-template-columns: 1.1fr 1.3fr 1fr;
+        gap: 24px;
+        z-index: 10;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid rgba(125, 232, 255, 0.18);
+        border-radius: 24px;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255,255,255,0.02);
+      }
+
+      .left-panel, .right-panel {
+        padding: 22px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .label {
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .stat-stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .stat-card {
+        padding: 16px 16px 14px;
+        border-radius: 18px;
+        background: rgba(15, 20, 33, 0.8);
+        border: 1px solid var(--line);
+      }
+
+      .stat-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .stat-value {
+        font-size: clamp(1.7rem, 2.2vw, 2.5rem);
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .stat-delta {
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--green);
+      }
+
+      .mini-chart {
+        height: 48px;
+        margin-top: 10px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.02);
+        position: relative;
+      }
+
+      .mini-chart svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .mini-chart .line {
+        fill: none;
+        stroke: var(--cyan);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 0 7px rgba(125, 232, 255, 0.7));
+      }
+
+      .mini-chart .area {
+        fill: rgba(125, 232, 255, 0.12);
+      }
+
+      .info-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .info-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 10px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.01);
+        border: 1px solid rgba(255,255,255,0.04);
+      }
+
+      .info-badge {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        box-shadow: 0 0 14px currentColor;
+      }
+
+      .info-text strong {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .info-text span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .center-panel {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        overflow: hidden;
+      }
+
+      .center-surface {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 26px;
+        background: radial-gradient(circle at center, rgba(16, 29, 48, 0.8), rgba(5, 10, 18, 0.96));
+        border: 1px solid rgba(125, 232, 255, 0.16);
+        overflow: hidden;
+      }
+
+      .center-surface::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(125,232,255,0.08), transparent 30%, rgba(138,125,255,0.08));
+      }
+
+      .orbital-scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        transform-style: preserve-3d;
+        animation: floatScene 16s ease-in-out infinite alternate;
+      }
+
+      @keyframes floatScene {
+        0% { transform: rotateX(12deg) rotateY(-12deg) scale(1); }
+        100% { transform: rotateX(-10deg) rotateY(18deg) scale(1.04); }
+      }
+
+      .ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 1px solid rgba(125, 232, 255, 0.22);
+        box-shadow: inset 0 0 30px rgba(125, 232, 255, 0.08), 0 0 30px rgba(125, 232, 255, 0.08);
+      }
+
+      .ring.one { width: 360px; height: 360px; animation: spin 22s linear infinite; }
+      .ring.two { width: 500px; height: 500px; border-style: dashed; animation: spinReverse 28s linear infinite; }
+      .ring.three { width: 660px; height: 660px; opacity: 0.65; animation: spin 36s linear infinite; }
+
+      @keyframes spin {
+        from { transform: rotateX(65deg) rotateY(0deg); }
+        to { transform: rotateX(65deg) rotateY(360deg); }
+      }
+
+      @keyframes spinReverse {
+        from { transform: rotateY(65deg) rotateX(0deg); }
+        to { transform: rotateY(65deg) rotateX(360deg); }
+      }
+
+      .core {
+        position: relative;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at 30% 30%, rgba(125,232,255,0.45), rgba(90,167,255,0.22), rgba(8,12,20,0.96) 55%, rgba(5,8,15,0.95));
+        border: 1px solid rgba(125,232,255,0.4);
+        box-shadow: 0 0 60px rgba(90,167,255,0.32), inset 0 0 28px rgba(125,232,255,0.18);
+        transform: translateZ(80px);
+      }
+
+      .core::before, .core::after {
+        content: "";
+        position: absolute;
+        inset: 14%;
+        border-radius: 50%;
+      }
+
+      .core::before {
+        border: 1px solid rgba(126,247,203,0.42);
+        animation: pulseRing 3s ease-in-out infinite;
+      }
+
+      .core::after {
+        inset: 26%;
+        border: 1px solid rgba(255,127,212,0.5);
+        animation: pulseRing 2.8s ease-in-out infinite reverse;
+      }
+
+      @keyframes pulseRing {
+        0%,100% { transform: scale(1); opacity: 0.7; }
+        50% { transform: scale(1.08); opacity: 1; }
+      }
+
+      .core-inner {
+        position: relative;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, rgba(125,232,255,0.12), rgba(138,125,255,0.2));
+        border: 1px solid rgba(255,255,255,0.18);
+        box-shadow: inset 0 0 30px rgba(125,232,255,0.18), 0 0 25px rgba(138,125,255,0.2);
+      }
+
+      .core-inner span {
+        font-size: 12px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        text-align: center;
+        line-height: 1.6;
+      }
+
+      .gear {
+        position: absolute;
+        border-radius: 50%;
+        border: 1px solid rgba(125,232,255,0.18);
+      }
+
+      .gear.g1 { width: 60px; height: 60px; left: 44%; top: 12%; animation: orbit1 14s linear infinite; }
+      .gear.g2 { width: 70px; height: 70px; right: 20%; top: 26%; animation: orbit2 18s linear infinite; }
+      .gear.g3 { width: 80px; height: 80px; left: 18%; bottom: 18%; animation: orbit3 16s linear infinite; }
+      .gear.g4 { width: 90px; height: 90px; right: 14%; bottom: 10%; animation: orbit4 20s linear infinite; }
+
+      @keyframes orbit1 {
+        0% { transform: rotate(0deg) translateX(136px) rotate(0deg); }
+        100% { transform: rotate(360deg) translateX(136px) rotate(-360deg); }
+      }
+      @keyframes orbit2 {
+        0% { transform: rotate(120deg) translateX(180px) rotate(-120deg); }
+        100% { transform: rotate(480deg) translateX(180px) rotate(-480deg); }
+      }
+      @keyframes orbit3 {
+        0% { transform: rotate(240deg) translateX(170px) rotate(-240deg); }
+        100% { transform: rotate(600deg) translateX(170px) rotate(-600deg); }
+      }
+      @keyframes orbit4 {
+        0% { transform: rotate(360deg) translateX(200px) rotate(-360deg); }
+        100% { transform: rotate(720deg) translateX(200px) rotate(-720deg); }
+      }
+
+      .node {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--cyan), var(--purple));
+        box-shadow: 0 0 20px rgba(125, 232, 255, 0.8);
+      }
+
+      .node.n1 { left: 18%; top: 25%; }
+      .node.n2 { right: 22%; top: 18%; }
+      .node.n3 { left: 12%; bottom: 26%; }
+      .node.n4 { right: 14%; bottom: 20%; }
+
+      .node::after {
+        content: "";
+        position: absolute;
+        inset: -18px;
+        border-radius: 50%;
+        border: 1px solid rgba(125,232,255,0.18);
+      }
+
+      .stage-detail {
+        position: absolute;
+        left: 28px;
+        right: 28px;
+        bottom: 28px;
+        background: rgba(10, 18, 30, 0.82);
+        border: 1px solid rgba(125, 232, 255, 0.18);
+        border-radius: 20px;
+        padding: 16px 18px 12px;
+        backdrop-filter: blur(12px);
+      }
+
+      .stage-hdr {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .stage-title {
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .stage-index {
+        color: var(--cyan);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+      }
+
+      .stage-name {
+        font-size: clamp(1.4rem, 2vw, 2.2rem);
+        font-weight: 700;
+        margin-bottom: 6px;
+        letter-spacing: -0.04em;
+      }
+
+      .stage-copy {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+        max-width: 48ch;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .pill {
+        padding: 7px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(125, 232, 255, 0.18);
+        color: var(--cyan);
+        background: rgba(125, 232, 255, 0.05);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .stage-deck {
+        position: absolute;
+        inset: 30px 32px 180px 32px;
+        pointer-events: none;
+      }
+
+      .card {
+        position: absolute;
+        width: 180px;
+        padding: 12px 12px 10px;
+        border-radius: 18px;
+        background: rgba(11, 17, 29, 0.78);
+        border: 1px solid rgba(125, 232, 255, 0.18);
+        box-shadow: 0 16px 36px rgba(0,0,0,0.25);
+        transition: transform 0.7s ease, opacity 0.7s ease, border-color 0.7s ease, box-shadow 0.7s ease;
+        backdrop-filter: blur(10px);
+      }
+
+      .card .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .card .icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, rgba(125,232,255,0.1), rgba(138,125,255,0.18));
+        border: 1px solid rgba(125,232,255,0.18);
+        font-size: 12px;
+      }
+
+      .card .chip {
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        letter-spacing: -0.03em;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .card.active {
+        transform: translate3d(0, 0, 70px) scale(1.05);
+        border-color: rgba(125, 232, 255, 0.45);
+        box-shadow: 0 0 30px rgba(90,167,255,0.25), 0 16px 36px rgba(0,0,0,0.25);
+      }
+
+      .card[data-pos="0"] { left: 50%; top: 20%; transform: translate(-50%, 0) rotateY(12deg) rotateX(8deg); }
+      .card[data-pos="1"] { left: 12%; top: 38%; transform: translate(0, 0) rotateY(20deg) rotateX(10deg); }
+      .card[data-pos="2"] { right: 9%; top: 36%; transform: translate(0, 0) rotateY(-18deg) rotateX(8deg); }
+      .card[data-pos="3"] { left: 18%; bottom: 12%; transform: translate(0, 0) rotateY(18deg) rotateX(-8deg); }
+      .card[data-pos="4"] { right: 18%; bottom: 6%; transform: translate(0, 0) rotateY(-14deg) rotateX(-9deg); }
+      .card[data-pos="5"] { left: 50%; bottom: 8%; transform: translate(-50%, 0) rotateY(0deg) rotateX(-8deg); }
+
+      .rail {
+        position: absolute;
+        left: 50%;
+        top: 34px;
+        bottom: 34px;
+        width: 2px;
+        background: linear-gradient(to bottom, transparent, rgba(125,232,255,0.5), transparent);
+        transform: translateX(-50%);
+      }
+
+      .rail::before, .rail::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 18px rgba(125, 232, 255, 0.8);
+      }
+
+      .rail::before { top: 16%; }
+      .rail::after { bottom: 16%; }
+
+      .right-panel {
+        gap: 18px;
+      }
+
+      .flow-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .flow-item {
+        padding: 12px 12px;
+        border: 1px solid rgba(125,232,255,0.14);
+        border-radius: 14px;
+        background: rgba(16, 24, 38, 0.78);
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .step-no {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 700;
+        background: linear-gradient(135deg, rgba(125,232,255,0.18), rgba(138,125,255,0.3));
+        border: 1px solid rgba(125,232,255,0.26);
+        color: var(--cyan);
+      }
+
+      .flow-copy strong {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 2px;
+      }
+
+      .flow-copy span {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric-box {
+        padding: 12px 10px;
+        border-radius: 14px;
+        background: rgba(12, 17, 29, 0.8);
+        border: 1px solid rgba(125,232,255,0.1);
+        text-align: center;
+      }
+
+      .metric-box strong {
+        display: block;
+        font-size: 20px;
+        letter-spacing: -0.04em;
+      }
+
+      .metric-box span {
+        color: var(--muted);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .timeline {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .timeline-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .timeline-line {
+        width: 30px;
+        height: 2px;
+        background: linear-gradient(to right, rgba(125,232,255,0.85), rgba(138,125,255,0.2));
+        position: relative;
+      }
+
+      .timeline-line::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        position: absolute;
+        right: -1px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--cyan);
+        box-shadow: 0 0 12px rgba(125,232,255,0.8);
+      }
+
+      .timeline-item span {
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 1100px) {
+        .content {
+          grid-template-columns: 1fr;
+          height: auto;
+          width: min(800px, 92vw);
+        }
+
+        body { overflow: auto; }
+
+        .shell { padding: 28px 18px; }
+
+        .left-panel, .right-panel {
+          min-height: 260px;
+        }
+
+        .center-panel {
+          min-height: 700px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="hud">
+        <div class="scanline"></div>
+      </div>
+
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark"></div>
+          <span>CareerPilot AI</span>
+        </div>
+        <div class="status">
+          <span class="status-dot"></span>
+          <span>Autopilot LIVE</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <aside class="panel left-panel">
+          <div>
+            <div class="label">System overview</div>
+          </div>
+
+          <div class="stat-stack">
+            <div class="stat-card">
+              <div class="stat-top">
+                <div class="label">Qualified roles</div>
+                <div class="stat-delta">+38.4%</div>
+              </div>
+              <div class="stat-value">2,460</div>
+              <div class="mini-chart">
+                <svg viewBox="0 0 200 48" preserveAspectRatio="none">
+                  <path class="area" d="M0,40 C30,28 44,12 66,18 C84,23 90,5 112,12 C132,19 144,8 174,14 L200,10 L200,48 L0,48 Z" />
+                  <path class="line" d="M0,40 C30,28 44,12 66,18 C84,23 90,5 112,12 C132,19 144,8 174,14 L200,10" />
+                </svg>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-top">
+                <div class="label">Match accuracy</div>
+                <div class="stat-delta">+91%</div>
+              </div>
+              <div class="stat-value">96.7%</div>
+              <div class="mini-chart">
+                <svg viewBox="0 0 200 48" preserveAspectRatio="none">
+                  <path class="area" d="M0,36 C20,30 34,12 58,18 C78,23 92,10 112,12 C136,15 146,6 170,14 L200,10 L200,48 L0,48 Z" />
+                  <path class="line" d="M0,36 C20,30 34,12 58,18 C78,23 92,10 112,12 C136,15 146,6 170,14 L200,10" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list">
+            <div class="info-item">
+              <div class="info-badge" style="color: var(--cyan); background: var(--cyan);"></div>
+              <div class="info-text">
+                <strong>Profile Intuition</strong>
+                <span>Skills, target roles, and story mapped in real time.</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-badge" style="color: var(--purple); background: var(--purple);"></div>
+              <div class="info-text">
+                <strong>Opportunity Engine</strong>
+                <span>Jobs filtered by fit, urgency, and momentum.</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="panel center-panel">
+          <div class="center-surface">
+            <div class="orbital-scene">
+              <div class="ring one"></div>
+              <div class="ring two"></div>
+              <div class="ring three"></div>
+
+              <div class="gear g1"></div>
+              <div class="gear g2"></div>
+              <div class="gear g3"></div>
+              <div class="gear g4"></div>
+
+              <div class="node n1"></div>
+              <div class="node n2"></div>
+              <div class="node n3"></div>
+              <div class="node n4"></div>
+
+              <div class="core">
+                <div class="core-inner">
+                  <span>Career<br/>Pilot AI</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="rail"></div>
+
+            <div class="stage-deck">
+              <div class="card active" data-pos="0">
+                <div class="card-head">
+                  <div class="icon">01</div>
+                  <div class="chip">Profile</div>
+                </div>
+                <h3>Signal Capture</h3>
+                <p>Resume, experience, goals, preferences, strengths, and career story.</p>
+              </div>
+
+              <div class="card" data-pos="1">
+                <div class="card-head">
+                  <div class="icon">02</div>
+                  <div class="chip">Match</div>
+                </div>
+                <h3>AI Fit Engine</h3>
+                <p>Role alignment, ATS keywords, and hidden opportunity discovery.</p>
+              </div>
+
+              <div class="card" data-pos="2">
+                <div class="card-head">
+                  <div class="icon">03</div>
+                  <div class="chip">Apply</div>
+                </div>
+                <h3>Auto-Apply</h3>
+                <p>Personalized applications, tailored cover letters, and smart follow-ups.</p>
+              </div>
+
+              <div class="card" data-pos="3">
+                <div class="card-head">
+                  <div class="icon">04</div>
+                  <div class="chip">Interview</div>
+                </div>
+                <h3>Coach</h3>
+                <p>Mock interviews, feedback loops, behavioral prep, and signal tuning.</p>
+              </div>
+
+              <div class="card" data-pos="4">
+                <div class="card-head">
+                  <div class="icon">05</div>
+                  <div class="chip">Offer</div>
+                </div>
+                <h3>Negotiation</h3>
+                <p>Comp package analysis, offer comparisons, and decision support.</p>
+              </div>
+
+              <div class="card" data-pos="5">
+                <div class="card-head">
+                  <div class="icon">06</div>
+                  <div class="chip">Growth</div>
+                </div>
+                <h3>Career Loop</h3>
+                <p>Continuous optimization across skill building, networking, and next steps.</p>
+              </div>
+            </div>
+
+            <div class="stage-detail">
+              <div class="stage-hdr">
+                <div class="stage-title">Workflow stage</div>
+                <div class="stage-index" id="stageIndex">01 / 06</div>
+              </div>
+              <div class="stage-name" id="stageName">Signal Capture</div>
+              <div class="stage-copy" id="stageCopy">CareerPilot extracts your experience, career goals, and preferences to create a living employment profile that guides every decision.</div>
+              <div class="pill-row" id="pillRow">
+                <span class="pill">Resume</span>
+                <span class="pill">Goals</span>
+                <span class="pill">Profile</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel right-panel">
+          <div>
+            <div class="label">Execution flow</div>
+          </div>
+
+          <div class="flow-list">
+            <div class="flow-item">
+              <div class="step-no">1</div>
+              <div class="flow-copy">
+                <strong>Profile Intelligence</strong>
+                <span>Collects your story, skills, and target direction.</span>
+              </div>
+            </div>
+            <div class="flow-item">
+              <div class="step-no">2</div>
+              <div class="flow-copy">
+                <strong>Role Discovery</strong>
+                <span>Finds the jobs that match your trajectory and strengths.</span>
+              </div>
+            </div>
+            <div class="flow-item">
+              <div class="step-no">3</div>
+              <div class="flow-copy">
+                <strong>Application Engine</strong>
+                <span>Generates materials and submits with strategic timing.</span>
+              </div>
+            </div>
+            <div class="flow-item">
+              <div class="step-no">4</div>
+              <div class="flow-copy">
+                <strong>Interview Preparation</strong>
+                <span>Tests responses, surfaces gaps, and sharpens delivery.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="metrics">
+            <div class="metric-box">
+              <strong>12x</strong>
+              <span>Faster</span>
+            </div>
+            <div class="metric-box">
+              <strong>94%</strong>
+              <span>Fit</span>
+            </div>
+            <div class="metric-box">
+              <strong>24/7</strong>
+              <span>Active</span>
+            </div>
+          </div>
+
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-line"></div>
+              <span>Map</span>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-line"></div>
+              <span>Match</span>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-line"></div>
+              <span>Apply</span>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-line"></div>
+              <span>Convert</span>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script>
+      const stages = [
+        {
+          name: 'Signal Capture',
+          index: '01 / 06',
+          copy: 'CareerPilot extracts your experience, career goals, and preferences to create a living employment profile that guides every decision.',
+          pills: ['Resume', 'Goals', 'Profile']
+        },
+        {
+          name: 'AI Fit Engine',
+          index: '02 / 06',
+          copy: 'The platform reads the market, compares role signals, and ranks opportunities by alignment, urgency, and momentum.',
+          pills: ['Skills', 'ATS', 'Match']
+        },
+        {
+          name: 'Opportunity Prioritization',
+          index: '03 / 06',
+          copy: 'CareerPilot narrows the noise, focusing on the roles where your experience, transferable strengths, and timing create the best conversion path.',
+          pills: ['Prioritize', 'Filter', 'Target']
+        },
+        {
+          name: 'Autopilot Applications',
+          index: '04 / 06',
+          copy: 'It drafts tailored application materials, customizes your story, and submits intelligently while you stay in control of your direction.',
+          pills: ['Cover letters', 'Applications', 'Tracking']
+        },
+        {
+          name: 'Interview Coaching',
+          index: '05 / 06',
+          copy: 'Mock interviews, STAR coaching, and feedback loops sharpen your delivery before each conversation, reducing friction and improving confidence.',
+          pills: ['Mock', 'Feedback', 'Practice']
+        },
+        {
+          name: 'Offer + Growth Loop',
+          index: '06 / 06',
+          copy: 'Once interviews and offers appear, CareerPilot compares packages, highlights leverage, and keeps optimizing your next move for long-term growth.',
+          pills: ['Negotiate', 'Offer', 'Growth']
+        }
+      ];
+
+      const cards = [...document.querySelectorAll('.card')];
+      const stageName = document.getElementById('stageName');
+      const stageIndex = document.getElementById('stageIndex');
+      const stageCopy = document.getElementById('stageCopy');
+      const pillRow = document.getElementById('pillRow');
+      let current = 0;
+
+      function renderStage(index) {
+        const stage = stages[index];
+        stageName.textContent = stage.name;
+        stageIndex.textContent = stage.index;
+        stageCopy.textContent = stage.copy;
+        pillRow.innerHTML = stage.pills.map((pill) => `<span class="pill">${pill}</span>`).join('');
+
+        cards.forEach((card, idx) => {
+          const desired = (idx + index) % cards.length;
+          const cardPos = desired;
+          card.dataset.pos = String(cardPos);
+          card.classList.toggle('active', idx === index);
+        });
+      }
+
+      function advance() {
+        current = (current + 1) % stages.length;
+        renderStage(current);
+      }
+
+      renderStage(current);
+      setInterval(advance, 2600);
+    </script>
+  </body>
+</html>

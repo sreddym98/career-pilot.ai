@@ -4,7 +4,7 @@ const dom=new JSDOM(fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8
   {runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
 const w=dom.window,d=w.document;
 Object.defineProperty(w,"innerWidth",{value:800,configurable:true});
-w.scrollTo=()=>{};w.navigator.clipboard={writeText:()=>Promise.resolve()};
+Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.navigator.clipboard={writeText:()=>Promise.resolve()};
 w.URL.createObjectURL=w.URL.createObjectURL||(()=>"blob:mock");
 w.URL.revokeObjectURL=w.URL.revokeObjectURL||(()=>{});
 class _MockZipNode{constructor(r){this._root=r;}file(n,c){this._root._files[n]=c;return this;}

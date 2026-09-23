@@ -13,6 +13,7 @@ The ordering is what makes moving to a hosted provider a config change rather
 than a rewrite: point signup at Supabase or Firebase, and sessions issued by
 either side keep working while existing ones age out.
 """
+from __future__ import annotations
 import datetime as dt
 from fastapi import Depends, HTTPException, Header
 from jose import jwt, JWTError

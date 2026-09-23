@@ -43,6 +43,27 @@ async function api(path) {
   return r.json();
 }
 
+async function post(path, body) {
+  const base = await apiBase(), t = await token();
+  if (!t) throw new Error(NOT_SIGNED_IN);
+
+  let r;
+  try {
+    r = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
+      body: JSON.stringify(body),
+    });
+  } catch (_) {
+    throw new Error(`Can't reach CareerPilot at ${base}.`);
+  }
+
+  if (r.status === 401) throw new Error("Your session expired — sign in again on CareerPilot.");
+  if (r.status === 403) throw new Error("This is a job-seeker feature, and you're signed in as a recruiter.");
+  if (!r.ok) throw new Error(`CareerPilot returned ${r.status}`);
+  return r.json();
+}
+
 async function getSession() {
   const { user } = await api("/api/auth/session");
   return user;
@@ -73,6 +94,19 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg.type === "ats_detected") {
     chrome.action.setBadgeText({ text: "●", tabId: sender.tab.id });
     chrome.action.setBadgeBackgroundColor({ color: "#4C6B4F", tabId: sender.tab.id });
+    return;
+  }
+
+  if (msg.type === "autofill_complete") {
+    const filled = msg.result?.filled?.length || 0;
+    chrome.action.setBadgeText({ text: filled ? String(filled) : "●", tabId: sender.tab.id });
+    chrome.action.setBadgeBackgroundColor({ color: "#4C6B4F", tabId: sender.tab.id });
+    post("/api/applications/autofill", {
+      url: sender.tab.url,
+      filled: msg.result?.filled || [],
+      flagged: msg.result?.flagged || [],
+      skipped: msg.result?.skipped || 0,
+    }).catch(() => {});
     return;
   }
 

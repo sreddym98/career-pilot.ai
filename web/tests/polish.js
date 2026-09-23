@@ -2,7 +2,7 @@ const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
-  const w=d.window;w.scrollTo=()=>{};w.print=()=>{};w.confirm=()=>true;
+  const w=d.window;Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.print=()=>{};w.confirm=()=>true;
 
   Object.defineProperty(w,"innerWidth",{value:800,configurable:true});  w.navigator.clipboard={writeText:()=>Promise.resolve()};
   w.__opened=[];w.open=u=>{w.__opened.push(u);return{focus(){}}};return w;};
@@ -47,7 +47,7 @@ const bullets=w.CP.EXP[0].b.length, apps=w.CP.APPS.length;
 const w2=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/",
   storageQuota:1e7}).window;
 // jsdom gives each window its own storage, so replay through the same API
-w2.scrollTo=()=>{};w2.open=()=>({focus(){}});
+Object.defineProperty(w2,"scrollTo",{value:()=>{},configurable:true});w2.open=()=>({focus(){}});
 await sleep(650);
 try{ w2.localStorage.setItem("cp_state_v1", w.localStorage.getItem("cp_state_v1")); }catch(e){}
 const restored=w2.loadState();

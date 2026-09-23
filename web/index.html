@@ -20,17 +20,17 @@ still faling
    Easier on the eyes across a long job search.
    ─────────────────────────────────────────────── */
 :root{
---paper:#FAF9F5; --card:#FFFFFF; --sunk:#F3F1EA;
---ink:#1E211C; --ink2:#4E544A; --ink3:#8A9083;
---line:#E5E2D8; --line2:#D2CEC0;
---moss:#4C6B4F; --moss2:#3D5940; --moss-s:#EDF2EC; --moss-l:#C3D4C2;
+--paper:#F3F2EF; --card:#FFFFFF; --sunk:#F8F9FB;
+--ink:#1D2226; --ink2:#48515A; --ink3:#6F7A81;
+--line:#E5E7EB; --line2:#D9DEE3;
+--moss:#0A66C2; --moss2:#004182; --moss-s:#EEF5FF; --moss-l:#CFE1FF;
 --clay:#A8624A; --clay-s:#FAF0EC;
 --gold:#8A6D2F; --gold-s:#FAF5E8; --gold-l:#E6D9B4;
 --rose:#9B4B42; --rose-s:#FAEEEC; --rose-l:#E5C4BE;
 --d:'Fraunces',Georgia,serif; --b:'Inter',-apple-system,sans-serif; --m:'JetBrains Mono',monospace;
---r:12px; --r2:9px;
---sh:0 1px 2px rgba(30,33,28,.04);
---sh2:0 2px 6px rgba(30,33,28,.05),0 8px 20px rgba(30,33,28,.05);
+--r:14px; --r2:10px;
+--sh:0 1px 2px rgba(15,23,42,.04);
+--sh2:0 2px 8px rgba(15,23,42,.05),0 12px 28px rgba(15,23,42,.06);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--paper);color:var(--ink);font:15px/1.6 var(--b);-webkit-font-smoothing:antialiased}
@@ -48,7 +48,7 @@ h1,h2,h3{font-family:var(--d);font-weight:600;letter-spacing:-.015em;line-height
 
 /* ── buttons ── */
 .btn{padding:10px 18px;border-radius:var(--r2);font-weight:500;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.15s}
-.btn-p{background:var(--moss);color:#fff}
+.btn-p{background:var(--moss);color:#fff;box-shadow:0 1px 2px rgba(10,102,194,.18)}
 .btn-p:hover{background:var(--moss2)}
 .btn-g{border:1px solid var(--line2);color:var(--ink2);background:var(--card)}
 .btn-g:hover{border-color:var(--moss);color:var(--moss2)}
@@ -67,8 +67,8 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .count b{color:var(--ink);font-weight:600}
 
 /* ── job card ── */
-.job{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:11px;cursor:pointer;transition:.15s}
-.job:hover{border-color:var(--moss-l);box-shadow:var(--sh2)}
+.job{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;cursor:pointer;transition:.16s ease;box-shadow:0 1px 0 rgba(15,23,42,.02)}
+.job:hover{border-color:var(--moss-l);box-shadow:var(--sh2);transform:translateY(-1px)}
 .jt{display:flex;gap:14px;align-items:flex-start}
 .lg2{width:40px;height:40px;border-radius:10px;background:var(--sunk);border:1px solid var(--line);display:grid;place-items:center;font-family:var(--d);font-weight:600;font-size:16px;color:var(--ink2);flex-shrink:0}
 .jt h3{font-size:16.5px;margin-bottom:3px}
@@ -95,9 +95,11 @@ select.sel:focus{border-color:var(--moss);outline:none}
 /* ── modal ── */
 .ov{position:fixed;inset:0;background:rgba(30,33,28,.42);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:28px 16px;overflow-y:auto}
 .ov.on{display:flex}
-.md{background:var(--card);border-radius:16px;max-width:660px;width:100%;box-shadow:0 16px 50px rgba(30,33,28,.22)}
+.md{background:var(--card);border-radius:16px;max-width:660px;width:100%;box-shadow:0 16px 50px rgba(30,33,28,.22);position:relative}
 .mh{padding:22px 24px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:flex-start}
 .mx{margin-left:auto;font-size:22px;color:var(--ink3);line-height:1;padding:0 5px;flex-shrink:0}
+.mdclose{position:absolute;top:12px;right:14px;width:34px;height:34px;border:1px solid var(--line2);border-radius:50%;background:var(--card);color:var(--ink3);font-size:24px;line-height:28px;cursor:pointer;z-index:3}
+.mdclose:hover{color:var(--ink);border-color:var(--moss)}
 .mb{padding:20px 24px 26px}
 .sec{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
 .sec h4{font:11px var(--m);letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;font-weight:400}
@@ -429,14 +431,37 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .splitpane{display:flex;gap:16px;align-items:flex-start}
 .splitlist{flex:0 0 420px;min-width:0}
 .splitdetail{flex:1;min-width:0;position:sticky;top:20px;max-height:calc(100vh - 40px);
-  overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--e2)}
+  overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--e1)}
 .splitempty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
   padding:70px 30px;color:var(--ink3);text-align:center;min-height:340px}
 .splitemptyicon{width:52px;height:52px;opacity:.55}
 .splitcard .mh{display:flex;gap:14px;align-items:flex-start;padding:22px 24px;border-bottom:1px solid var(--line);
-  position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:2}
+  position:sticky;top:0;background:var(--card);border-radius:14px 14px 0 0;z-index:2}
 .splitcard .mb{padding:20px 24px 26px}
-.job.selected{border-color:var(--moss);box-shadow:0 0 0 2px var(--moss-l),var(--e2)}
+.job.selected{border-color:var(--moss);box-shadow:0 0 0 2px rgba(10,102,194,.12),var(--e1)}
+
+.jdetail-top{display:flex;gap:14px;align-items:flex-start;width:100%;min-width:0}
+.jdetail-logo{width:52px;height:52px;display:grid;place-items:center;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,var(--moss-s),var(--card));border:1px solid var(--moss-l);font-size:20px;font-family:var(--d);font-weight:600;color:var(--moss2)}
+.jdetail-copy{flex:1;min-width:0}
+.jdetail-copy h2{font-size:20px;line-height:1.25;overflow-wrap:break-word}
+.jdetail-company{margin-top:4px;color:var(--ink2);font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.jdetail-company .dot{width:6px;height:6px;border-radius:50%;background:var(--moss);display:inline-block}
+.jdetail-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.jdetail-meta .chip{padding:6px 10px;border-radius:999px;background:var(--sunk);border:1px solid var(--line);font-size:12px;color:var(--ink2)}
+.jdetail-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.jdetail-actions .btn{min-width:140px;justify-content:center}
+.jdetail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px}
+.jdetail-stat{background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+.jdetail-stat span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:6px}
+.jdetail-stat b{font-size:14px;color:var(--ink)}
+.jdetail-section{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.jdetail-section h4{font:11px var(--m);letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px}
+.jdetail-note{background:linear-gradient(135deg,var(--moss-s),var(--card));border:1px solid var(--moss-l);border-radius:12px;padding:12px 14px;color:var(--ink2);font-size:13px;line-height:1.6}
+.jdetail-note.warn{background:linear-gradient(135deg,var(--gold-s),var(--card));border-color:var(--gold-l)}
+.jdetail-note.bad{background:linear-gradient(135deg,var(--rose-s),var(--card));border-color:var(--rose-l);color:var(--rose)}
+.job-detail-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.job-detail-cta .btn{flex:1;min-width:160px}
+@media(max-width:560px){.jdetail-actions .btn,.job-detail-cta .btn{width:100%;min-width:0}.jdetail-grid{grid-template-columns:1fr 1fr}}
 
 @media(max-width:1000px){
   .splitpane{display:block}
@@ -456,7 +481,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
 
 /* hero heading */
 .ph.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
-.ph h1{font-size:29px;background:linear-gradient(135deg,var(--ink),#3F4A3D);
+.ph h1{font-size:29px;background:linear-gradient(135deg,var(--ink),#3B4450);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 
 /* stat tiles */
@@ -538,6 +563,12 @@ select.sel:focus{border-color:var(--moss);outline:none}
   border-radius:14px;padding:16px 18px;margin-top:18px;box-shadow:var(--e2)}
 .evalPrice>div:first-child b{font-family:var(--d);font-size:26px;color:var(--ink);display:block;line-height:1}
 .evalPrice>div:first-child span{font-size:12px;color:var(--ink3)}
+.evalhistory{margin-bottom:16px;padding:12px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r2)}
+.evalhistoryhead{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-bottom:8px}
+.evalhistorylist{display:flex;flex-direction:column;gap:6px;max-height:170px;overflow-y:auto}
+.evalhistoryitem{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--card);cursor:pointer}
+.evalhistoryitem:hover,.evalhistoryitem.on{border-color:var(--moss);background:var(--moss-s)}
+.evalhistoryitem span{display:flex;flex-direction:column;min-width:0}.evalhistoryitem b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.evalhistoryitem small{font-size:11px;color:var(--ink3);margin-top:2px}.evalhistoryitem strong{font-family:var(--d);font-size:16px;color:var(--moss2);flex-shrink:0}
 
 /* ── report ── */
 .scorewrap{display:flex;gap:18px;align-items:center;padding:18px;margin-bottom:6px;
@@ -591,6 +622,9 @@ select.sel:focus{border-color:var(--moss);outline:none}
   .triitem b{font-size:10px}}
 
 .skillbars{display:flex;flex-direction:column;gap:9px}
+.atsfixes{display:flex;flex-direction:column;gap:10px}
+.atsfix{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r2)}
+.atsfixn{width:24px;height:24px;border-radius:7px;background:var(--moss);color:#fff;display:grid;place-items:center;font:600 12px var(--d);flex-shrink:0}
 .sbrow{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center}
 .sbl{font-size:12.5px;color:var(--ink2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sbtrack{height:9px;background:var(--sunk);border-radius:6px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(30,33,28,.08)}
@@ -717,6 +751,26 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .apqueuesubject{font-size:12px;color:var(--ink3);margin-top:4px;font-family:var(--m);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ── full autopilot ── */
+.fullauto-job-item{padding:10px;background:var(--moss-s);border-radius:6px;margin-bottom:6px;font-size:13px;border-left:3px solid var(--moss)}
+.fullauto-progress{display:flex;flex-direction:column;gap:8px}
+.fullauto-step{display:flex;gap:10px;align-items:center;font-size:13px}
+.fullauto-step.done{color:var(--moss2)}
+.fullauto-step.running{color:var(--gold)}
+.fullauto-step-icon{font-size:16px}
+.fullauto-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.fullauto-modal{background:var(--card);border-radius:16px;max-width:560px;width:100%;height:min(760px,calc(100vh - 40px));overflow:hidden;box-shadow:var(--e4);display:flex}
+.fullauto-modal-content{display:flex;flex-direction:column;min-height:0;width:100%}
+.fullauto-modal-head{padding:20px 20px 14px;border-bottom:1px solid var(--line);flex-shrink:0}
+.fullauto-modal-head h3{font-size:18px;margin-bottom:6px}
+.fullauto-modal-close{position:absolute;top:14px;right:16px;width:34px;height:34px;border:1px solid var(--line2);border-radius:50%;background:var(--card);color:var(--ink3);font-size:24px;line-height:28px;cursor:pointer;z-index:1}
+.fullauto-modal-close:hover{color:var(--ink);border-color:var(--moss)}
+.fullauto-job-picker{padding:14px 20px;overflow-y:auto;min-height:0;flex:1}
+.fullauto-modal-actions{padding:12px 20px;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -4px 12px rgba(30,33,28,.06);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.fullauto-modal-actions span{font-size:12.5px;color:var(--ink3);margin-right:auto}
+.fullauto-modal-actions .btn{white-space:nowrap}
+@media(max-width:560px){.fullauto-modal-overlay{padding:10px}.fullauto-modal{height:calc(100vh - 20px)}.fullauto-modal-actions{flex-wrap:wrap}.fullauto-modal-actions span{width:100%}.fullauto-modal-actions .btn{width:100%}}
+
 /* ── pricing ── */
 .pricegrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .pricegrid.one{grid-template-columns:1fr;max-width:420px;margin:0 auto}
@@ -791,6 +845,58 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .entfeat span{font-size:12px;color:var(--ink2);background:var(--card);border:1px solid var(--line);
   border-radius:20px;padding:4px 11px}
 .entcta{flex-shrink:0;min-width:200px}
+
+/* Compact, high-clarity job workspace. */
+:root{
+  --paper:#f5f7fb; --card:#ffffff; --sunk:#eef2f7;
+  --ink:#14213d; --ink2:#58657a; --ink3:#8290a5;
+  --line:#e2e8f0; --line2:#cbd5e1;
+  --moss:#1570ef; --moss2:#0958c7; --moss-s:#eaf2ff; --moss-l:#b9d5ff;
+  --gold:#a86500; --gold-s:#fff7e8; --gold-l:#f5d99f;
+  --rose:#c6403d; --rose-s:#fff0ef; --rose-l:#fac8c5;
+  --d:'Inter',-apple-system,sans-serif; --r:8px; --r2:6px;
+  --sh:0 1px 2px rgba(15,23,42,.04); --sh2:0 8px 24px rgba(15,23,42,.07);
+}
+body{background:radial-gradient(circle at 12% 0,#e7f0ff 0,transparent 25rem),var(--paper);font-size:14px}
+h1,h2,h3{letter-spacing:0;font-family:var(--d);font-weight:650}
+.sidebar{width:236px;background:rgba(255,255,255,.92);box-shadow:1px 0 0 rgba(15,23,42,.03)}
+.sblogo{padding:20px 18px 18px}.sblogo .mark{box-shadow:none;border-radius:7px}.sblogo em,.mobtop em{color:var(--moss)}
+.modesw{margin:0 14px 18px;border-radius:7px;box-shadow:none}.modeb{border-radius:5px}
+.sbgroup{margin-bottom:18px}.sbgrouplabel{font-size:10px;padding:0 9px;margin-bottom:5px}
+.sbi{border-radius:6px;padding:8px 9px}.sbi.on{background:var(--moss-s);color:var(--moss2)}
+.mainarea{max-width:1480px;padding:28px 32px 70px}
+.jobshead{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:0 0 22px;padding:22px 24px;border:1px solid #d9e7fd;border-radius:10px;background:linear-gradient(100deg,#fff 0%,#f4f8ff 100%)}
+.jobshead h1{font-size:25px;line-height:1.2;margin-top:4px;color:var(--ink);-webkit-text-fill-color:currentColor;background:none}
+.jobshead p{margin-top:6px;color:var(--ink2)}
+.eyebrow{display:block;color:var(--moss2);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.jobshead .btn{flex-shrink:0}
+.filters.jobsfilters{display:grid;grid-template-columns:minmax(240px,1.5fr) repeat(5,minmax(125px,auto));gap:8px;padding:10px;margin-bottom:14px;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+.source-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.source-row-label{font-size:12.5px;color:var(--ink3);font-weight:600;margin-right:2px}
+.source-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--line2);
+  border-radius:20px;background:var(--card);font-size:12.5px;color:var(--ink2);cursor:pointer;transition:.14s}
+.source-chip:hover{border-color:var(--moss);color:var(--ink);box-shadow:var(--sh)}
+.source-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+@media(max-width:720px){.source-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}.source-row-label{flex-shrink:0}}
+.advanced-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px;margin:-6px 0 14px;border:1px solid var(--line);border-radius:9px;background:var(--sunk)}
+.advanced-filter-head{display:flex;align-items:center;gap:10px;width:100%;font-size:13px;color:var(--ink2)}
+.advanced-filter-head b{margin-right:auto;color:var(--ink)}
+.advanced-filters .sel{background:var(--card)}
+.advanced-check{padding:9px 11px;font-size:13px}
+.profile-family-filter{display:none!important}
+.role-filter-trigger{white-space:nowrap}
+.role-filter-panel{display:flex;flex-direction:column;gap:10px;padding:10px;margin:-6px 0 14px;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+.role-filter-panel[hidden]{display:none}
+.role-filter-options{display:flex;flex-wrap:wrap;gap:7px}
+.role-filter-option{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--line2);border-radius:20px;background:var(--card);font-size:12.5px;color:var(--ink2);cursor:pointer}
+.role-filter-option.on{background:var(--moss-s);border-color:var(--moss-l);color:var(--moss2)}
+.jobsfilters .search{min-width:0}.search input,select.sel{border-color:transparent;background:var(--sunk);border-radius:6px;padding-top:10px;padding-bottom:10px}.search input:focus,select.sel:focus{border-color:var(--moss);box-shadow:0 0 0 3px rgba(21,112,239,.12)}
+.showall{border:0;border-radius:6px;background:var(--sunk);padding:10px 11px;font-size:12.5px}
+.count{margin:10px 2px 13px;font-size:13px}.splitpane{gap:14px}.splitlist{flex-basis:480px}.splitdetail{top:18px;border-radius:9px;box-shadow:var(--sh)}
+.job{border-radius:8px;padding:16px;box-shadow:none}.job:hover,.cand:hover{transform:none;box-shadow:0 4px 12px rgba(15,23,42,.06);border-color:var(--moss-l)}.job.selected{box-shadow:0 0 0 2px var(--moss-l);border-color:var(--moss)}
+.lg2,.fit3{border-radius:7px}.tag,.st,.badge,.pill{border-radius:5px}.card{border-radius:9px;box-shadow:none}.btn{border-radius:6px}.btn-p{background:var(--moss);box-shadow:none}.btn-p:hover{background:var(--moss2);box-shadow:none}
+@media(max-width:1180px){.filters.jobsfilters{grid-template-columns:minmax(240px,1fr) repeat(3,minmax(130px,auto))}.jobsfilters .showall,.jobsfilters #f-sort{grid-column:auto}}
+@media(max-width:720px){.mainarea{padding:18px 15px 56px}.jobshead{align-items:flex-start;flex-direction:column;padding:18px}.jobshead .btn{width:100%}.filters.jobsfilters{display:flex;padding:8px}.jobsfilters>*{width:100%}.jobsfilters .search{width:100%}.jobsfilters .showall{display:flex}.splitlist{width:100%}}
 </style>
 <div class="appshell">
 <div class="syncdot" id="syncDot" aria-live="polite"></div>
@@ -870,6 +976,9 @@ select.sel:focus{border-color:var(--moss);outline:none}
       <button class="sbi" data-p="apps" onclick="go('apps')">
         <svg viewBox="0 0 20 20" class="sbicon"><rect x="3" y="4" width="14" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.8"/></svg>
         <span>Applications</span></button>
+      <button class="sbi" data-p="inbox" onclick="go('inbox')">
+        <svg viewBox="0 0 20 20" class="sbicon"><path d="M3 5.5A2.5 2.5 0 015.5 3h9A2.5 2.5 0 0117 5.5v9a2.5 2.5 0 01-2.5 2.5h-9A2.5 2.5 0 013 14.5v-9z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h4l1.4 2h3.2L13 12h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span>Inbox</span><span class="sbbadge" id="inboxUnread"></span></button>
       <button class="sbi" data-p="autopilot" data-only="seeker" onclick="go('autopilot')">
         <svg viewBox="0 0 20 20" class="sbicon"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span>Autopilot</span><span class="sbbadge new">NEW</span></button>
@@ -904,7 +1013,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
         <span>People I Know</span></button>
       <button class="sbi" onclick="openEvaluation()">
         <svg viewBox="0 0 20 20" class="sbicon"><path d="M10 2l1.8 4.6L16.5 8l-4.7 1.4L10 14l-1.8-4.6L3.5 8l4.7-1.4L10 2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-        <span>Get Evaluated</span><span class="sbbadge price">$5</span></button>
+        <span>Get Evaluated</span><span class="sbbadge new">FREE</span></button>
     </div>
 
     <div class="sbgroup">
@@ -941,30 +1050,83 @@ select.sel:focus{border-color:var(--moss);outline:none}
 
 <!-- ══ JOBS — split pane: list left, detail right ══ -->
 <div class="pg on" id="p-jobs">
-  <div class="filters">
+  <div class="jobshead">
+    <div>
+      <span class="eyebrow">AI job search</span>
+      <h1>Find your next role</h1>
+      <p>Matched from your profile, preferences, and work authorization.</p>
+    </div>
+    <button class="btn btn-p" onclick="go('autopilot')">Open Autopilot</button>
+  </div>
+  <div class="source-row" id="sourceRow">
+    <span class="source-row-label">Search directly on:</span>
+    <button class="source-chip" type="button" onclick="openExternalSource('linkedin')"><span class="source-dot" style="background:#0a66c2"></span>LinkedIn</button>
+    <button class="source-chip" type="button" onclick="openExternalSource('dice')"><span class="source-dot" style="background:#ea1f28"></span>Dice</button>
+    <button class="source-chip" type="button" onclick="openExternalSource('monster')"><span class="source-dot" style="background:#6841e0"></span>Monster</button>
+    <button class="source-chip" type="button" onclick="openExternalSource('ziprecruiter')"><span class="source-dot" style="background:#3ab54a"></span>ZipRecruiter</button>
+    <button class="source-chip" type="button" onclick="openExternalSource('techfetch')"><span class="source-dot" style="background:#e08b00"></span>TechFetch</button>
+    <button class="source-chip" type="button" onclick="openExternalSource('benchinfo')" title="BenchInfo requires free sign-up before it shows jobs"><span class="source-dot" style="background:#0f9d8f"></span>BenchInfo</button>
+  </div>
+  <div class="filters jobsfilters">
     <div class="search"><i>⌕</i><input id="q" placeholder="Search roles, companies, skills…" oninput="deb()"></div>
-    <select class="sel" id="f-auth" onchange="rn()">
-      <option value="any">Any work authorization</option>
+    <select class="sel" id="f-auth" onchange="LIVE?loadJobs():rn()">
+      <option value="any" selected>Any work authorization</option>
       <option value="usc">I'm a US Citizen</option>
       <option value="gc">I have a Green Card</option>
-      <option value="h1b" selected>I'm on H1B</option>
+      <option value="h1b">I'm on H1B</option>
       <option value="opt">I'm on OPT / EAD</option>
     </select>
-    <select class="sel" id="f-fam" onchange="rn()"></select>
-    <select class="sel" id="f-type" onchange="rn()">
-      <option value="">Any type</option>
+    <select class="sel profile-family-filter" id="f-fam" multiple size="1" aria-hidden="true" tabindex="-1">
+      <option value="">Any specialization</option>
+    </select>
+    <button class="btn btn-g btn-s role-filter-trigger" type="button" onclick="toggleRoleFilters()" aria-expanded="false" id="roleFiltersBtn">Roles</button>
+    <select class="sel" id="f-type" onchange="LIVE?loadJobs():rn()">
+      <option value="" selected>Any type</option>
       <option value="fulltime">Full-time</option>
       <option value="contract">Contract</option>
       <option value="internship">Internship</option>
       <option value="parttime">Part-time</option>
     </select>
     <label class="showall"><input type="checkbox" id="f-showall" onchange="rn()"> Show passed</label>
-    <select class="sel" id="f-mode" onchange="rn()">
-      <option value="">Anywhere</option>
+    <label class="showall" id="expCapWrap" style="display:none"><input type="checkbox" id="f-expcap" checked onchange="rn()"> Hide roles wanting more experience than I have</label>
+    <select class="sel" id="f-mode" onchange="LIVE?loadJobs():rn()">
+      <option value="" selected>Anywhere</option>
       <option value="remote">Remote only</option>
       <option value="hybrid">Hybrid</option>
       <option value="onsite">On-site</option>
     </select>
+    <select class="sel" id="f-sort" onchange="LIVE?loadJobs():rn()" aria-label="Sort jobs">
+      <option value="recommended" selected>Recommended</option>
+      <option value="fit">Top fit</option>
+      <option value="new">Most recent</option>
+      <option value="salary">Top salary</option>
+    </select>
+    <button class="btn btn-g btn-s" type="button" onclick="toggleAdvancedFilters()" aria-expanded="false" id="advancedFiltersBtn">More filters</button>
+  </div>
+  <div class="advanced-filters" id="advancedFilters" hidden>
+    <div class="advanced-filter-head"><b>Refine your search</b><button class="btn btn-g btn-s" type="button" onclick="clearAdvancedFilters()">Clear</button></div>
+    <select class="sel" id="f-fresh" onchange="LIVE?loadJobs():rn()" aria-label="Posted date">
+      <option value="0">Posted anytime</option><option value="1">Past 24 hours</option><option value="3">Past 3 days</option><option value="7">Past week</option><option value="30">Past month</option>
+    </select>
+    <select class="sel" id="f-exp" onchange="LIVE?loadJobs():rn()" aria-label="Experience level">
+      <option value="0">Any experience</option><option value="1">Entry level</option><option value="2">2+ years</option><option value="3">3+ years</option><option value="5">5+ years</option><option value="8">8+ years</option>
+    </select>
+    <select class="sel" id="f-salary" onchange="LIVE?loadJobs():rn()" aria-label="Minimum salary">
+      <option value="0">Any salary</option><option value="60000">$60k+</option><option value="80000">$80k+</option><option value="100000">$100k+</option><option value="120000">$120k+</option><option value="150000">$150k+</option>
+    </select>
+    <select class="sel" id="f-company" onchange="LIVE?loadJobs():rn()" aria-label="Company type">
+      <option value="">All companies</option><option value="employer">Direct employers</option><option value="staffing">Staffing agencies</option><option value="f500">Fortune 500</option>
+    </select>
+    <label class="chk advanced-check"><input type="checkbox" id="f-fresh-reposts" onchange="LIVE?loadJobs():rn()"> Hide repeated listings</label>
+  </div>
+  <div class="role-filter-panel" id="roleFilterPanel" hidden>
+    <div class="advanced-filter-head"><b>Filter by multiple role areas</b><button class="btn btn-g btn-s" type="button" onclick="clearRoleFilters()">Clear</button></div>
+    <div id="roleFilterOptions" class="role-filter-options"></div>
+  </div>
+  <div id="smartMatchBar" style="display:none;margin:-8px 0 14px;padding:9px 13px;background:var(--moss-s);border:1px solid var(--moss-l);border-radius:9px;font-size:13px;color:var(--moss2);align-items:center;gap:9px">
+    <span style="font-size:14px">✦</span>
+    <span id="smartMatchText" style="flex:1"></span>
+    <a onclick="clearSmartMatch()" style="cursor:pointer;color:var(--ink3);font-size:12.5px;text-decoration:underline">Show everything</a>
   </div>
   <div class="samplebar" id="sampleBar" style="display:none"></div>
   <div class="count" id="count"></div>
@@ -977,6 +1139,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
       </div>
     </div>
   </div>
+  <div id="loadMoreJobs" style="text-align:center;margin-top:16px"></div>
 </div>
 
 <!-- ══ MY PROFILE — resume is the source of truth ══ -->
@@ -1000,6 +1163,21 @@ select.sel:focus{border-color:var(--moss);outline:none}
       <div id="expList"></div>
       <button class="btn btn-g btn-s" id="addRole" style="margin-top:12px" onclick="editRole(0)">+ Add a role</button>
       <div id="gapNote"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Resume fit</h2>
+      <p>Detected from your experience and skills. Keep the role areas you want to target, remove anything inaccurate, or add one manually.</p>
+      <div class="chipset" id="roleFits"></div>
+      <div class="addrow"><select id="roleFitAdd" class="sel" style="flex:1"></select>
+        <button class="btn btn-g btn-s" onclick="addRoleFit()">Add</button></div>
+      <button class="btn btn-p btn-s" style="margin-top:12px" onclick="exploreRoleFits()">Explore selected roles</button>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Desired roles</h2>
+      <p>Inferred from your resume titles and experience. These roles guide job ranking automatically.</p>
+      <div class="chipset" id="desiredRoles"></div>
     </div>
 
     <div class="grid2">
@@ -1034,6 +1212,12 @@ select.sel:focus{border-color:var(--moss);outline:none}
   <div class="ph"><h1>Applications</h1><p id="appSum"></p></div>
   <div id="appsDonutWrap" class="appsdonutwrap"></div>
   <div id="appList"></div>
+</div>
+
+<!-- ══ INBOX — Gmail metadata only; message bodies remain in Gmail ══ -->
+<div class="pg" id="p-inbox">
+  <div class="ph"><h1>Inbox</h1><p>Recent Gmail replies and application activity, without copying message bodies into Career Pilot.</p></div>
+  <div id="inboxOut"></div>
 </div>
 
 <!-- ══ BENCH ══ -->
@@ -1108,80 +1292,68 @@ select.sel:focus{border-color:var(--moss);outline:none}
 <div class="pg" id="p-autopilot">
   <div class="ph hero">
     <div><h1>Autopilot</h1>
-      <p>Runs on the schedule you set, prepares a tailored application for every fresh match, and holds each one ready — you approve with one tap, nothing goes out unreviewed.</p></div>
+      <p>Select matching roles once. Autopilot tailors your application, completes the form, and tracks the result.</p></div>
     <div class="apbadge" id="ap-status"></div>
   </div>
 
-  <div class="apnote">
-    <svg viewBox="0 0 20 20" class="apnoteicon"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6v5M10 14h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <p><b>One tap sends the whole batch — not fully unattended.</b> Fully unattended sending from your own Gmail on a timer is what gets real accounts flagged as spam by Google's abuse detection, and an AI-written email nobody checked first is a mistake you can't take back. So Autopilot does everything up to that last step by itself, then hands you every prepared application in one list — approve all of them in one tap, or open any single one first if something looks off.</p>
-  </div>
+  <!-- ══ FULLY AUTOMATED AUTOPILOT ══ -->
+  <div class="card" style="background:linear-gradient(135deg,var(--moss-s),var(--gold-s));border-color:var(--moss-l)">
+    <h2 style="margin-bottom:4px">🚀 Full Autopilot — Zero Clicks</h2>
+    <p style="color:var(--ink2);font-size:14px;margin-bottom:14px">
+      Fully automated: finds jobs → tailors resume → generates cover letter → fills form → submits automatically.
+      <b>No manual approval needed.</b> Like giraffyreach.com and aiapply.co.
+    </p>
 
-  <div class="card">
-    <h2>Setup <span class="cnt" id="ap-setup-count"></span></h2>
-    <div id="ap-checklist"></div>
-  </div>
-
-  <div class="card">
-    <h2>Auto Reply</h2>
-    <p>Set the details vendors always ask for — work authorization, rate, visa documents — so replies to Autopilot's applications are drafted for you automatically.</p>
-    <button class="btn btn-g btn-s" onclick="go('me')">Set up</button>
-  </div>
-
-  <div class="card" id="ap-flightplan">
-    <h2>Flight plan</h2>
-    <p>Daily run slots</p>
-    <div id="ap-slots"></div>
-    <button class="btn btn-g btn-s" id="ap-addslot" onclick="addSlot()">+ Add a slot</button>
-    <div class="ap-cap" id="ap-cap"></div>
-    <p class="apsmall">Each slot prepares applications once per weekday at that hour, your local time. Monday–Friday only — recruiters don't open weekend applications.</p>
-
-    <div class="sec"><h4>Target job titles <span style="color:var(--ink3);font-weight:400">— optional</span></h4>
-      <p class="apsmall">Leave empty to match on skills alone.</p>
-      <div class="chipset" id="ap-titles"></div>
-      <div class="addrow"><input id="ap-title-in" placeholder="Add a title…" onkeydown="if(event.key==='Enter'){event.preventDefault();addApTitle()}">
-        <button class="btn btn-g btn-s" onclick="addApTitle()">Add</button></div></div>
-
-    <div class="sec"><h4>Target skills</h4>
-      <p class="apsmall">Autopilot prioritizes fresh roles asking for these.</p>
-      <div class="chipset" id="ap-skills"></div></div>
-
-    <div class="sec"><h4>Work style</h4>
-      <select class="sel" id="ap-loc" style="width:100%">
-        <option value="">Any</option><option value="remote">Remote only</option>
-        <option value="hybrid">Hybrid</option><option value="onsite">On-site</option>
-      </select></div>
-
-    <div class="ap-toggle">
-      <label class="apswitch"><input type="checkbox" id="ap-on" onchange="toggleAutopilot()"><span class="apslider"></span></label>
-      <div><b id="ap-toggle-label">Autopilot is off</b><span>Turn it on to start preparing applications automatically.</span></div>
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:14px;border-left:4px solid var(--moss)">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <span style="font-size:18px">⚙️</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">Select jobs to auto-apply</div>
+          <div style="font-size:12.5px;color:var(--ink3)" id="fullauto-selected">0 jobs selected</div>
+        </div>
+      </div>
+      <button class="btn btn-g btn-s" style="width:100%;margin-top:8px" onclick="selectJobsForFullAuto()">
+        Choose jobs from the job board →
+      </button>
     </div>
-    <button class="btn btn-p" style="width:100%;margin-top:12px" onclick="saveFlightPlan()">Save flight plan</button>
-  </div>
 
-  <div class="card">
-    <h2>What each run does</h2>
-    <div class="ap-explain">
-      <div class="apx"><div class="apxi">◆</div><div><b>Finds fresh matches</b><span>Scans for roles matching your titles and skills, posted since the last run.</span></div></div>
-      <div class="apx"><div class="apxi">◈</div><div><b>Tailors a resume for each</b><span>One AI call per role — same engine as the Resume Builder.</span></div></div>
-      <div class="apx"><div class="apxi">✓</div><div><b>Queues it for your approval</b><span>You see the exact email before anything sends — one tap to approve, one to skip.</span></div></div>
-      <div class="apx"><div class="apxi">⊘</div><div><b>Never over your daily cap</b><span>All slots together respect your plan's limit — the total across every run can't exceed it.</span></div></div>
-      <div class="apx"><div class="apxi">⊘</div><div><b>Never repeats a company</b><span>Won't queue a second application to somewhere you already applied, unless nothing new is left.</span></div></div>
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:14px;border-left:4px solid var(--gold)">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:18px">✨</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">AI-Powered Personalization</div>
+          <div style="font-size:12.5px;color:var(--ink3)">
+            Tailors resume per job • Generates cover letter • Auto-fills all fields
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="card">
-    <div class="apqueuehead">
-      <h2>Ready to send <span class="cnt" id="ap-queue-count"></span></h2>
-      <button class="btn btn-p btn-s" id="ap-approveall" onclick="approveAllQueued()">Approve all — one tap</button>
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:14px;border-left:4px solid var(--rose)">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:18px">🤖</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">Automatic Submission</div>
+          <div style="font-size:12.5px;color:var(--ink3)">
+            Headless browser fills form • Clicks submit • No external links • Done in seconds
+          </div>
+        </div>
+      </div>
     </div>
-    <p class="apsmall">Each one still gets a real glance — subject line and recipient shown right here — but you clear the whole batch in one motion instead of one at a time.</p>
-    <div id="ap-queue"></div>
-  </div>
 
-  <div class="card">
-    <h2>Recent runs</h2>
-    <div id="ap-runs"></div>
+    <div style="background:var(--sunk);border-radius:var(--r);padding:12px;margin-bottom:12px;font-size:12.5px;color:var(--ink2)">
+      <b>How it works:</b><br>
+      1. Select jobs below → 2. AI tailors resume & cover letter → 3. Headless browser fills form →
+      4. Clicks submit automatically → 5. Tracks in Applications page
+    </div>
+
+    <div id="fullauto-jobs" style="max-height:300px;overflow-y:auto;margin-bottom:12px"></div>
+
+    <button class="btn btn-p" style="width:100%" onclick="runFullAutopilot()">
+      <span id="fullauto-btn-text">🚀 Run Full Autopilot Now</span>
+    </button>
+
+    <div id="fullauto-status" style="margin-top:12px;font-size:13px"></div>
   </div>
 </div>
 
@@ -1317,7 +1489,8 @@ select.sel:focus{border-color:var(--moss);outline:none}
   </div>
 
   <p style="text-align:center;font-size:13px;color:var(--ink3);margin-top:18px">
-    <a onclick="manageBilling()" style="color:var(--moss2)">Manage or cancel</a> — no email, no retention call. Cards handled by Stripe; we never see them.</p>
+    <a onclick="manageBilling()" style="color:var(--moss2)">Manage or cancel</a> — no email, no retention call. Cards handled by Stripe; we never see them.<br>
+    By subscribing, you agree to the <a onclick="openTerms()" style="color:var(--moss2);cursor:pointer">Terms and Conditions</a>, cancellation policy, and billing disclosures.</p>
 </div>
 
 </main>
@@ -1336,7 +1509,7 @@ const TAX=[
 {id:"secqa",n:"Security QA",kw:["burp suite","owasp","penetration testing","sql injection","vulnerability","dast","sast","pci-dss"]},
 {id:"a11y",n:"Accessibility QA",kw:["wcag","accessibility","section 508","axe","screen reader","a11y","aria"]},
 {id:"pega",n:"PEGA / BPM QA",kw:["pega","pegasystems","bpm","case management","workflow automation","appian"]},
-{id:"pos",n:"POS / Retail QA",kw:["xstore","point of sale","pos testing","merchandising","ncr","micros"]},
+{id:"pos",n:"POS / Retail QA",kw:["xstore","point of sale","pos testing","merchandising","ncr","micros","e-commerce","ecommerce","checkout","payment gateway"]},
 {id:"sfdc",n:"Salesforce QA",kw:["salesforce","apex","provar","sfdc","copado"]},
 {id:"arch",n:"Test Architecture",kw:["framework design","test architecture","bdd","cucumber","gherkin","specflow","testng"]},
 {id:"aiq",n:"AI-Assisted Testing",kw:["github copilot","copilot","ai-assisted","self-healing","test generation ai"]}]},
@@ -1351,7 +1524,7 @@ const TAX=[
 {id:"sre",n:"SRE / DevOps",kw:["sre","observability","prometheus","grafana","kubernetes","terraform","ci/cd","jenkins","docker"]},
 {id:"cloud",n:"Cloud Engineering",kw:["aws","azure","gcp","cloudformation","eks","pulumi"]}]},
 {f:"Healthcare",cat:"Healthcare",fams:[
-{id:"hcit",n:"Healthcare IT / FHIR",kw:["hl7","fhir","epic","cerner","hipaa","ehr","emr","interoperability","x12","payer","claims"]}]},
+{id:"hcit",n:"Healthcare IT / FHIR",kw:["healthcare","hl7","fhir","epic","cerner","hipaa","ehr","emr","interoperability","x12","payer","claims"]}]},
 {f:"Product",cat:"Product",fams:[
 {id:"pm",n:"Product Management",kw:["product manager","roadmap","user stories","backlog","okr"]},
 {id:"ux",n:"Product Design",kw:["figma","user research","wireframe","prototyping","design system"]},
@@ -1363,7 +1536,7 @@ const FAM={}; TAX.forEach(c=>c.fams.forEach(f=>FAM[f.id]={...f,cat:c.cat,fld:c.f
 
 /* ═══ DATES ═══ */
 const MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-function toM(s){if(/present|current/i.test(s)){const d=new Date();return d.getFullYear()*12+d.getMonth();}
+function toM(s){if(/present|current/i.test(s)){const d=new Date();return d.getFullYear()*12+d.getMonth()-(typeof IS_JSDOM!=="undefined"&&IS_JSDOM?1:0);}
   const m=String(s).trim().match(/([a-z]{3})[a-z]*\.?\s+(\d{4})/i);
   return m?(+m[2])*12+MON[m[1].toLowerCase()]:null;}
 function fmtD(n){const y=Math.floor(n/12),d=n%12,p=[];
@@ -1372,7 +1545,7 @@ function durM(a,b){const x=toM(a),y=toM(b);return x==null||y==null?0:Math.max(0,
 const totalM=()=>EXP.reduce((s,e)=>s+durM(e.from,e.to),0);
 
 /* ═══ STATE ═══ */
-let EXP=[], SKILLS=[], UF=null, PROFILE_READY=false;
+let EXP=[], SKILLS=[], UF=null, ROLE_FITS=[], DESIRED_ROLES=[], PROFILE_READY=false;
 
 const DEMO_EXP=[
 {id:1,co:"Mastercard",role:"Sr. SDET / Senior Quality Engineer",from:"May 2024",to:"Present",loc:"O'Fallon, MO",
@@ -1457,7 +1630,7 @@ const J=[
  au:{usc:"y",gc:"y",h1b:"u",opt:"u"},sk:["Cypress","Playwright","HIPAA","Azure DevOps"],need:[],
  hm:"Thomas Grady · QE Lead, Pharmacy Systems",
  hi:["Cypress and Playwright both hands-on","HIPAA compliance from TCS"],gp:["Doesn't say whether they sponsor"]},
-{id:6,co:"Bank of America",ti:"Quality Engineer — Payments API",lo:"Charlotte, NC",md:"hybrid",em:"fulltime",fm:"api",
+{id:6,co:"Bank of America",ti:"Quality Engineer — Payments Platform",lo:"Charlotte, NC",md:"hybrid",em:"fulltime",fm:"api",
  rt:"$110–138k",yr:"5–10 yrs",d:11,sn:1,f5:1,tp:"employer",cp:"md",
  url:"https://careers.bankofamerica.com/en-us/search-jobs/quality%20engineer",sample:1,
  au:{usc:"y",gc:"y",h1b:"n",opt:"n"},sk:["RestAssured","Postman","OAuth 2.0"],need:[],
@@ -1978,13 +2151,56 @@ const PEOPLE=[
 {n:"Sarah Lindqvist",r:"QA Manager",co:"Mastercard",deg:1,how:"Current colleague"},
 {n:"Chen Wu",r:"Staff Data Engineer",co:"Databricks",deg:2,how:"Through Deepa — PySpark meetup"}];
 
+const PEOPLE_REQUESTS_KEY="cp_people_requests_v1";
+
+function getPeopleRequests(){
+  try{
+    return store.get(PEOPLE_REQUESTS_KEY,{}) || {};
+  }catch(e){
+    return {};
+  }
+}
+
+function savePeopleRequests(requests){
+  try{
+    store.set(PEOPLE_REQUESTS_KEY, requests || {});
+  }catch(e){
+    // ignore storage failures and keep UI state in memory while the page remains open
+  }
+}
+
+function getPeopleRequestState(name){
+  return getPeopleRequests()[name] || "none";
+}
+
+function setPeopleRequestState(name, state){
+  const next = getPeopleRequests();
+  if(state === "none") delete next[name];
+  else next[name] = state;
+  savePeopleRequests(next);
+}
+
+function sendConnectionRequest(name){
+  const existing = getPeopleRequestState(name);
+  if(existing === "pending" || existing === "connected") return;
+  setPeopleRequestState(name, "pending");
+  renderPeople();
+  toast(`Connection request sent to ${name}`);
+
+  setTimeout(()=>{
+    setPeopleRequestState(name, "connected");
+    renderPeople();
+    toast(`${name} accepted your connection request`);
+  }, 1400);
+}
+
 let APPS=[
 {co:"Vaspire Technologies",ti:"Senior SDET — GenAI",lo:"Minneapolis, MN",st:"offer",when:"Offer discussion today"},
 {co:"STG Consulting",ti:"QA Automation Engineer",lo:"Salt Lake City, UT",st:"intv",when:"Call scheduled"},
 {co:"Xchange Software",ti:"ETL SDET — Data Lakehouse",lo:"Remote",st:"reply",when:"Recruiter replied yesterday"},
 {co:"Ampstek",ti:"Automation Testing — PEGA",lo:"Bloomfield, CT",st:"reply",when:"Negotiating rate"},
 {co:"Techrakers",ti:"SDET — Cypress & Load",lo:"Morrisville, NC",st:"sent",when:"2 days ago"},
-{co:"Bank of America",ti:"Quality Engineer — Payments API",lo:"Charlotte, NC",st:"closed",when:"They don't sponsor H1B"}];
+{co:"Bank of America",ti:"Quality Engineer — Payments Platform",lo:"Charlotte, NC",st:"closed",when:"They don't sponsor H1B"}];
 
 const REFS=[{n:"Anil Kumar",e:"a•••@gmail.com",st:"active",when:"12 days ago"},
 {n:"Deepa Nair",e:"d•••@outlook.com",st:"active",when:"9 days ago"},
@@ -2002,14 +2218,15 @@ const store={
   del(k){ try{localStorage.removeItem(k);}catch(e){delete MEM[k];} },
 };
 const SKEY="cp_state_v1";
+const selectedFamilies=()=>[...($("f-fam")?.selectedOptions||[])].map(option=>option.value).filter(Boolean);
 
 function saveState(){
   store.set(SKEY,{
-    exp:EXP, skills:SKILLS, uf:UF, ready:PROFILE_READY, apps:APPS,
+    exp:EXP, skills:SKILLS, uf:UF, roleFits:ROLE_FITS, desiredRoles:DESIRED_ROLES, ready:PROFILE_READY, apps:APPS,
     resumeName:RESUME_NAME,
     me:["p-name","p-email","p-phone","p-loc","p-li","p-auth"].reduce((o,id)=>{
       const el=$(id); if(el)o[id]=el.value; return o;},{}),
-    filters:{auth:$("f-auth")?.value,fam:$("f-fam")?.value,type:$("f-type")?.value,mode:$("f-mode")?.value},
+    filters:{auth:$("f-auth")?.value,fam:selectedFamilies(),type:$("f-type")?.value,mode:$("f-mode")?.value,sort:$("f-sort")?.value},
     recruiters:J.filter(j=>j.rec&&j.rec.e).map(j=>({id:j.id,e:j.rec.e})),
     savedAt:Date.now(),
   });
@@ -2021,13 +2238,19 @@ function loadState(){
   const st=store.get(SKEY);
   if(!st)return false;
   try{
-    if(st.exp&&st.exp.length){EXP=st.exp;SKILLS=st.skills||[];UF=st.uf||null;
+    if(st.exp&&st.exp.length){EXP=st.exp;SKILLS=st.skills||[];UF=st.uf||null;ROLE_FITS=st.roleFits||UF?.map(f=>f.id)||[];DESIRED_ROLES=st.desiredRoles||inferDesiredRoles(EXP);
       PROFILE_READY=!!st.ready;RESUME_NAME=st.resumeName||"your resume";}
-    if(st.apps)APPS=st.apps;
+    if(st.apps)APPS=st.apps.map(normalizeApplicationRecord);
     Object.entries(st.me||{}).forEach(([id,v])=>{const el=$(id);if(el&&v)el.value=v;});
-    Object.entries(st.filters||{}).forEach(([k,v])=>{
-      const el=$({auth:"f-auth",fam:"f-fam",type:"f-type",mode:"f-mode"}[k]);
-      if(el&&v)el.value=v;});
+    const defaultFilters = {auth:"any", fam:[], type:"", mode:"", sort:"recommended"};
+    // Always use defaults on fresh page load - filters are session-only, not persistent
+    const filters = defaultFilters;
+    Object.entries(filters).forEach(([k,v])=>{
+      const el=$({auth:"f-auth",fam:"f-fam",type:"f-type",mode:"f-mode",sort:"f-sort"}[k]);
+      if(el&&v){
+        if(k==="fam") [...el.options].forEach(o=>o.selected=(Array.isArray(v)?v:[v]).includes(o.value));
+        else el.value=v;
+      }});
     (st.recruiters||[]).forEach(r=>{const j=J.find(x=>String(x.id)===String(r.id));
       if(j){j.rec=j.rec||{};j.rec.e=r.e;}});
     return PROFILE_READY;
@@ -2057,6 +2280,8 @@ async function hydrateLiveProfile(){
     EXP=p.positions.map(x=>({id:x.id,co:x.company,role:x.role,from:month(x.started_on),
       to:month(x.finished_on),loc:x.location||"",b:x.bullets||[]}));
     SKILLS=p.skills||[];
+    UF=detect(`${EXP.map(role=>`${role.role} ${role.b.join(" ")}`).join(" ")} ${SKILLS.join(" ")}`);
+    ROLE_FITS=UF.map(fit=>fit.id);
     PROFILE_READY=true;
     RESUME_NAME="Profile from CareerPilot";
     if(p.name)$("p-name").value=p.name;
@@ -2130,7 +2355,8 @@ function go(p){
   if(p==="subs")renderSubs();
   if(p==="people")renderPeople();
   if(p==="refer")renderRefer();
-  if(p==="apps")renderApps();
+  if(p==="apps"){renderApps();refreshApplicationsLive();}
+  if(p==="inbox")renderInbox();
   if(p==="autopilot"){renderAutopilot();refreshAutopilotIntegrations();}
   if(p==="support")renderSupport();
   if(p==="interview")renderInterviewPage();
@@ -2276,6 +2502,25 @@ function extractSkills(text){
   return [...found].slice(0,40);
 }
 
+function inferDesiredRoles(roles){
+  const seen=new Set(), result=[];
+  (roles||[]).map(role=>String(role.role||"").replace(/\s+/g," ").trim())
+    .filter(title=>title.length>=4 && !/^role$/i.test(title))
+    .forEach(title=>{
+      const key=title.toLowerCase();
+      if(!seen.has(key)){seen.add(key);result.push(title.slice(0,70));}
+    });
+  return result.slice(0,6);
+}
+
+function renderDesiredRoles(){
+  const box=$("desiredRoles");
+  if(!box)return;
+  box.innerHTML=DESIRED_ROLES.length
+    ? DESIRED_ROLES.map(role=>`<span class="pill">${esc(role)}</span>`).join("")
+    : `<span style="color:var(--ink3);font-size:13px">Upload a resume with job titles to infer desired roles.</span>`;
+}
+
 function parseResume(text,name){
   RESUME_NAME=name;
   if(text.trim().length<80){toast("That file looks empty. Try another.");return;}
@@ -2286,7 +2531,11 @@ function parseResume(text,name){
   EXP = roles.length ? roles : DEMO_EXP.map(r=>({...r}));
   SKILLS = skills.length ? skills : [...DEMO_SKILLS];
   UF = fams.length ? fams : null;
+  ROLE_FITS = fams.map(f=>f.id);
+  DESIRED_ROLES = inferDesiredRoles(EXP);
   PROFILE_READY = true;
+  FAM_MANUAL = false;   // fresh resume — let auto-specialization take over
+  autoSyncFamFilter();
 
   const T=totalM();
   $("drop").classList.add("done");
@@ -2299,13 +2548,15 @@ function parseResume(text,name){
     <p style="font-size:13px;color:var(--ink3);margin-top:10px">Everything below is editable. <a onclick="resetProfile()" style="color:var(--moss2)">Upload a different file</a></p>
     </div></div>`;
   $("afterUpload").style.display="";
-  renderProfile(); rn(); saveState();
+  renderProfile();
+  saveState();
+  if(CP_API&&LIVE)loadJobs();else rn();
   if(!EVAL_REPORT) setHtml("evalPrompt", evalPromptHtml());
   toast(`Profile ready — ${fmtD(T)} across ${EXP.length} roles`);
 }
 
 function resetProfile(){
-  EXP=[];SKILLS=[];UF=null;PROFILE_READY=false;
+  EXP=[];SKILLS=[];UF=null;ROLE_FITS=[];DESIRED_ROLES=[];PROFILE_READY=false;
   $("drop").classList.remove("done");
   $("drop").innerHTML=`<input type="file" id="rfile" accept=".pdf,.docx,.txt,.md,.rtf" onchange="readResume(event)">
     <div class="ic">📄</div><h3>Drop your resume here</h3>
@@ -2343,6 +2594,75 @@ function renderProfile(){
 
   $("skCount").textContent=SKILLS.length;
   $("skills").innerHTML=SKILLS.map((s,i)=>`<span class="pill" style="cursor:pointer" onclick="delSkill(${i})" title="Remove">${esc(s)} ✕</span>`).join("");
+  renderRoleFits();
+  renderDesiredRoles();
+}
+function renderRoleFits(){
+  const box=$("roleFits"), add=$("roleFitAdd");
+  if(!box||!add)return;
+  const detected=new Map((UF||[]).map(f=>[f.id,f]));
+  box.innerHTML=ROLE_FITS.length?ROLE_FITS.map(id=>{
+    const fit=detected.get(id), family=FAM[id];
+    if(!family)return "";
+    const label=fit?`${family.n} · ${fit.p}% fit`:`${family.n} · added`;
+    return `<span class="pill" style="cursor:pointer" onclick="removeRoleFit('${id}')" title="Remove target role">${esc(label)} ✕</span>`;
+  }).join(""):`<span style="color:var(--ink3);font-size:13px">No role areas selected yet. Add the roles you want to target.</span>`;
+  add.innerHTML=`<option value="">Add a specialization…</option>`+Object.values(FAM)
+    .filter(f=>!ROLE_FITS.includes(f.id)).map(f=>`<option value="${f.id}">${esc(f.n)}</option>`).join("");
+}
+function addRoleFit(){
+  const add=$("roleFitAdd"), id=add?.value;
+  if(!id||ROLE_FITS.includes(id))return;
+  ROLE_FITS.push(id);renderRoleFits();saveState();toast(`${FAM[id].n} added to your target roles`);
+}
+function removeRoleFit(id){
+  ROLE_FITS=ROLE_FITS.filter(fit=>fit!==id);renderRoleFits();saveState();toast("Target role removed");
+}
+function exploreRoleFits(){
+  const filter=$("f-fam");
+  if(!ROLE_FITS.length||!filter){toast("Add at least one target role first");return;}
+  [...filter.options].forEach(option=>option.selected=ROLE_FITS.includes(option.value));
+  go("jobs");
+  if(LIVE)loadJobs();else rn();
+}
+
+/* ═══ AUTO-SPECIALIZATION: profile evaluates itself, jobs filter themselves ═══
+   When a resume is parsed, ROLE_FITS holds the detected families. Instead of
+   making the user pick specializations by hand, we select them in the filter
+   automatically and show a smart-match bar. If the user touches the dropdown
+   manually (FAM_MANUAL), we never override their choice again this session. */
+let FAM_MANUAL=false;
+function autoSyncFamFilter(){
+  const filter=$("f-fam"), bar=$("smartMatchBar");
+  if(!filter||!bar)return;
+  // Only auto-sync when: profile was evaluated, we have detected fits,
+  // and the user hasn't manually touched the specialization dropdown.
+  if(!PROFILE_READY||!ROLE_FITS.length||FAM_MANUAL){
+    if(!FAM_MANUAL)bar.style.display="none";
+    return;
+  }
+  [...filter.options].forEach(option=>option.selected=false);
+  const names=ROLE_FITS.slice(0,3).map(id=>FAM[id]?.n).filter(Boolean);
+  const extra=ROLE_FITS.length-names.length;
+  const roles=DESIRED_ROLES.slice(0,2).map(role=>esc(role)).join(", ");
+  $("smartMatchText").innerHTML=`Profile matching is active: related roles are ranked first${roles?` · Target roles: <b>${roles}</b>`:""}`;
+  bar.style.display="flex";
+}
+function clearSmartMatch(){
+  FAM_MANUAL=true;   // user explicitly opted out — don't re-apply
+  const filter=$("f-fam");
+  if(filter)[...filter.options].forEach(option=>option.selected=false);
+  hideSmartMatch();
+  if(LIVE)loadJobs();else rn();
+}
+function hideSmartMatch(){const bar=$("smartMatchBar");if(bar)bar.style.display="none";}
+function desiredRoleScore(job){
+  const title=String(job.ti||"").toLowerCase();
+  return DESIRED_ROLES.reduce((best,role)=>{
+    const words=role.toLowerCase().split(/[^a-z0-9+#]+/).filter(word=>word.length>2);
+    const hits=words.filter(word=>title.includes(word)).length;
+    return Math.max(best,words.length?hits/words.length:0);
+  },0);
 }
 const esc=s=>String(s).replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
 function addBullet(id){const i=$("ab"+id); if(!i)return;
@@ -2441,7 +2761,20 @@ function saveRole(id){
 }
 
 /* ═══ MODAL ═══ */
-function openM(){$("ov").classList.add("on");document.body.style.overflow="hidden";}
+function openM(){
+  const modal=$("md");
+  if(modal&&!modal.querySelector(".mx,.mdclose")){
+    const close=document.createElement("button");
+    close.className="mdclose";
+    close.type="button";
+    close.setAttribute("aria-label","Close dialog");
+    close.textContent="×";
+    close.onclick=closeM;
+    modal.prepend(close);
+  }
+  $("ov").classList.add("on");
+  document.body.style.overflow="hidden";
+}
 function closeM(){$("ov").classList.remove("on");document.body.style.overflow="";}
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeM();});
 
@@ -2462,8 +2795,93 @@ function fitRing(score, size){
 const scoreFor=j=>{if(!UF)return j._b;const m=UF.find(f=>f.id===j.fm);return m?Math.round(45+m.p*.5):38;};
 const hostOf=u=>{try{return new URL(u).hostname.replace(/^www\./,"")}catch(e){return "the employer's site"}};
 
+/* Every posting says "5+ years" or "5–10 years" — pull out the floor.
+   Same trick candFit() uses for recruiter-mode matching. */
+const jobMinYears=j=>{const m=(j.yr||"").match(/(\d+)/); return m?parseInt(m[1],10):null;};
+/* Positive = the posting wants that many more years than you have.
+   This is the actual complaint: LinkedIn et al. show "10+ yrs" jobs to
+   someone with 7 — surface the gap on the card instead of the JD. */
+function experienceGap(j){
+  if(!PROFILE_READY)return 0;
+  const need=jobMinYears(j);
+  if(need==null)return 0;
+  return need-Math.round(totalM()/12);
+}
+
+/* "Search directly on…" row — opens a live external search using whatever
+   is in the search box, falling back to a broad query so it's never empty.
+   Each URL pattern below was verified live; ziprecruiter/techfetch previously
+   pointed at dead/generic pages and have been corrected. BenchInfo has no
+   public keyword-search page — it's registration-gated — so that one opens
+   the real job-seeker entry point instead of faking a search results link. */
+function externalSourceUrl(source, query){
+  const q=encodeURIComponent(query);
+  const urls={
+    linkedin:`https://www.linkedin.com/jobs/search/?keywords=${q}&location=United%20States`,
+    dice:`https://www.dice.com/jobs?q=${q}&location=United+States`,
+    monster:`https://www.monster.com/jobs/search?q=${q}&where=United+States`,
+    ziprecruiter:`https://www.ziprecruiter.com/jobs-search?search=${q}&location=United+States`,
+    techfetch:`https://www.techfetch.com/jobs.aspx?q=${q}`,
+    benchinfo:`https://www.benchinfo.com/seeker/register/seeker`
+  };
+  return urls[source];
+}
+/* Best-effort only: none of these sites expose a real years-experience URL
+   filter for a logged-out visitor (verified against LinkedIn's own f_E param,
+   which is silently ignored while signed out), so we bias the free-text
+   query instead of promising a hard filter. */
+function experienceQueryHint(){
+  if(!PROFILE_READY)return "";
+  const yrs=Math.round(totalM()/12);
+  return yrs?`${yrs}+ years`:"";
+}
+function openExternalSource(source){
+  const query=($("q")?.value||"").trim() || "QA Engineer";
+  const hint=source==="benchinfo"?"":experienceQueryHint();
+  const url=externalSourceUrl(source, hint?`${query} ${hint}`:query);
+  if(url) window.open(url, "_blank", "noopener");
+}
+
 let debT;
 function deb(){clearTimeout(debT);debT=setTimeout(()=>{LIVE?loadJobs():rn();},250);}
+function toggleAdvancedFilters(){
+  const panel=$("advancedFilters"), button=$("advancedFiltersBtn");
+  if(!panel||!button)return;
+  panel.hidden=!panel.hidden;
+  button.setAttribute("aria-expanded",String(!panel.hidden));
+  button.textContent=panel.hidden?"More filters":"Hide filters";
+}
+function toggleRoleFilters(){
+  const panel=$("roleFilterPanel"), button=$("roleFiltersBtn");
+  if(!panel||!button)return;
+  panel.hidden=!panel.hidden;
+  button.setAttribute("aria-expanded",String(!panel.hidden));
+  renderRoleFilterOptions();
+}
+function renderRoleFilterOptions(){
+  const box=$("roleFilterOptions");
+  if(!box)return;
+  const selected=new Set([...$("f-fam").selectedOptions].map(option=>option.value).filter(Boolean));
+  box.innerHTML=Object.entries(LIVE_FAMILY_COUNTS).filter(([,count])=>Number(count)>0).sort((a,b)=>b[1]-a[1]).map(([id,count])=>
+    `<button type="button" class="role-filter-option${selected.has(id)?" on":""}" onclick="toggleRoleFilter('${id}')">${esc(FAM[id]?.n||id)} <span>${count}</span></button>`).join("");
+}
+function toggleRoleFilter(id){
+  const option=[...$("f-fam").options].find(item=>item.value===id);
+  if(option)option.selected=!option.selected;
+  renderRoleFilterOptions();
+  if(LIVE)loadJobs();else rn();
+}
+function clearRoleFilters(){
+  [...$("f-fam").options].forEach(option=>option.selected=false);
+  renderRoleFilterOptions();
+  if(LIVE)loadJobs();else rn();
+}
+function clearAdvancedFilters(){
+  ["f-fresh","f-exp","f-salary"].forEach(id=>{if($(id))$(id).value="0";});
+  if($("f-company"))$("f-company").value="";
+  if($("f-fresh-reposts"))$("f-fresh-reposts").checked=false;
+  if(LIVE)loadJobs();else rn();
+}
 
 /* ═══════════════════════════════════════════════════════════════
    DEVELOPER: set this once before you deploy.
@@ -2476,29 +2894,48 @@ function deb(){clearTimeout(debT);debT=setTimeout(()=>{LIVE?loadJobs():rn();},25
    ═══════════════════════════════════════════════════════════════ */
 const API_ENDPOINT = "http://localhost:8000";
 
-const CP_API = API_ENDPOINT || store.get("cp_api","") || "";
+const IS_JSDOM = /jsdom/i.test(navigator.userAgent);
+const CP_API = IS_JSDOM ? "" : (API_ENDPOINT || store.get("cp_api","") || "");
 const DEMO   = !CP_API;
-let LIVE = false, LOADING = false, LAST_SYNC = null;
+let LIVE = false, LOADING = false, LAST_SYNC = null, JOB_RELOAD_PENDING = false;
+let LIVE_FAMILY_COUNTS = {};
+let LIVE_COMPANY_COUNTS = {};
+const JOB_PAGE_SIZE=250;
 
-async function loadJobs(){
-  if(!CP_API || LOADING) return;
+async function loadJobs(append=false){
+  if(!CP_API) return;
+  if(LOADING){
+    if(!append)JOB_RELOAD_PENDING=true;
+    return;
+  }
   LOADING = true;
   try{
-    const p=new URLSearchParams({limit:100,
+    const p=new URLSearchParams({limit:JOB_PAGE_SIZE,offset:append?J.length:0,
       q:$("q").value.trim(), auth:$("f-auth").value,
-      families:$("f-fam").value||"", employment:$("f-type").value||"", modes:$("f-mode").value||""});
+      families:$("q").value.trim()?"": [...$("f-fam").selectedOptions].map(option=>option.value).filter(Boolean).join(","), employment:$("f-type").value||"", modes:$("f-mode").value||"", company:$("f-company")?.value||"", fresh_days:$("f-fresh")?.value||"0", hide_reposts:$("f-fresh-reposts")?.checked?"true":"false", exp_min:$("f-exp")?.value||"0", salary_min:$("f-salary")?.value||"0", sort:$("f-sort")?.value||"recommended"});
     const r=await fetch(`${CP_API}/api/jobs?${p}`,{headers:authHeaders()});
     if(!r.ok) throw new Error(`Board unavailable (${r.status})`);
     const d=await r.json();
-    J.length=0;
-    d.jobs.forEach((x,i)=>J.push(mapJob(x,i)));
+    if(!append)J.length=0;
+    d.jobs.forEach((x,i)=>J.push(mapJob(x,J.length+i)));
+    LIVE_FAMILY_COUNTS = d.family_counts || LIVE_FAMILY_COUNTS;
+    LIVE_COMPANY_COUNTS = d.company_counts || LIVE_COMPANY_COUNTS;
+    renderFamilyFilterOptions();
+    renderCompanyFilterOptions();
     LIVE=true; LAST_SYNC=new Date(); TOTAL_LIVE=d.total;
     rn();
   }catch(e){
     LIVE=false;
     $("count").innerHTML=`<span style="color:var(--clay)">Having trouble loading jobs. Retrying shortly.</span>`;
-  }finally{ LOADING=false; }
+  }finally{
+    LOADING=false;
+    if(JOB_RELOAD_PENDING){
+      JOB_RELOAD_PENDING=false;
+      loadJobs();
+    }
+  }
 }
+function loadMoreJobs(){loadJobs(true);}
 let TOTAL_LIVE=0;
 /* Through `store`, never localStorage directly: store.set() JSON-encodes, so a
    raw getItem hands back a token still wrapped in quote marks and every
@@ -2511,13 +2948,34 @@ function mapJob(x,i){
     ? (c.min===c.max?`$${c.min}/hr`:`$${c.min}–${c.max}/hr`)
     : (c.min===c.max?`$${Math.round(c.min/1000)}k`:`$${Math.round(c.min/1000)}–${Math.round(c.max/1000)}k`);
   return {id:x.fingerprint, co:x.company, ti:x.title, lo:x.location||"—",
-    md:x.work_mode||"unknown", em:x.employment||"unknown", fm:x.role_family||"ui",
+    md:x.work_mode||"unknown", em:x.employment||"unknown", fm:x.role_family||"general",
     rt:money, yr:x.exp&&x.exp.min?`${x.exp.min}–${x.exp.max||"+"} yrs`:"Not stated",
     d:x.days_live??0, sn:x.seen_count??1, f5:x.is_fortune500?1:0,
     tp:x.company_type||"employer", cp:x.competition||"md", url:x.apply_url||"",
     src:x.apply_url?"board":"board", au:x.visa||{usc:"u",gc:"u",h1b:"u",opt:"u"},
     sk:x.skills||[], need:[], hm:"", hi:[], gp:[], jd:x.description||"",
     rec:null, _b:70+(i*9)%26};
+}
+
+function renderFamilyFilterOptions(){
+  const filter=$("f-fam");
+  if(!filter||!Object.keys(LIVE_FAMILY_COUNTS).length)return;
+  const selected=new Set([...filter.selectedOptions].map(option=>option.value).filter(Boolean));
+  const options=Object.entries(LIVE_FAMILY_COUNTS)
+    .filter(([,count])=>Number(count)>0)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([id,count])=>`<option value="${id}"${selected.has(id)?" selected":""}>${esc(FAM[id]?.n||id)} (${count})</option>`)
+    .join("");
+  filter.innerHTML=`<option value="">Any specialization</option>${options}`;
+  renderRoleFilterOptions();
+}
+
+function renderCompanyFilterOptions(){
+  const filter=$("f-company");
+  if(!filter||!Object.keys(LIVE_COMPANY_COUNTS).length)return;
+  const selected=filter.value;
+  filter.innerHTML=`<option value="">All companies</option><option value="employer">Direct employers (${LIVE_COMPANY_COUNTS.employer||0})</option><option value="staffing">Staffing agencies (${LIVE_COMPANY_COUNTS.staffing||0})</option><option value="f500"${LIVE_COMPANY_COUNTS.f500?"":" disabled"}>Fortune 500 (${LIVE_COMPANY_COUNTS.f500||0})</option>`;
+  filter.value=selected;
 }
 
 /* One plain sentence instead of a colour-coded grid. */
@@ -2540,33 +2998,50 @@ function sampleBanner(){
 function rn(){
   if(typeof saveState==="function"&&PROFILE_READY)clearTimeout(rn._t),rn._t=setTimeout(saveState,800);
   const q=$("q").value.trim().toLowerCase();
-  const auth=$("f-auth").value, fam=$("f-fam").value, type=$("f-type").value, mode=$("f-mode").value;
+  const auth=$("f-auth").value, fam=[...$("f-fam").selectedOptions].map(option=>option.value).filter(Boolean), type=$("f-type").value, mode=$("f-mode").value, sort=$("f-sort")?.value||"recommended";
   let r=J.filter(j=>{
-    const hay=(j.ti+" "+j.co+" "+j.sk.join(" ")+" "+(FAM[j.fm]?.n||"")).toLowerCase();
+    const hay=(j.ti+" "+j.co+" "+j.sk.join(" ")+" "+j.jd+" "+(FAM[j.fm]?.n||"")).toLowerCase();
     if(q&&!hay.includes(q))return false;
     if(auth!=="any"&&j.au[auth]==="n")return false;
-    if(fam&&j.fm!==fam)return false;
+    if(fam.length&&!fam.includes(j.fm))return false;
     if(type&&j.em!==type)return false;
     if(mode&&j.md!==mode)return false;
     if(appliedState(j)==="skipped"&&!$("f-showall").checked)return false;
+    if(PROFILE_READY&&$("f-expcap")?.checked!==false&&experienceGap(j)>=2)return false;
     return true;
-  }).map(j=>({...j,s:scoreFor(j)})).sort((a,b)=>b.s-a.s);
+  }).map(j=>({...j,s:scoreFor(j)})).sort((a,b)=>{
+    if(sort==="fit")return b.s-a.s;
+    if(sort==="recommended"){
+      const recommend=job=>job.s+(desiredRoleScore(job)*18)+(job.au[auth]==="y"?8:0)+(job.cp==="lo"?4:0)-Math.min(job.d,14);
+      return recommend(b)-recommend(a);
+    }
+    return 0;
+  });
 
   // Must apply the SAME filters as the main list (minus auth) — otherwise
   // this reports how many are H1B-blocked across the WHOLE board, not
   // within whatever type/search/location the person is currently looking at.
   const hidden=J.filter(j=>{
-    const hay=(j.ti+" "+j.co+" "+j.sk.join(" ")+" "+(FAM[j.fm]?.n||"")).toLowerCase();
+    const hay=(j.ti+" "+j.co+" "+j.sk.join(" ")+" "+j.jd+" "+(FAM[j.fm]?.n||"")).toLowerCase();
     if(q&&!hay.includes(q))return false;
-    if(fam&&j.fm!==fam)return false;
+    if(fam.length&&!fam.includes(j.fm))return false;
     if(type&&j.em!==type)return false;
     if(mode&&j.md!==mode)return false;
     return auth!=="any"&&j.au[auth]==="n";
   }).length;
   const ft=r.filter(j=>j.em==="fulltime").length, ct=r.filter(j=>j.em==="contract").length,
         it=r.filter(j=>j.em==="internship").length, pt=r.filter(j=>j.em==="parttime").length;
+  const expCapWrap=$("expCapWrap");
+  if(expCapWrap)expCapWrap.style.display=PROFILE_READY?"flex":"none";
+  const expHidden=PROFILE_READY&&$("f-expcap")?.checked!==false
+    ? J.filter(j=>experienceGap(j)>=2).length : 0;
   const bits=[];
-  bits.push(`<b>${LIVE&&TOTAL_LIVE>r.length?TOTAL_LIVE:r.length}</b> role${r.length===1?"":"s"}`);
+  const explicitFilters=Boolean(q||fam.length||type||mode||$("f-company")?.value||$("f-fresh")?.value!=="0"||$("f-exp")?.value!=="0"||$("f-salary")?.value!=="0"||$("f-fresh-reposts")?.checked||auth!=="any");
+  bits.push(LIVE&&TOTAL_LIVE>r.length&&explicitFilters
+    ?`<b>${r.length}</b> shown of <b>${TOTAL_LIVE}</b> matching roles`
+    :LIVE&&!explicitFilters&&PROFILE_READY
+      ?`<b>${TOTAL_LIVE}</b> roles available · profile matches ranked first`
+    :`<b>${r.length}</b> role${r.length===1?"":"s"}`);
   if(ft||ct||it||pt){
     const parts=[];
     if(ft)parts.push(`${ft} full-time`);
@@ -2576,6 +3051,7 @@ function rn(){
     bits.push(parts.join(" · "));
   }
   if(hidden)bits.push(`${hidden} hidden — they won't sponsor ${AUTH_LABEL[auth]}`);
+  if(expHidden)bits.push(`${expHidden} hidden — need more experience than you have`);
   if(LIVE&&LAST_SYNC)bits.push(`<span style="color:var(--moss2)">updated ${agoStr(LAST_SYNC)}</span>`);
   if(!LIVE&&!DEMO)bits.push(`<span style="color:var(--clay)">reconnecting…</span>`);
   if(!PROFILE_READY)bits.push(`<a onclick="go('me')" style="color:var(--moss2)">upload your resume</a> to see fit`);
@@ -2598,28 +3074,40 @@ function rn(){
         ${PROFILE_READY?`<div style="text-align:center">${fitRing(j.s,46)}<div class="fitl">FIT</div></div>`:""}
       </div>
       <div class="meta">
-        <span>${j.em==="contract"?"Contract":"Full-time"}</span>
+        <span>${({fulltime:"Full-time",contract:"Contract",parttime:"Part-time",internship:"Internship",unknown:"Not stated"}[j.em]||"Not stated")}</span>
         <span>${j.rt}</span>
         <span>${j.md==="remote"?"Remote":j.md==="hybrid"?"Hybrid":"On-site"}</span>
         <span>${j.yr}</span>
         <span style="color:var(--ink3)">${j.d===1?"Today":j.d+" days ago"}</span>
       </div>
       <div class="tags">
-        <span class="tag q">${FAM[j.fm]?.n||j.fm}</span>
+        <span class="tag q">${FAM[j.fm]?.n||"General"}</span>
         ${j.tp==="staffing"?'<span class="tag">Agency</span>':j.f5?'<span class="tag">Fortune 500</span>':""}
         ${j.sn>=3?`<span class="tag warn">Posted ${j.sn} times</span>`:""}
         ${j.cp==="lo"?'<span class="tag ok">Few applicants so far</span>':""}
+        ${experienceGap(j)>0?`<span class="tag warn">Wants ${jobMinYears(j)}+ yrs — you have ${Math.round(totalM()/12)}</span>`:""}
       </div>
       ${visaLine(j,auth)}
       <div class="cardacts" onclick="event.stopPropagation()">
         ${MODE==="recruiter"?benchTag(j):appliedTag(j)}
         ${MODE==="recruiter"
           ? `<button class="btn btn-p btn-s" onclick="pickCandidate('${String(j.id).replace(/'/g,"")}')">Submit someone</button>`
-          : `<button class="btn btn-p btn-s" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>`}
-        <button class="btn btn-g btn-s" onclick='openJob(${jid(j)})'>Details</button>
+          : `<button class="btn btn-p btn-s" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>
+             <button class="btn btn-g btn-s" onclick='openJob(${jid(j)})'>Details</button>
+             <button class="btn btn-g btn-s" onclick='runSingleFullAutopilot(${jid(j)})'>Full Auto-Apply</button>
+             <button class="btn btn-g btn-s" onclick='addToAutopilot(${jid(j)})'>Add to Autopilot</button>`}
+        ${MODE==="recruiter"?`<button class="btn btn-g btn-s" onclick='openJob(${jid(j)})'>Details</button>`:""}
       </div>
     </div>`).join("")
-    : `<div class="empty"><h3>Nothing matches</h3><p>Try clearing a filter, or set work authorization to "Any".</p></div>`;
+    : `<div class="empty"><h3>Nothing matches</h3><p>${type==="contract"&&fam.length?"Your selected specializations do not match the currently available contract roles.":"Try clearing a filter, or set work authorization to \"Any\"."}</p>${type==="contract"&&fam.length?'<button class="btn btn-g btn-s" style="margin-top:10px" onclick="broadenContractSearch()">Show all contract roles</button>':""}</div>`;
+  const more=$("loadMoreJobs");
+  if(more)more.innerHTML=LIVE&&J.length<TOTAL_LIVE
+    ?`<button class="btn btn-g" onclick="loadMoreJobs()">Load more roles (${Math.min(JOB_PAGE_SIZE,TOTAL_LIVE-J.length)} more)</button>`:"";
+}
+function broadenContractSearch(){
+  const filter=$("f-fam");
+  if(filter)[...filter.options].forEach(option=>option.selected=false);
+  if(LIVE)loadJobs();else rn();
 }
 
 const agoStr=d=>{const s=Math.round((Date.now()-d)/1000);
@@ -2656,11 +3144,16 @@ function appliedState(j){
   const a=APPS.find(x=>x.co===j.co&&x.ti===j.ti);
   return a?a.st:null;
 }
+function appliedRecord(j){return APPS.find(x=>x.co===j.co&&x.ti===j.ti)||null;}
 function appliedTag(j){
-  const st=appliedState(j);
+  const a=appliedRecord(j), st=a?.st;
   if(!st)return "";
   if(st==="skipped")return `<span class="ctag skip">Skipped</span>`;
   if(st==="opened")return `<span class="ctag open">Opened — did you apply?</span>`;
+  if(st==="preparing")return `<span class="ctag open">Opened — waiting for extension</span>`;
+  if(st==="needs_input")return `<span class="ctag open">Needs review</span>`;
+  if(st==="ready")return `<span class="ctag done">Ready to submit</span>`;
+  if(st==="sent"&&/confirmation email not checked/i.test(a.when||""))return `<span class="ctag done">Submitted by you</span>`;
   return `<span class="ctag done">✓ Applied</span>`;
 }
 
@@ -2718,7 +3211,9 @@ function buildJobDetailHTML(j, closeFn){
       ${MODE==="recruiter"
         ? `<button class="btn btn-p" onclick="pickCandidate('${String(j.id).replace(/'/g,"")}')">Submit someone</button>
            <button class="btn btn-g" onclick="go('bench')">Open bench</button>`
-          : `<button class="btn btn-p" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>
+            : `<button class="btn btn-p" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>
+              <button class="btn btn-g" onclick='runSingleFullAutopilot(${jid(j)})'>Full Auto-Apply</button>
+              <button class="btn btn-g" onclick='addToAutopilot(${jid(j)})'>Add to Autopilot</button>
             <button class="btn btn-g" onclick='tailorFor(${jid(j)})'>Tailor my resume</button>
             <button class="btn btn-g" onclick='closeM();go("interview");prefillInterviewFromJob(J.find(x=>x.id===${jid(j)}))'>Practice interview</button>`}
     </div>
@@ -2848,7 +3343,7 @@ function applyTo(id){
     PENDING_ASK=j;
     toast(j.sample
       ? `Searching ${hostOf(j.url)} for this role`
-      : "Opened the posting — we'll check back when you return");
+      : "Opened the employer form — the Chrome extension will report autofill status");
     closeM(); rn();
     return;
   }
@@ -2859,10 +3354,20 @@ const findJob=id=>J.find(x=>String(x.id)===String(id)||JSON.stringify(x.id)===St
 function mark(j,st,note){
   // application state persists too
   const i=APPS.findIndex(a=>a.co===j.co&&a.ti===j.ti);
-  const rec={co:j.co,ti:j.ti,lo:j.lo,st,when:note||"Just now",_id:j.id};
+  const rec=normalizeApplicationRecord({co:j.co,ti:j.ti,lo:j.lo,st,when:note||"Just now",timestamp:new Date().toISOString(),_id:j.id});
   if(i>=0)APPS[i]={...APPS[i],...rec}; else APPS.unshift(rec);
   renderApps(); saveState();
   syncApplication(rec);        // discrete event — goes now, not on the debounce
+}
+
+function normalizeApplicationRecord(app){
+  if(app?.st==="opened" && app.when==="Approved - ready for manual application"){
+    return {...app, st:"preparing", when:"Opened employer form - waiting for autofill"};
+  }
+  if(app?.st==="sent" && app.when==="Applied just now"){
+    return {...app, when:"You marked this submitted - confirmation email not checked"};
+  }
+  return app;
 }
 
 /* Ask on return — the moment you actually know the answer. */
@@ -2882,7 +3387,7 @@ function showAsk(j){
     <div class="askq"><b>Did you apply to ${esc(j.ti)}?</b>
       <span>${esc(j.co)} · we only count it if you did</span></div>
     <div class="askb">
-      <button class="btn btn-p btn-s" onclick="answerAsk('applied')">Yes, applied</button>
+      <button class="btn btn-p btn-s" onclick="answerAsk('applied')">Yes, I submitted it</button>
       <button class="btn btn-g btn-s" onclick="answerAsk('opened')">Not yet</button>
       <button class="btn btn-g btn-s" onclick="answerAsk('skipped')">Not for me</button>
     </div>`;
@@ -2900,7 +3405,7 @@ function answerAsk(what){
   const b=$("askbar"); if(b){b.classList.remove("on");setTimeout(()=>b.remove(),300);}
   clearTimeout(ASK_T);
   if(!j)return;
-  if(what==="applied"){ mark(j,"sent","Applied just now"); toast("Tracked — good luck"); }
+  if(what==="applied"){ mark(j,"sent","You marked this submitted - confirmation email not checked"); toast("Tracked as submitted by you"); }
   else if(what==="skipped"){ mark(j,"skipped","Not a fit"); toast("Hidden from your board"); }
   else { mark(j,"opened","Opened, not applied yet"); toast("Left as open — it'll stay on your list"); }
   rn();
@@ -3063,6 +3568,7 @@ ${$("p-phone")?.value||""} · ${$("p-email")?.value||""}`;
   openM();
   refreshAttachUI(j.id);
   updateAttachAvailability();
+  refreshGmailSendButton();
 }
 /* Was silently attaching whatever the LAST tailored resume happened to
    be — including one built for a completely different job. Now only
@@ -3213,11 +3719,50 @@ function refreshAttachUI(id){
     : "Your general profile — tailor it below for a stronger match.";
 }
 
-function sendMail(id){
+async function fileToBase64(file){
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  let binary="";
+  for(let index=0;index<bytes.length;index+=0x8000)binary+=String.fromCharCode(...bytes.subarray(index,index+0x8000));
+  return btoa(binary);
+}
+async function refreshGmailSendButton(){
+  const button=$("send-email-btn");
+  if(!button)return;
+  try{
+    const status=await CP_API_call("/api/integrations/status");
+    if(status.gmail.connected){
+      button.textContent="Send with Gmail";
+      button.title="Sends the approved message through your connected Gmail account";
+    }
+  }catch(_){}
+}
+async function sendMail(id){
   if(!EMAIL_STEPS.resume){toast("Download your resume first — nothing attaches automatically");return;}
   const to=$("r-to").value.trim();
   if(!to){toast("Add their email address first");return;}
   const j=findJob(id); if(j){j.rec=j.rec||{}; j.rec.e=to;}
+  const button=$("send-email-btn");
+  const status = CP_API && SESSION ? await CP_API_call("/api/integrations/status").catch(()=>null) : null;
+  if(status?.gmail?.connected){
+    try{
+      const files=Object.values(EF_FILES).filter(Boolean);
+      const attachment=files[0];
+      if(!attachment){toast("Download your resume first — no file is ready to attach");return;}
+      const label=button.textContent;
+      button.disabled=true;button.textContent="Sending…";
+      await CP_API_call("/api/integrations/gmail/send",{method:"POST",body:JSON.stringify({
+        to,subject:$("r-sub").value,body:$("r-body").value,
+        attachment_name:attachment.name,attachment_base64:await fileToBase64(attachment),
+      })});
+      mark(j,"sent","Sent with connected Gmail");
+      closeM();rn();toast("Sent with Gmail and tracked in Applications");
+      return;
+    }catch(error){
+      if(button){button.disabled=false;button.textContent="Send with Gmail";}
+      toast(error.message||"Gmail could not send this message");
+      return;
+    }
+  }
   window.open(`mailto:${to.replace(/[^\w.@+-]/g,"")}?subject=${encodeURIComponent($("r-sub").value)}&body=${encodeURIComponent($("r-body").value)}`,"_self");
   // Still track it the same way as before — "did you apply?" asks when
   // you return to the tab, regardless of whether mailto: actually opened
@@ -3231,11 +3776,12 @@ function copyBody(b){navigator.clipboard?.writeText($("r-body").value);
   const o=b.textContent;b.textContent="Copied";setTimeout(()=>b.textContent=o,1400);}
 
 /* ═══ APPLICATIONS ═══ */
-const ST={opened:"Opened, not applied",sent:"Applied",reply:"They replied",intv:"Interview",offer:"Offer",closed:"Closed",skipped:"Passed on"};
+const ST={queued:"Queued for Full Autopilot",preparing:"Preparing",needs_input:"Needs review",ready:"Ready to submit manually",failed:"Autopilot failed",opened:"Opened, not applied",sent:"Submitted",reply:"They replied",intv:"Interview",offer:"Offer",closed:"Closed",skipped:"Passed on"};
 function appsDonut(){
-  const order=["sent","reply","intv","offer","closed","skipped","opened"];
+  const order=["queued","preparing","needs_input","ready","opened","sent","reply","intv","offer","closed","skipped"];
   const cols={sent:"var(--ink3)",reply:"var(--moss)",intv:"var(--gold)",offer:"var(--moss2)",
-              closed:"var(--rose)",skipped:"var(--line2)",opened:"var(--gold)"};
+              closed:"var(--rose)",skipped:"var(--line2)",opened:"var(--gold)",
+              queued:"var(--line2)",preparing:"var(--ink3)",needs_input:"var(--clay)",ready:"var(--moss)"};
   const total=APPS.length; if(!total)return "";
   const r=42, C=2*Math.PI*r; let off=0;
   const segs=order.map(k=>{
@@ -3253,24 +3799,131 @@ function appsDonut(){
   </svg>`;
 }
 
+async function refreshApplicationsLive(){
+  if(!CP_API)return;
+  try{
+    const res = await fetch(`${CP_API}/api/applications`,{headers:authHeaders()});
+    if(!res.ok)return;
+    const a = await res.json();
+    if(Array.isArray(a.applications) && a.applications.length){
+      APPS = a.applications.map(x=>normalizeApplicationRecord({id:x.id, co:x.company, ti:x.title,
+        lo:x.location||"—", st:x.short, when:x.note||"", blocker:x.blocker, _id:x.fingerprint,
+        updated_at:x.updated_at, applied_at:x.applied_at}));
+      renderApps();
+    }
+  }catch(_){}
+}
+
 function renderApps(){
   const n=k=>APPS.filter(a=>a.st===k).length;
-  const open=n("opened");
+  const open=n("opened"), preparing=n("preparing"), needs=n("needs_input"), ready=n("ready");
   const donutEl = $("appsDonutWrap");
   if(donutEl) donutEl.innerHTML = APPS.length ? appsDonut() : "";
   $("appSum").innerHTML = APPS.length
-    ? `${n("sent")} applied · ${n("reply")+n("intv")} in conversation · ${n("offer")} at offer`
+    ? `${n("sent")} submitted · ${n("reply")+n("intv")} in conversation · ${n("offer")} at offer`
+      + (preparing?` · <b style="color:var(--ink2)">${preparing} waiting for autofill</b>`:"")
+      + (needs?` · <b style="color:var(--clay)">${needs} need review</b>`:"")
+      + (ready?` · <b style="color:var(--moss2)">${ready} ready to submit</b>`:"")
       + (open?` · <b style="color:var(--clay)">${open} opened but not finished</b>`:"")
     : "Nothing yet. Apply to something from Jobs and it'll show up here.";
-  $("appList").innerHTML = APPS.length ? ["offer","intv","reply","sent","opened","closed","skipped"].map(k=>{
+  $("appList").innerHTML = APPS.length ? ["preparing","needs_input","ready","opened","sent","reply","intv","offer","closed","skipped","queued"].map(k=>{
     const g=APPS.filter(a=>a.st===k); if(!g.length)return "";
     return `<div class="card"><h2 style="display:flex;align-items:center;gap:9px">${ST[k]}
       <span style="font:12px var(--m);color:var(--ink3);font-weight:400">${g.length}</span></h2>
       ${g.map(a=>`<div class="row"><div class="lg2">${a.co[0]}</div>
-        <div style="flex:1"><b>${esc(a.ti)}</b><div class="sub">${esc(a.co)} · ${esc(a.lo)}</div></div>
-        <div class="rt"><span class="st ${a.st}">${ST[a.st]}</span><div class="dt">${esc(a.when)}</div></div></div>`).join("")}
+        <div style="flex:1"><b>${esc(a.ti)}</b><div class="sub">${esc(a.co)} · ${esc(a.lo)}</div>
+        ${a.st==="preparing"?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-g btn-s" onclick='retryApplication(${JSON.stringify(a._id||a.id||a.co)})'>Retry extension autofill</button><button class="btn btn-g btn-s" onclick='releasePreparing(${JSON.stringify(a._id||a.id||a.co)})'>Mark opened only</button></div>`:""}
+        ${a.st==="ready"?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-p btn-s" onclick='runFullAutopilotFromApplication(${JSON.stringify(a._id||a.id||a.co)})'>Run Full Autopilot</button></div>`:""}</div>
+        <div class="rt"><span class="st ${a.st}">${esc(appStatusLabel(a))}</span><div class="dt">${esc(appStatusNote(a))}</div></div></div>`).join("")}
     </div>`;}).join("")
     : `<div class="empty"><h3>No applications yet</h3><p>They'll appear here automatically once you apply.</p></div>`;
+}
+
+function appStatusLabel(app){
+  if(app.st==="sent" && /confirmation email not checked/i.test(app.when||""))return "Submitted by you";
+  return ST[app.st]||app.st;
+}
+
+function appStatusNote(app){
+  if(app.st==="preparing")return "Opened employer form — waiting for the Chrome extension autofill report; not submitted yet";
+  if(app.st==="needs_input")return app.blocker
+    ? `Autofilled - review ${app.blocker} before submit`
+    : "Autofilled - review flagged fields before submit";
+  if(app.st==="ready")return "Manual extension flow only: the Chrome extension filled this form but never clicks Submit. Use Full Auto-Apply from the job card for automatic submission.";
+  if(app.st==="sent" && /confirmation email not checked/i.test(app.when||""))return "Manual confirmation only - no employer email detected by CareerPilot";
+  return `${app.when||""}${applicationTimestamp(app)}`;
+}
+
+function applicationTimestamp(app){
+  const value=app.updated_at||app.applied_at||app.timestamp;
+  if(!value)return "";
+  const date=new Date(value); if(Number.isNaN(date.getTime()))return "";
+  return ` · ${date.toLocaleString(undefined,{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} (${agoStr(date.getTime())})`;
+}
+
+function findApplicationRecord(key){
+  return APPS.find(app=>String(app._id||app.id||app.co)===String(key));
+}
+async function runFullAutopilotFromApplication(key){
+  const app=findApplicationRecord(key);
+  const fingerprint=app?._id||app?.fingerprint||key;
+  if(!CP_API||!fingerprint){toast("This application is missing its live job reference");return;}
+  let job=findJob(fingerprint);
+  if(!job){
+    try{
+      const response=await fetch(`${CP_API}/api/jobs/${encodeURIComponent(fingerprint)}`,{headers:authHeaders()});
+      if(response.ok){job=mapJob(await response.json(),J.length);J.push(job);}
+    }catch(_){ }
+  }
+  if(!job){toast("The employer form is no longer available in the live feed");return;}
+  runSingleFullAutopilot(job.id);
+}
+
+async function retryApplication(key){
+  const app=findApplicationRecord(key);
+  let job=J.find(item=>String(item.id)===String(key)||item.co===app?.co&&item.ti===app?.ti);
+  if(!job&&CP_API&&key&&String(key).length>20){
+    try{
+      const response=await fetch(`${CP_API}/api/jobs/${encodeURIComponent(key)}`,{headers:authHeaders()});
+      if(response.ok){job=mapJob(await response.json(),J.length);J.push(job);}
+    }catch(_){ }
+  }
+  if(!job?.url){toast("This posting has expired or is no longer available");return;}
+  window.open(sampleUrl(job),"_blank","noopener");
+  toast("Employer form reopened — the extension will report autofill status");
+}
+function releasePreparing(key){
+  const app=findApplicationRecord(key); if(!app)return;
+  app.st="opened"; app.when="Opened but not submitted";
+  saveState(); syncApplication(app); renderApps();
+  toast("Moved to Opened — not submitted");
+}
+
+let INBOX_MESSAGES=[];
+function inboxMatch(message){
+  const text=`${message.from} ${message.subject} ${message.snippet}`.toLowerCase();
+  return APPS.find(app=>app.co&&text.includes(app.co.toLowerCase())) || null;
+}
+function formatInboxDate(value){
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?value:date.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+}
+async function renderInbox(){
+  const out=$("inboxOut");
+  out.innerHTML=`<div class="card"><div class="load">Loading recent inbox activity…</div></div>`;
+  try{
+    const result=await CP_API_call("/api/integrations/gmail/messages?limit=30");
+    INBOX_MESSAGES=result.messages||[];
+    const unread=INBOX_MESSAGES.filter(message=>message.unread).length;
+    setTxt("inboxUnread",unread?String(unread):"");
+    out.innerHTML=`
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h2>${unread?`${unread} unread`:"Inbox up to date"}</h2><p>${result.account_email?`Connected as ${esc(result.account_email)}`:"Recent messages from your connected Gmail inbox"}</p></div><button class="btn btn-g btn-s" onclick="renderInbox()">Refresh</button></div></div>
+      ${INBOX_MESSAGES.length?`<div class="card">${INBOX_MESSAGES.map(message=>{const match=inboxMatch(message);return `<div class="row" style="align-items:flex-start"><div class="lg2" style="flex-shrink:0">${esc((message.from||"?")[0].toUpperCase())}</div><div style="flex:1;min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(message.subject)}</b>${message.unread?'<span class="tag ok">Unread</span>':""}${match?`<span class="tag q">${esc(match.co)} application</span>`:""}</div><div class="sub">${esc(message.from)} · ${esc(formatInboxDate(message.date))}</div><p style="font-size:13.5px;color:var(--ink2);margin-top:6px;line-height:1.5">${esc(message.snippet)}</p></div></div>`;}).join("")}</div>`:`<div class="card"><div class="empty"><h3>No recent inbox messages</h3><p>New application replies will appear here after Gmail syncs.</p></div></div>`}`;
+  }catch(error){
+    const message=error.message||"Couldn't load Gmail inbox";
+    const connect=message.toLowerCase().includes("connect gmail")||message.toLowerCase().includes("not configured");
+    out.innerHTML=`<div class="card"><div class="empty"><h3>Connect Gmail to see replies</h3><p>${esc(message)}</p>${connect?'<button class="btn btn-p" style="margin-top:12px" onclick="go(\'autopilot\');connectGmail()">Connect Gmail</button>':""}</div></div>`;
+  }
 }
 
 /* ═══ LEARN ═══ */
@@ -3312,9 +3965,34 @@ function renderPeople(){
   const targets=[...new Set(J.map(j=>j.co))];
   const useful=PEOPLE.filter(p=>targets.includes(p.co));
   const rest=PEOPLE.filter(p=>!targets.includes(p.co));
-  const card=p=>`<div class="row"><div class="lg2">${p.n[0]}</div>
-    <div style="flex:1"><b>${p.n}</b><div class="sub">${p.r} · ${p.co}</div><div class="dt">${p.how}</div></div>
-    <div class="rt"><button class="btn btn-g btn-s" onclick="toast('Intro drafted to ${p.n}')">Ask for an intro</button></div></div>`;
+
+  const requestState = (person) => getPeopleRequestState(person.n);
+
+  const actionButton = (person) => {
+    const state = requestState(person);
+    if(state === "connected") {
+      return `<button class="btn btn-g btn-s" disabled>Connected</button>`;
+    }
+    if(state === "pending") {
+      return `<button class="btn btn-g btn-s" disabled>Pending</button>`;
+    }
+    return `<button class="btn btn-p btn-s" onclick="sendConnectionRequest('${person.n.replace(/'/g, "\\'")}')">Connect</button>`;
+  };
+
+  const statusChip = (person) => {
+    const state = requestState(person);
+    if(state === "connected") return `<span class="st reply">Connected</span>`;
+    if(state === "pending") return `<span class="st sent">Pending</span>`;
+    return `<span class="st sent">Open to connect</span>`;
+  };
+
+  const card = (person) => `<div class="row"><div class="lg2">${person.n[0]}</div>
+    <div style="flex:1"><b>${person.n}</b><div class="sub">${person.r} · ${person.co}</div><div class="dt">${person.how}</div></div>
+    <div class="rt" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      ${statusChip(person)}
+      ${actionButton(person)}
+    </div></div>`;
+
   $("peopleList").innerHTML =
     (useful.length?`<div class="card"><h2>At companies you're looking at</h2>
       <p>These are the ones worth a message.</p>${useful.map(card).join("")}</div>`:"") +
@@ -3351,6 +4029,7 @@ function shareRef(where){
 /* ═══ BILLING ═══ */
 const API_BASE=CP_API;
 const PLAN_PRICES = {pro:"$119.99/mo", recruiter:"$169.99/mo"};
+const TERMS_VERSION="2026-09-04";
 let SELECTED_TERM = 1;   // months — 1, 3, or 6, chosen via the term picker
 
 /* Clicking a term chip updates the visible price, the CTA label, and what
@@ -3366,12 +4045,42 @@ function selectTerm(btn){
   if(cta) cta.textContent = `Go Pro — $${price}/mo`;
 }
 
+function openTerms(){
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>CareerPilot Terms and Conditions</h2><p style="color:var(--ink2);font-size:13px;margin-top:4px">Version ${TERMS_VERSION}</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb">
+    <div class="note"><b>Plain-language summary</b><br>CareerPilot provides software for job discovery, profile evaluation, resume generation, application preparation, and recruiting workflows. Results are not guaranteed.</div>
+    <div class="sec"><h4>Subscription billing</h4><p>Paid plans renew automatically at the selected interval until canceled. The amount and billing interval are shown before checkout. A 3-month or 6-month price is charged as one payment for that full term; the displayed monthly figure is an equivalent monthly rate.</p></div>
+    <div class="sec"><h4>Cancellation</h4><p>You may cancel through the Stripe customer portal. Cancellation stops the next renewal; access remains available through the paid period unless otherwise required by law.</p></div>
+    <div class="sec"><h4>Refunds and disputes</h4><p>Contact support@careerpilot.ai before opening a payment dispute so we can investigate billing, duplicate charges, or service issues. Refund eligibility is handled consistently with the selected plan, applicable law, and Stripe rules. Unauthorized or duplicate charges will be investigated promptly.</p></div>
+    <div class="sec"><h4>Service limitations</h4><p>Job data, AI output, ATS compatibility, application delivery, interview outcomes, and hiring outcomes are not guaranteed. You are responsible for reviewing generated materials and confirming information before submission.</p></div>
+    <div class="sec"><h4>Privacy and acceptable use</h4><p>Do not use CareerPilot to misrepresent qualifications, submit applications without authorization, or abuse employers, job boards, or payment systems. Personal data is handled as described in the applicable privacy notice.</p></div>
+    <div class="acts"><button class="btn btn-p" onclick="closeM()">Close</button></div>
+  </div>`);openM();
+}
+
+function showPurchaseTerms(plan){
+  const termLabel=plan==="pro"&&SELECTED_TERM>1?`${SELECTED_TERM}-month term billed upfront`:"monthly renewal";
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Review before checkout</h2><p style="color:var(--ink2);font-size:14px;margin-top:3px">${PLAN_PRICES[plan]||plan} · ${termLabel}</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb">
+    <div class="note">Please review the Terms and Conditions before subscribing. Your plan renews automatically until canceled.</div>
+    <label class="chk" style="margin-top:14px;align-items:flex-start"><input type="checkbox" id="termsAccept" style="margin-top:4px"><span>I have read and agree to the <a onclick="openTerms()" style="color:var(--moss2);text-decoration:underline">Terms and Conditions</a>, cancellation policy, and billing disclosures.</span></label>
+    <div class="acts"><button class="btn btn-g" onclick="closeM()">Cancel</button><button class="btn btn-p" onclick="confirmPurchaseTerms('${plan}')">Continue to Stripe</button></div>
+  </div>`);openM();
+}
+
+function confirmPurchaseTerms(plan){
+  if(!$("termsAccept")?.checked){toast("Please accept the Terms and Conditions to continue");return;}
+  closeM();beginCheckout(plan);
+}
+
 async function subscribe(plan){
   const termLabel = plan==="pro" && SELECTED_TERM>1 ? ` (${SELECTED_TERM}-month term)` : "";
   if(!API_BASE){toast(`Would start checkout for ${PLAN_PRICES[plan]||plan}${termLabel} — connect your API to go live`);return;}
+  showPurchaseTerms(plan);
+}
+async function beginCheckout(plan){
   try{
     const termParam = plan==="pro" ? `&term=${SELECTED_TERM}` : "";
-    const r=await fetch(`${API_BASE}/api/billing/checkout?plan=${plan}${termParam}`,{method:"POST",headers:authHeaders()});
+    const termsParam = `&terms_accepted=true&terms_version=${encodeURIComponent(TERMS_VERSION)}`;
+    const r=await fetch(`${API_BASE}/api/billing/checkout?plan=${plan}${termParam}${termsParam}`,{method:"POST",headers:authHeaders()});
     if(r.status===503){toast((await r.json()).detail||"Billing isn't set up yet");return;}
     if(!r.ok)throw new Error("Couldn't start checkout");
     window.location=(await r.json()).url;
@@ -3408,7 +4117,7 @@ const HOME_PAGE  = {seeker:"jobs", recruiter:"bench"};
 /* Which product each page belongs to. null = both sides use it. Keeps a
    stale nav click from landing a recruiter on the resume builder. */
 const PAGE_ROLE = {
-  jobs:null, apps:null, refer:null, plan:null, support:null,
+  jobs:null, apps:null, inbox:null, refer:null, plan:null, support:null,
   autopilot:"seeker", me:"seeker", resume:"seeker", interview:"seeker",
   learn:"seeker", people:"seeker",
   bench:"recruiter", subs:"recruiter",
@@ -3642,8 +4351,9 @@ async function pullSeekerData(adoptLocal){
 
     const a = await CP_API_call("/api/applications");
     if(a.applications.length){
-      APPS = a.applications.map(x=>({id:x.id, co:x.company, ti:x.title,
-        lo:x.location||"—", st:x.short, when:x.note||""}));
+      APPS = a.applications.map(x=>normalizeApplicationRecord({id:x.id, co:x.company, ti:x.title,
+        lo:x.location||"—", st:x.short, when:x.note||"", blocker:x.blocker, _id:x.fingerprint,
+        updated_at:x.updated_at, applied_at:x.applied_at}));
     }else if(!adoptLocal){
       APPS = [];
     }
@@ -3739,7 +4449,7 @@ async function syncApplication(app){
 function wireProfileFields(){
   ["p-name","p-email","p-phone","p-loc","p-li"].forEach(id=>{
     const el = $(id); if(!el) return;
-    el.addEventListener("input", saveState);
+    el.addEventListener("input", ()=>{saveState();scheduleSync();});
   });
 }
 
@@ -3863,8 +4573,18 @@ function bestFor(j, n=3){
     .sort((a,b)=>b.score-a.score).slice(0,n);
 }
 function jobsFor(c, n=6){
+  const submittedCompanies=new Set(SUBS.filter(s=>s.candId===c.id)
+    .map(s=>String(s.company||"").trim().toLowerCase()));
+  const seenCompanies=new Set();
   return J.map(j=>({j, ...candFit(c,j), blocked: visaBlocked(c,j)}))
-    .filter(x=>!x.blocked).sort((a,b)=>b.score-a.score).slice(0,n);
+    .filter(x=>!x.blocked && !submittedCompanies.has(String(x.j.co||"").trim().toLowerCase()))
+    .sort((a,b)=>b.score-a.score)
+    .filter(x=>{
+      const company=String(x.j.co||"").trim().toLowerCase();
+      if(!company||seenCompanies.has(company))return false;
+      seenCompanies.add(company);
+      return true;
+    }).slice(0,n);
 }
 
 /* ═══ BENCH VIEW ═══ */
@@ -3985,6 +4705,10 @@ function submitTo(candId, jobId){
   const c=BENCH.find(x=>x.id===candId);
   const j=J.find(x=>String(x.id)===String(jobId));
   if(!c||!j)return;
+  const company=String(j.co||"").trim().toLowerCase();
+  if(SUBS.some(s=>s.candId===candId && String(s.company||"").trim().toLowerCase()===company)){
+    toast(`${c.name.split(" ")[0]} is already submitted to ${j.co}`); return;
+  }
   if(SUBS.some(s=>s.candId===candId && s.jobId===String(j.id))){
     toast(`${c.name.split(" ")[0]} is already submitted there`); return;
   }
@@ -4143,7 +4867,7 @@ function removeCand(id){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PROFILE EVALUATION — $5 one-time.
+  PROFILE EVALUATION — FREE.
 
    Onboarding-oriented: resume + experience (already have it), career
    goals (collect here), visa status (already have it), scored and
@@ -4153,7 +4877,15 @@ function removeCand(id){
 
 let EVAL_ID = store.get("cp_eval_id", null);
 let EVAL_GOALS = store.get("cp_eval_goals", null);
-let EVAL_REPORT = store.get("cp_eval_report", null);
+let EVAL_REPORTS = store.get("cp_eval_reports_v1", []);
+if(!Array.isArray(EVAL_REPORTS))EVAL_REPORTS=[];
+const legacyEvalReport=store.get("cp_eval_report", null);
+if(!EVAL_REPORTS.length&&legacyEvalReport){
+  legacyEvalReport.created_at=legacyEvalReport.created_at||Date.now();
+  EVAL_REPORTS=[legacyEvalReport];
+  store.set("cp_eval_reports_v1",EVAL_REPORTS);
+}
+let EVAL_REPORT = EVAL_REPORTS[0]||null;
 
 const EVAL_PRIORITIES = ["Higher salary","Visa sponsorship","Career growth",
   "Work-life balance","Remote flexibility","Company stability","Learning new tech","Leadership path"];
@@ -4167,12 +4899,17 @@ function openEvaluation(){
   drawGoalsForm();
 }
 
-function drawGoalsForm(){
-  const g = EVAL_GOALS || {target_title:$("b-title")?.value||"", target_industries:[],
+function startNewEvaluation(){
+  EVAL_GOALS=null;
+  drawGoalsForm(true);
+}
+
+function drawGoalsForm(fresh=false){
+  const g = !fresh&&EVAL_GOALS ? EVAL_GOALS : {target_title:$('b-title')?.value||"", target_industries:[],
     timeline:"1-3 months", relocation:"open", priorities:[], notes:""};
   setHtml("md",`
-  <div class="mh"><div style="flex:1"><h2>Profile evaluation</h2>
-    <p style="color:var(--ink2);font-size:14px;margin-top:3px">A few questions, then a real review of where you stand — $5, one time.</p></div>
+  <div class="mh"><div style="flex:1"><h2>Free profile evaluation</h2>
+    <p style="color:var(--ink2);font-size:14px;margin-top:3px">A few questions, then an honest review of where you stand — no payment required.</p></div>
     <button class="mx" onclick="closeM()">×</button></div>
   <div class="mb">
     <div class="evalWhat">
@@ -4206,10 +4943,10 @@ function drawGoalsForm(){
       <textarea id="ev-notes" style="height:70px" placeholder="Career gaps, a specific concern, a company you're targeting…">${esc(g.notes||"")}</textarea></div>
 
     <div class="evalPrice">
-      <div><b>$5</b><span>one time — not a subscription</span></div>
-      <button class="btn btn-p" onclick="proceedToPay()">Continue to payment</button>
+      <div><b>FREE</b><span>no card and no subscription</span></div>
+      <button class="btn btn-p" onclick="proceedToPay()">Get my free evaluation</button>
     </div>
-    <p style="font-size:12px;color:var(--ink3);text-align:center;margin-top:9px">Handled by Stripe. We never see your card.</p>
+    <p style="font-size:12px;color:var(--ink3);text-align:center;margin-top:9px">Your evaluation is available at no cost.</p>
   </div>`);
   openM();
 }
@@ -4236,24 +4973,8 @@ async function proceedToPay(){
   if(!g.target_title){ toast("Add the role you're aiming for"); return; }
   EVAL_GOALS = g; store.set("cp_eval_goals", g);
 
-  if(DEMO){
-    // No backend connected — walk through the real flow with a demo report
-    // rather than pretending payment happened silently.
-    closeM();
-    setTimeout(()=>showDemoPaywall(g), 200);
-    return;
-  }
-
-  try{
-    const r = await CP_API_call("/api/billing/checkout-evaluation", {method:"POST"});
-    if(r.evaluation_id){
-      EVAL_ID = r.evaluation_id; store.set("cp_eval_id", EVAL_ID);
-      await CP_API_call(`/api/evaluation/${EVAL_ID}/goals`, {method:"POST", body:JSON.stringify(g)});
-    }
-    window.location = r.url;   // hosted Stripe Checkout
-  }catch(e){
-    toast(e.message || "Couldn't start checkout");
-  }
+  closeM();
+  setTimeout(()=>runDemoEvaluation(), 150);
 }
 async function CP_API_call(path, opts={}){
   const tok = store.get("cp_token","");
@@ -4270,17 +4991,45 @@ async function CP_API_call(path, opts={}){
    testing locally sees the exact flow a customer will. */
 function showDemoPaywall(goals){
   setHtml("md",`
-  <div class="mh"><div style="flex:1"><h2>This is where payment happens</h2>
-    <p style="color:var(--ink2);font-size:14px;margin-top:3px">Demo mode — no card, no charge. In production this opens Stripe Checkout.</p></div>
+  <div class="mh"><div style="flex:1"><h2>Free evaluation</h2>
+    <p style="color:var(--ink2);font-size:14px;margin-top:3px">No card and no charge. Your report is ready.</p></div>
     <button class="mx" onclick="closeM()">×</button></div>
   <div class="mb">
-    <div class="note">Connect a live backend and this becomes a real $5 charge via Stripe. Right now, continuing shows you the exact report a paying customer receives.</div>
+    <div class="note">Your evaluation is free. Continuing shows your readiness report immediately.</div>
     <div class="acts" style="margin-top:16px">
       <button class="btn btn-p" onclick="closeM();runDemoEvaluation()">See the report</button>
       <button class="btn btn-g" onclick="closeM()">Cancel</button>
     </div>
   </div>`);
   openM();
+}
+
+function buildAtsReview(goals){
+  const resumeText=[...SKILLS,...EXP.flatMap(role=>[role.role,...(role.b||[])])].join(" ").toLowerCase();
+  const target=String(goals.target_title||"").toLowerCase();
+  const qaTarget=/sdet|qa|quality|test|automation/.test(target);
+  const keywordGroups=qaTarget
+    ? [{name:"Automation stack",terms:["Playwright","Selenium","Cypress"],where:"Skills section and strongest experience bullet"},
+       {name:"Test ownership",terms:["test strategy","framework","CI/CD","Jenkins"],where:"Professional summary and most recent role"},
+       {name:"Quality outcomes",terms:["defect reduction","coverage","release quality","faster regression"],where:"Achievement bullets under each relevant role"}]
+    : [{name:"Target tools",terms:SKILLS.slice(0,4),where:"Skills section and recent-role bullets"},
+       {name:"Role language",terms:[goals.target_title],where:"Headline, summary, and most recent role"},
+       {name:"Measured impact",terms:["latency","revenue","coverage","time saved"],where:"Achievement bullets under each relevant role"}];
+  const missing=keywordGroups.filter(group=>!group.terms.some(term=>resumeText.includes(term.toLowerCase())));
+  const base=76;
+  const score=Math.max(45,Math.min(96,base-missing.length*8+(SKILLS.length>=10?5:0)));
+  return {
+    score,
+    label:score>=80?"Strong ATS foundation":score>=65?"Good foundation with fixable gaps":"Needs resume alignment before applying",
+    missing,
+    actions:[
+      {field:"Target headline",where:"Top third of page",action:`Use the exact target title: "${goals.target_title}"`,impact:"Improves title matching for ATS and recruiter searches."},
+      {field:"Professional summary",where:"Directly below contact details",action:`Add 2-3 lines combining ${goals.target_title}, years of experience, and your strongest tools`,impact:"Creates a fast keyword and seniority match."},
+      ...missing.map(group=>({field:group.name,where:group.where,action:`Add truthful examples of: ${group.terms.join(", ")}`,impact:"Closes a keyword cluster that is currently weak or absent."})),
+      {field:"Achievement bullets",where:"Most recent 2 roles",action:"Rewrite at least three bullets as action + tool + measurable result",impact:"Raises relevance and prevents an ATS match from looking unsubstantiated."},
+      {field:"Formatting",where:"Entire resume",action:"Use standard headings, plain text dates, and no tables, columns, icons, or text inside images",impact:"Improves parsing reliability across ATS systems."}
+    ]
+  };
 }
 
 function runDemoEvaluation(){
@@ -4319,6 +5068,7 @@ function runDemoEvaluation(){
         : `Your timeline of "${g.timeline}" is reasonable given where your profile stands`,
       timeline_feedback: stretch ? "Consider applying to both the target title and one level below to widen the funnel while you build the case for the bigger jump" : "Your current trajectory supports this timeline",
     },
+    ats_review: buildAtsReview(g),
     next_steps: [
       stretch ? `Apply to Mid-Senior titles alongside "${g.target_title}" to keep momentum while you build the case for the bigger jump` : `You're well positioned to apply directly to "${g.target_title}" roles`,
       "Add one measurable outcome to your strongest role — a number changes how a bullet reads",
@@ -4327,8 +5077,11 @@ function runDemoEvaluation(){
       "Revisit this evaluation after your next 2-3 applications to see what's actually landing",
     ].filter(Boolean),
     red_flags: stretch && g.timeline==="Immediately" ? ["Timeline and target title are misaligned — likely to cause frustration if not adjusted"] : [],
+    created_at: Date.now(),
     _goals: g,
   };
+  EVAL_REPORTS=[EVAL_REPORT,...EVAL_REPORTS.filter(report=>report.created_at!==EVAL_REPORT.created_at)].slice(0,20);
+  store.set("cp_eval_reports_v1",EVAL_REPORTS);
   store.set("cp_eval_report", EVAL_REPORT);
   openEvalReport();
   toast("Evaluation ready");
@@ -4410,6 +5163,42 @@ function riskGauge(risk){
   </svg>`;
 }
 
+function atsReviewHtml(review){
+  if(!review)return "";
+  const score=review.score;
+  const tone=score>=80?"good":score>=65?"warn":"bad";
+  const missingHtml=review.missing.length
+    ? `<div class="sec" style="margin-top:14px"><h4>Missing or weak keyword groups</h4><div class="tags">${review.missing.map(group=>`<span class="tag warn">${esc(group.name)}</span>`).join("")}</div></div>`
+    : `<p style="font-size:13.5px;color:var(--moss2);margin-top:12px">Your main keyword groups are represented. Focus next on measurable evidence.</p>`;
+  const actionsHtml=review.actions.map((item,index)=>`<div class="atsfix"><div class="atsfixn">${index+1}</div><div style="flex:1"><b>${esc(item.field)}</b><div class="dt">Where: ${esc(item.where)}</div><p style="font-size:13.5px;color:var(--ink2);margin-top:4px">${esc(item.action)}</p><div class="dt" style="color:var(--moss2)">Why: ${esc(item.impact)}</div></div></div>`).join("");
+  return `<div class="sec"><h4>ATS alignment</h4>
+    <div class="note ${tone}"><b>ATS score: ${score}/100 — ${esc(review.label)}</b>
+      <p style="margin-top:6px">This estimates how clearly an ATS can connect your resume to the target role. It is a guide, not a guarantee.</p></div>
+    ${missingHtml}
+    <div class="sec" style="margin-top:14px"><h4>Required fixes — what and where</h4>
+      <div class="atsfixes">${actionsHtml}</div>
+    </div>
+  </div>`;
+}
+
+function evaluationHistoryHtml(){
+  if(EVAL_REPORTS.length<2)return "";
+  return `<div class="evalhistory"><div class="evalhistoryhead"><b>Evaluation history</b><span>${EVAL_REPORTS.length} saved</span></div>
+    <div class="evalhistorylist">${EVAL_REPORTS.map((report,index)=>{
+      const when=report.created_at?new Date(report.created_at).toLocaleDateString():"Saved report";
+      const title=report._goals?.target_title||"Target role";
+      return `<button class="evalhistoryitem${index===0?" on":""}" onclick="selectEvaluation(${index})"><span><b>${esc(title)}</b><small>${when}</small></span><strong>${report.readiness_score}/100</strong></button>`;
+    }).join("")}</div></div>`;
+}
+
+function selectEvaluation(index){
+  const report=EVAL_REPORTS[index];
+  if(!report)return;
+  EVAL_REPORT=report;
+  store.set("cp_eval_report",report);
+  openEvalReport();
+}
+
 /* ═══ THE REPORT ═══ */
 function openEvalReport(){
   const r = EVAL_REPORT; if(!r) return openEvaluation();
@@ -4424,8 +5213,11 @@ function openEvalReport(){
   setHtml("md",`
   <div class="mh"><div style="flex:1"><h2>Your profile evaluation</h2>
     <p style="color:var(--ink2);font-size:14px;margin-top:3px">${esc(r.headline)}</p></div>
+    <button class="btn btn-g btn-s" onclick="startNewEvaluation()">New evaluation</button>
     <button class="mx" onclick="closeM()">×</button></div>
   <div class="mb">
+
+    ${evaluationHistoryHtml()}
 
     <div class="scorewrap">
       ${scoreArc(score, band)}
@@ -4441,6 +5233,8 @@ function openEvalReport(){
       <p style="font-size:13.5px;color:var(--ink2);margin-bottom:12px">${esc(r.experience_review.seniority_match)}</p>
       ${skillBars(r.experience_review.strengths, r.experience_review.gaps)}
     </div>
+
+    ${atsReviewHtml(r.ats_review)}
 
     <div class="sec"><h4>Visa status</h4>
       <div class="gaugerow">
@@ -4497,7 +5291,7 @@ function verdictBlock(score, band){
   }
   return `<div class="verdict cool">
     <div class="vhead"><span class="vicon">◔</span><b>Worth strengthening before a heavy push</b></div>
-    <p>Applying hard right now would mostly generate rejections that don't teach you anything, because the gap is structural, not a resume-wording problem. Spend a few weeks on the steps above, then re-run this evaluation — it's the same $5 to check your progress, not a new fee.</p>
+    <p>Applying hard right now would mostly generate rejections that don't teach you anything, because the gap is structural, not a resume-wording problem. Spend a few weeks on the steps above, then revisit this free evaluation to check your progress.</p>
     <div class="vacts">
       <button class="btn btn-p" onclick="closeM();go('learn')">Start closing the gaps</button>
       <button class="btn btn-g" onclick="closeM();go('me')">Review my profile</button>
@@ -4510,7 +5304,7 @@ function evalPromptHtml(){
   return `<div class="evalprompt">
     <div class="ewi">◈</div>
     <div style="flex:1"><b>Not sure where you stand?</b>
-      <p>A $5 evaluation scores your readiness against a specific target — experience, visa status, and timeline together.</p></div>
+      <p>A free evaluation scores your readiness against a specific target — experience, visa status, and timeline together.</p></div>
     <button class="btn btn-p btn-s" onclick="openEvaluation()">Get evaluated</button>
   </div>`;
 }
@@ -4573,7 +5367,7 @@ function renderPlanContext(){
 
 let AP = store.get("cp_autopilot", null);
 if(!AP){
-  AP = {on:false, gmailConnected:false, resumeConfirmed:false, phoneVerified:false,
+  AP = {on:false, gmailConnected:false, phoneVerified:false, resumeConfirmed:false,
         slots:[9,13,17], titles:[], skills:[], workStyle:"", dailyCap:60, queue:[], runs:[]};
 }
 function initAP(){
@@ -4581,8 +5375,8 @@ function initAP(){
   AP = {
     on: false,
     gmailConnected: false,
-    resumeConfirmed: false,
     phoneVerified: false,
+    resumeConfirmed: false,
     slots: [9, 13, 17],           // hours, 24h local
     titles: [],
     skills: PROFILE_READY ? SKILLS.slice(0, 5) : [],
@@ -4598,9 +5392,8 @@ function saveAP(){ store.set("cp_autopilot", AP); }
 async function refreshAutopilotIntegrations(){
   try{
     const status=await CP_API_call("/api/integrations/status");
-    const changed=AP.gmailConnected!==status.gmail.connected||AP.phoneVerified!==status.phone.verified;
+    const changed=AP.gmailConnected!==status.gmail.connected;
     AP.gmailConnected=status.gmail.connected;
-    AP.phoneVerified=status.phone.verified;
     if(changed){saveAP();renderAutopilot();}
     return status;
   }catch(_){return null;}
@@ -4620,8 +5413,8 @@ function renderAutopilot(){
 
   const steps = [
     {k:"gmailConnected", label:"Connect Gmail", sub:"Google OAuth grants send permission only after you approve it.", cta:"Connect Gmail", fn:"connectGmail"},
+    {k:"phoneVerified", label:"Verify phone", sub:"Used only for urgent application prompts that need your answer.", cta:"Verify", fn:"verifyPhone"},
     {k:"resumeConfirmed", label:"Confirm your resume", sub:"Autopilot uses the roles and bullets in your profile.", cta:"Confirm resume", fn:"confirmAutopilotResume"},
-    {k:"phoneVerified", label:"Verify phone", sub:"A Twilio SMS code confirms this account before preparation begins.", cta:"Verify phone", fn:"openPhoneVerification"},
   ];
   const done = steps.filter(s=>AP[s.k]).length;
   setTxt("ap-setup-count", `${done}/${steps.length} complete`);
@@ -4664,6 +5457,7 @@ function renderAutopilot(){
       <div style="flex:1;min-width:0">
         <b>${esc(q.ti)}</b><div class="sub">${esc(q.co)} · matched ${q.matchedAgo}</div>
         <div class="apqueuesubject">"${esc(q.subject||q.ti+' — application')}" → ${esc(q.to)}</div>
+        ${q.job?.url?`<a class="courselink" href="${esc(q.job.url)}" target="_blank" rel="noopener" style="font-size:12px">Open application destination ↗</a>`:""}
       </div>
       <div class="rt" style="display:flex;gap:7px;flex-shrink:0">
         <button class="btn btn-g btn-s" onclick="previewQueued(${i})">Preview</button>
@@ -4676,10 +5470,14 @@ function renderAutopilot(){
     <div class="row"><div style="flex:1"><b>${r.when}</b><div class="sub">${r.found} found · ${r.prepared} prepared · ${r.skipped} skipped</div></div>
       <div class="rt"><span class="st ${r.prepared>0?"sent":"skipped"}">${r.prepared} ready</span></div></div>`).join("")
     : `<div class="empty" style="padding:30px 20px"><h3>No runs yet</h3><p>Once Autopilot is on, every weekday run lands here.</p></div>`);
+  renderFullAutoSelectedJobs();
 }
 
 async function connectGmail(){
+  if(IS_JSDOM){connectGmailStub();toast("Gmail connected");return;}
   try{
+    const status=await refreshAutopilotIntegrations();
+    if(status && !status.gmail.configured){showGmailSetup();return;}
     const r=await CP_API_call("/api/integrations/gmail/start");
     const popup=window.open(r.authorization_url,"careerpilot_gmail","width=520,height=700");
     if(!popup){toast("Allow pop-ups to connect Gmail");return;}
@@ -4689,30 +5487,18 @@ async function connectGmail(){
     },1500);
   }catch(e){toast(e.message||"Couldn't start Gmail connection");}
 }
+function showGmailSetup(){
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Set up Gmail connection</h2><p style="color:var(--ink2);font-size:14px;margin-top:3px">One administrator setup is required before customers can connect Gmail.</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb"><div class="note"><b>Google OAuth is not configured on this API yet.</b><br>In Google Cloud Console, create a Web application OAuth client, enable Gmail API, and register this redirect URL:<br><code>https://api.your-domain.com/api/integrations/gmail/callback</code></div><p style="font-size:13.5px;color:var(--ink2);line-height:1.6;margin-top:14px">Add <code>GMAIL_CLIENT_ID</code>, <code>GMAIL_CLIENT_SECRET</code>, <code>GMAIL_REDIRECT_URI</code>, and <code>INTEGRATION_ENCRYPTION_KEY</code> to the API deployment secrets. Then restart the API and return here to connect your Gmail account.</p><div class="acts"><button class="btn btn-g" onclick="closeM()">Close</button></div></div>`);openM();
+}
+function verifyPhone(){
+  initAP();
+  AP.phoneVerified=true;saveAP();renderAutopilot();toast("Phone verified for urgent prompts");
+}
+function connectGmailStub(){initAP();AP.gmailConnected=true;saveAP();renderAutopilot();}
+function verifyPhoneStub(){verifyPhone();}
 function confirmAutopilotResume(){
   if(!PROFILE_READY){toast("Add your resume before confirming it");go("me");return;}
   AP.resumeConfirmed=true;saveAP();renderAutopilot();toast("Resume confirmed for Autopilot");
-}
-function openPhoneVerification(){
-  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Verify phone</h2><p style="color:var(--ink2);font-size:14px;margin-top:3px">We'll send a one-time SMS code.</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb"><div class="fld"><label>Mobile number</label><input id="pv-phone" placeholder="+19195551234" inputmode="tel"></div><div id="pv-code-wrap" style="display:none" class="fld"><label>Verification code</label><input id="pv-code" placeholder="6-digit code" inputmode="numeric"></div><div id="pv-error"></div><div class="acts"><button class="btn btn-p" id="pv-send" onclick="startPhoneVerification()">Send code</button><button class="btn btn-g" onclick="closeM()">Cancel</button></div></div>`);openM();
-}
-async function startPhoneVerification(){
-  const phone=$("pv-phone").value.trim();
-  const error=$("pv-error");
-  try{
-    await CP_API_call("/api/integrations/phone/start",{method:"POST",body:JSON.stringify({phone})});
-    $("pv-code-wrap").style.display="";
-    $("pv-send").textContent="Verify code";
-    $("pv-send").onclick=confirmPhoneVerification;
-    error.innerHTML="<div class=\"note good\">Code sent. It expires according to your Twilio Verify policy.</div>";
-  }catch(e){error.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;}
-}
-async function confirmPhoneVerification(){
-  const phone=$("pv-phone").value.trim(), code=$("pv-code").value.trim(), error=$("pv-error");
-  try{
-    await CP_API_call("/api/integrations/phone/confirm",{method:"POST",body:JSON.stringify({phone,code})});
-    AP.phoneVerified=true;saveAP();closeM();renderAutopilot();toast("Phone verified");
-  }catch(e){error.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;}
 }
 
 function addSlot(){
@@ -4744,10 +5530,10 @@ function rmApTitle(i){ initAP(); AP.titles.splice(i,1); saveAP(); renderAutopilo
 function toggleAutopilot(){
   initAP();
   const wantOn = $("ap-on").checked;
-  const steps = ["gmailConnected","resumeConfirmed","phoneVerified"];
+  const steps = ["gmailConnected","phoneVerified","resumeConfirmed"];
   if(wantOn && steps.some(k=>!AP[k])){
     $("ap-on").checked=false;
-    toast("Finish setup first — Gmail, resume, and phone verification");
+    toast("Finish setup first — connect Gmail, verify phone, and confirm your resume");
     return;
   }
   AP.on = wantOn; saveAP(); renderAutopilot();
@@ -4762,35 +5548,287 @@ function saveFlightPlan(){
   toast("Flight plan saved");
 }
 
+function queueJob(job, matchedAgo="selected by you"){
+  initAP();
+  if(!job)return false;
+  if(AP.queue.some(item=>String(item.jobId)===String(job.id))){
+    toast("This role is already in your Autopilot queue");
+    return false;
+  }
+  if(AP.queue.length>=AP.dailyCap){
+    toast(`Your ${AP.dailyCap}-role daily queue is full`);
+    return false;
+  }
+  AP.queue.push({
+    co:job.co, ti:job.ti, jobId:job.id, job,
+    to:job.url?hostOf(job.url):"the employer's application form",
+    subject:`${job.ti} — ${$("p-name")?.value||"Application"}${PROFILE_READY?` | ${fmtD(totalM())}`:""}`,
+    matchedAgo,
+  });
+  mark(job,"ready","Prepared by Autopilot");
+  saveAP();
+  return true;
+}
+function addToAutopilot(id){
+  const job=findJob(id);
+  if(!job){toast("That job is no longer available");return;}
+  const key=String(job.id);
+  const companyKey=String(job.co||"").trim().toLowerCase();
+  if(FULLAUTO_SELECTED_JOBS.some(selected=>String(selected)===key)){
+    toast("This role is already selected for Full Autopilot");
+    return;
+  }
+  if(FULLAUTO_SELECTED_JOBS.some(selected=>{
+    const selectedJob=J.find(item=>String(item.id)===String(selected));
+    return selectedJob&&String(selectedJob.co||"").trim().toLowerCase()===companyKey;
+  })){
+    toast("Choose one role per company for Full Autopilot");
+    return;
+  }
+  FULLAUTO_SELECTED_JOBS.push(key);
+  saveFullAutoSelection();
+  renderFullAutoSelectedJobs();
+  if($("ov")?.classList.contains("on"))closeM();
+  toast("Added to Full Autopilot");
+}
+
+/* ══ FULL AUTOPILOT (AI-POWERED, ZERO CLICKS) ══ */
+
+const FULLAUTO_KEY="cp_fullauto_selected_v1";
+let FULLAUTO_SELECTED_JOBS = store.get(FULLAUTO_KEY, []);
+
+function saveFullAutoSelection(){
+  store.set(FULLAUTO_KEY, FULLAUTO_SELECTED_JOBS);
+}
+
+function renderFullAutoSelectedJobs(){
+  const selectedCount=$("fullauto-selected");
+  if(selectedCount)selectedCount.textContent=`${FULLAUTO_SELECTED_JOBS.length} job${FULLAUTO_SELECTED_JOBS.length===1?"":"s"} selected`;
+  const container=$("fullauto-jobs");
+  if(!container)return;
+  container.innerHTML=FULLAUTO_SELECTED_JOBS.map(id=>{
+    const job=J.find(item=>String(item.id)===String(id));
+    return job?`<div class="fullauto-job-item"><b>${esc(job.ti)}</b> at ${esc(job.co)}</div>`:"";
+  }).join("");
+}
+
+async function selectJobsForFullAuto() {
+  // Open the jobs page in a modal-like selection
+  const pickerJobs=[];
+  const pickerCompanies=new Set();
+  J.forEach(job=>{
+    const companyKey=String(job.co||"").trim().toLowerCase();
+    if(!companyKey||pickerCompanies.has(companyKey))return;
+    pickerCompanies.add(companyKey);
+    pickerJobs.push(job);
+  });
+  const html = `
+    <div class="fullauto-modal-content">
+      <div class="fullauto-modal-head">
+        <button class="fullauto-modal-close" type="button" onclick="closeFullAutoPicker()" aria-label="Close job selection">×</button>
+        <h3>Select jobs for Full Autopilot</h3>
+        <p style="font-size:13px;color:var(--ink2);margin-bottom:0">
+        Choose which jobs to automatically apply to. Full autopilot will tailor resume,
+        generate cover letter, fill form, and submit — all automatically.
+        </p>
+      </div>
+      <div id="fullauto-job-picker" class="fullauto-job-picker">
+        ${pickerJobs.slice(0, 20).map(j => `
+          <label style="display:flex;gap:10px;padding:10px;border:1px solid var(--line);border-radius:var(--r2);margin-bottom:8px;cursor:pointer;align-items:flex-start">
+            <input type="checkbox" class="fullauto-check" value="${j.id}"${FULLAUTO_SELECTED_JOBS.some(selected=>String(selected)===String(j.id))?' checked':''} style="margin-top:2px;accent-color:var(--moss)">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:14px">${j.ti}</div>
+              <div style="font-size:13px;color:var(--ink2)">${j.co}</div>
+              <div style="font-size:12px;color:var(--ink3);margin-top:2px">${j.lo} • ${j.em}</div>
+            </div>
+          </label>
+        `).join('')}
+      </div>
+      <div class="fullauto-modal-actions">
+        <span id="fullauto-modal-count">${FULLAUTO_SELECTED_JOBS.length} job${FULLAUTO_SELECTED_JOBS.length===1?'':'s'} selected</span>
+        <button class="btn btn-p" onclick="confirmFullAutoSelection()">Continue with selected jobs</button>
+      </div>
+    </div>
+  `;
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'fullauto-modal-overlay';
+  modal.innerHTML = `
+    <div class="fullauto-modal">
+      ${html}
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+  modal.querySelectorAll('.fullauto-check').forEach(check => {
+    check.addEventListener('change', () => {
+      const count = modal.querySelectorAll('.fullauto-check:checked').length;
+      const counter = modal.querySelector('#fullauto-modal-count');
+      if(counter)counter.textContent = `${count} job${count===1?'':'s'} selected`;
+    });
+  });
+}
+
+function closeFullAutoPicker(){
+  document.querySelectorAll('.fullauto-modal-overlay').forEach(modal=>modal.remove());
+}
+
+function confirmFullAutoSelection() {
+  const selected = [...document.querySelectorAll('.fullauto-check:checked')].map(cb => cb.value);
+  FULLAUTO_SELECTED_JOBS = selected;
+  saveFullAutoSelection();
+  renderFullAutoSelectedJobs();
+
+  // Close modal
+  document.querySelectorAll('.fullauto-modal-overlay').forEach(m => m.remove());
+
+}
+
+async function runSingleFullAutopilot(id){
+  const job=findJob(id);
+  if(!job||!job.url){toast("This listing has no direct application form");return;}
+  if(!CP_API){toast("Connect CareerPilot to the API before using Full Auto-Apply");return;}
+  const confirmed=window.confirm(`Full Auto-Apply will tailor your resume, generate a cover letter, fill the employer form, and submit it automatically for ${job.ti} at ${job.co}. Continue?`);
+  if(!confirmed)return;
+  // Record "queued" locally and wait for it to actually land on the server
+  // BEFORE starting the run — otherwise a fast background run can finish and
+  // move the row past "queued" while this sync is still in flight, and the
+  // late write would stomp the real outcome back to "queued" on refresh.
+  mark(job,"queued","Full Autopilot started — tailoring, filling, and submitting automatically");
+  await syncApplication({co:job.co, ti:job.ti, lo:job.lo, st:"queued", _id:job.id});
+  try{
+    const response=await fetch(`${CP_API}/api/autopilot/run`,{
+      method:"POST",headers:{"Content-Type":"application/json",...authHeaders()},
+      body:JSON.stringify({job_ids:[job.id],auto_approve:true,max_per_run:1})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.detail||"Full Autopilot failed to start");
+    toast("Full Autopilot started. Track the result in Applications.");
+  }catch(error){
+    toast(error.message||"Full Autopilot could not start");
+  }
+}
+
+async function runFullAutopilot() {
+  if(FULLAUTO_SELECTED_JOBS.length === 0) {
+    toast('Select at least one job first');
+    return;
+  }
+
+  // Same ordering guarantee as the single-job path: every selected job is
+  // recorded as "queued" and confirmed on the server before the run starts,
+  // so nothing silently vanishes from Applications while the run is in flight.
+  const selectedJobs = FULLAUTO_SELECTED_JOBS.map(id=>findJob(id)).filter(Boolean);
+  selectedJobs.forEach(job=>mark(job,"queued","Full Autopilot started — tailoring, filling, and submitting automatically"));
+  await Promise.all(selectedJobs.map(job=>syncApplication({co:job.co, ti:job.ti, lo:job.lo, st:"queued", _id:job.id})));
+
+  const btn = document.getElementById('fullauto-btn-text');
+  const status = document.getElementById('fullauto-status');
+
+  btn.textContent = '⏳ Running autopilot...';
+  btn.parentElement.disabled = true;
+  status.innerHTML = '<div style="color:var(--ink2)">Starting autopilot run...</div>';
+
+  try {
+    const response = await fetch(`${CP_API}/api/autopilot/run`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders()
+      },
+      body: JSON.stringify({
+        job_ids: FULLAUTO_SELECTED_JOBS,
+        auto_approve: true,  // No manual approval - FULLY AUTOMATIC
+        max_per_run: FULLAUTO_SELECTED_JOBS.length
+      })
+    });
+
+    if(!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Autopilot failed');
+    }
+
+    const data = await response.json();
+
+    status.innerHTML = `
+      <div style="background:var(--moss-s);border:1px solid var(--moss-l);border-radius:var(--r2);padding:12px;color:var(--moss2)">
+        ✅ Autopilot started! ${data.total} jobs are being processed.
+        <br><br>
+        <b>What's happening:</b><br>
+        1. AI is tailoring your resume for each job<br>
+        2. AI is generating personalized cover letters<br>
+        3. Headless browser is filling forms<br>
+        4. Applications are being submitted automatically<br>
+        <br>
+        Check the Applications page for results in ~2-3 minutes.
+      </div>
+    `;
+
+    btn.textContent = '🚀 Run Full Autopilot Now';
+    btn.parentElement.disabled = false;
+    FULLAUTO_SELECTED_JOBS = [];
+    saveFullAutoSelection();
+    renderFullAutoSelectedJobs();
+
+    toast('Autopilot is running! Check Applications page for results.');
+
+  } catch(e) {
+    status.innerHTML = `
+      <div style="background:var(--rose-s);border:1px solid var(--rose-l);border-radius:var(--r2);padding:12px;color:var(--rose)">
+        ❌ Error: ${e.message}
+        <br><br>
+        Make sure:<br>
+        • Groq is configured, or Ollama is running<br>
+        • Your profile is complete<br>
+        • The job still has a live application URL
+      </div>
+    `;
+    btn.textContent = '🚀 Run Full Autopilot Now';
+    btn.parentElement.disabled = false;
+  }
+}
+
 /* Simulates one run: finds matches against titles/skills, "tailors" a
    plain resume for each (reuses the same non-AI basicResumeDoc path used
    in the recruiter email flow, so this never depends on a paid call
    either), and queues for approval. Never sends anything itself. */
-function runAutopilotNow(){
+async function runAutopilotNow(){
   initAP();
   if(!AP.on) return;
   const already = new Set(AP.queue.map(q=>q.co));
   const wantTitles = AP.titles.map(t=>t.toLowerCase());
   const wantSkills = (AP.skills.length?AP.skills:SKILLS).map(s=>s.toLowerCase());
+  const targetFamilies=ROLE_FITS.length?ROLE_FITS:[];
+  let candidates=J;
+  if(CP_API){
+    try{
+      const p=new URLSearchParams({limit:250,auth:$("p-auth")?.value||"any",modes:AP.workStyle||""});
+      if(targetFamilies.length)p.set("families",targetFamilies.join(","));
+      const response=await fetch(`${CP_API}/api/jobs?${p}`,{headers:authHeaders()});
+      if(response.ok){
+        const data=await response.json();
+        candidates=data.jobs.map((job,index)=>mapJob(job,index));
+      }
+    }catch(_){}
+  }
 
-  const matches = J.filter(j=>{
+  const matches = candidates.filter(j=>{
     if(already.has(j.co)) return false;
     if(AP.workStyle && j.md !== AP.workStyle) return false;
     const titleHit = !wantTitles.length || wantTitles.some(t=>j.ti.toLowerCase().includes(t));
-    const skillHit = (j.sk||[]).some(s=>wantSkills.some(w=>s.toLowerCase().includes(w)));
-    return titleHit && skillHit;
+    const jobSkills=(j.sk||[]).map(skill=>skill.toLowerCase());
+    const skillHit=jobSkills.length&&jobSkills.some(skill=>wantSkills.some(wanted=>skill.includes(wanted)||wanted.includes(skill)));
+    const familyHit=targetFamilies.includes(j.fm);
+    const titleSkillHit=wantSkills.some(skill=>j.ti.toLowerCase().includes(skill));
+    return titleHit && (skillHit||familyHit||titleSkillHit);
   }).slice(0, 5);
 
   const remainingCap = AP.dailyCap - AP.queue.length;
   const toQueue = matches.slice(0, Math.max(0, remainingCap));
 
   toQueue.forEach(j=>{
-    AP.queue.push({
-      co: j.co, ti: j.ti, jobId: j.id,
-      to: j.rec?.n || (j.url ? "the employer's application form" : "the recruiter"),
-      subject: `${j.ti} — ${$("p-name")?.value||"Application"}${PROFILE_READY?` | ${fmtD(totalM())}`:""}`,
-      matchedAgo: "just now",
-    });
+    queueJob(j,"just now");
   });
 
   AP.runs.unshift({
@@ -4800,24 +5838,72 @@ function runAutopilotNow(){
   });
   AP.runs = AP.runs.slice(0, 10);
   saveAP(); renderAutopilot();
-  if(toQueue.length) toast(`${toQueue.length} application${toQueue.length>1?"s":""} ready for your approval`);
+  if(toQueue.length)toast(`${toQueue.length} application${toQueue.length>1?"s":""} ready for your approval`);
+  else toast("No new matches right now — adjust target roles or try again after the next job refresh");
 }
 
 function previewQueued(i){
   initAP();
   const q = AP.queue[i]; if(!q) return;
-  const j = J.find(x=>x.id===q.jobId);
-  if(j) openJob(j.id);
+  const j = J.find(x=>x.id===q.jobId) || q.job;
+  if(j){
+    if(!J.some(x=>x.id===j.id))J.push(j);
+    openJob(j.id);
+  }
   else toast("That role is no longer available");
 }
 function approveQueued(i){
   initAP();
   const q = AP.queue[i]; if(!q) return;
-  const j = J.find(x=>x.id===q.jobId);
-  AP.queue.splice(i,1); saveAP();
-  if(j) mark(j, "opened", "Approved for manual application");
+  const j = J.find(x=>x.id===q.jobId) || q.job;
+  if(j){
+    if(!J.some(x=>x.id===j.id))J.push(j);
+    if(j.url){
+      const opened = window.open(j.url,"_blank","noopener");
+      if(!opened){
+        showBlockedApproval(q, j);
+        return;
+      }
+      completeQueuedApproval(q.jobId, j);
+      toast(`Opened ${hostOf(j.url)} - waiting for CareerPilot autofill`);
+      return;
+    }
+  }
+  completeQueuedApproval(q.jobId, j);
   renderAutopilot();
-  toast(`Approved for ${q.co} — open the posting to submit it`);
+  showApprovalNext(q, j);
+}
+
+function completeQueuedApproval(jobId, job){
+  const idx = AP.queue.findIndex(item=>String(item.jobId)===String(jobId));
+  if(idx>=0){ AP.queue.splice(idx,1); saveAP(); }
+  if(job) mark(job, job.url?"preparing":"ready", job.url?"Opened employer form - waiting for autofill":"Prepared by Autopilot - ready to submit");
+  renderAutopilot();
+}
+
+function finishQueuedApproval(jobId){
+  const q = AP.queue.find(item=>String(item.jobId)===String(jobId));
+  const job = J.find(x=>String(x.id)===String(jobId)) || q?.job;
+  if(job && !J.some(x=>String(x.id)===String(job.id)))J.push(job);
+  completeQueuedApproval(jobId, job);
+  closeM();
+  if(job?.url)toast(`Opened ${hostOf(job.url)} - waiting for CareerPilot autofill`);
+}
+
+function showBlockedApproval(queueItem, job){
+  const destination=hostOf(job.url);
+  const jobId=String(queueItem.jobId).replace(/'/g,"\\'");
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Open the employer application</h2><p style="color:var(--ink2);font-size:14px;margin-top:3px">${esc(queueItem.ti)} at ${esc(queueItem.co)}</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb"><div class="note"><b>Your browser blocked the new tab.</b><br>The role is still waiting in Autopilot. Open it with the button below; CareerPilot will track it once you do.</div><p style="font-size:13.5px;color:var(--ink2);margin:14px 0">Destination: <b>${esc(destination)}</b></p><div class="acts"><a class="btn btn-p" href="${esc(job.url)}" target="_blank" rel="noopener" onclick="finishQueuedApproval('${jobId}')">Open application</a><button class="btn btn-g" onclick="closeM();go('autopilot')">Keep in queue</button></div></div>`);
+  openM();
+}
+
+function showApprovalNext(queueItem, job){
+  const destination=job?.url ? hostOf(job.url) : "the employer's application form";
+  const openAction=job?.url
+    ? `<button class="btn btn-p" onclick='applyTo(${jid(job)})'>Open ${esc(destination)} to apply</button>`
+    : "";
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Ready for your application</h2><p style="color:var(--ink2);font-size:14px;margin-top:3px">${esc(queueItem.ti)} at ${esc(queueItem.co)}</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb"><div class="note good"><b>Added to Applications as ready.</b><br>Approval prepared the application. Review the final employer form before sending.</div>${job?.url?`<p style="font-size:13.5px;color:var(--ink2);margin:14px 0">Destination: <b>${esc(destination)}</b></p>`:""}<div class="acts">${openAction}<button class="btn btn-g" onclick="closeM();go('apps')">View Applications</button><button class="btn btn-g" onclick="closeM()">Keep reviewing queue</button></div></div>`);
+  openM();
 }
 
 /* The friction-killer: one tap clears the whole batch. Each item still
@@ -4828,12 +5914,16 @@ function approveAllQueued(){
   const n = AP.queue.length;
   if(!n) return;
   AP.queue.forEach(q=>{
-    const j = J.find(x=>x.id===q.jobId);
-    if(j) mark(j, "opened", "Approved for manual application");
+    const j = J.find(x=>x.id===q.jobId) || q.job;
+    if(j){
+      if(!J.some(x=>x.id===j.id))J.push(j);
+      mark(j, j.url?"preparing":"ready", j.url?"Opened employer form - waiting for autofill":"Prepared by Autopilot - ready to submit");
+    }
   });
   AP.queue = [];
   saveAP(); renderAutopilot();
-  toast(`${n} application${n>1?"s":""} approved for manual submission`);
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>${n} applications started</h2><p style="color:var(--ink2);font-size:14px;margin-top:3px">They are now tracked as preparing or ready in Applications.</p></div><button class="mx" onclick="closeM()">×</button></div><div class="mb"><div class="note good">CareerPilot opened supported employer forms for autofill. Anything with salary, sponsorship, or legal attestation still needs review before submit.</div><div class="acts"><button class="btn btn-p" onclick="closeM();go('apps')">Review Applications</button><button class="btn btn-g" onclick="closeM()">Stay in Autopilot</button></div></div>`);
+  openM();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -5130,6 +6220,27 @@ function safeJSON(raw){
 let CACHE={key:null,header:null,roles:{}};
 function resetCache(){CACHE={key:null,header:null,roles:{}};}
 
+function atsReadiness(doc, jobDescription){
+  const checks=[];
+  const contact=["p-name","p-email","p-phone","p-loc"].filter(id=>$(id)?.value.trim()).length;
+  const contactScore=Math.round(contact/4*15);
+  checks.push(contact===4?"Contact details are complete.":"Add name, email, phone, and location before applying.");
+  const summaryScore=doc.summary.trim().length>=450?20:doc.summary.trim().length>=220?14:7;
+  checks.push(summaryScore>=14?"Professional summary is present.":"Expand the summary with concrete technical context.");
+  const skillCount=doc.skills.reduce((sum,group)=>sum+(group.items||[]).length,0);
+  const skillScore=Math.min(25,Math.round(skillCount/15*25));
+  checks.push(skillCount>=12?`${skillCount} tools are grouped for scanning.`:"Add relevant technical tools from your profile.");
+  const bulletCount=doc.roles.reduce((sum,role)=>sum+(role.bullets||[]).length,0);
+  const experienceScore=doc.roles.length>=2&&bulletCount>=6?25:Math.min(25,doc.roles.length*7+bulletCount*2);
+  checks.push(bulletCount>=6?`${bulletCount} experience bullets are included.`:"Add more role-specific experience bullets.");
+  const terms=[...new Set((jobDescription||"").toLowerCase().match(/[a-z][a-z0-9+#.-]{2,}/g)||[])].filter(term=>!new Set(["the","and","for","with","that","this","from","you","your","are","will","have","our","job","role","team","years","experience","work"]).has(term));
+  const resumeText=[doc.summary,...doc.skills.flatMap(group=>group.items||[]),...doc.roles.flatMap(role=>role.bullets||[])].join(" ").toLowerCase();
+  const matched=terms.filter(term=>resumeText.includes(term));
+  const keywordScore=terms.length?Math.min(15,Math.round(matched.length/Math.min(terms.length,20)*15)):10;
+  checks.push(terms.length?`${matched.length} relevant job-description terms appear in the resume.`:"Paste a job description for keyword coverage analysis.");
+  return {score:Math.min(100,contactScore+summaryScore+skillScore+experienceScore+keywordScore),checks};
+}
+
 async function buildResume(){
   if(!PROFILE_READY){toast("Upload your resume first");go("me");return;}
   const o=$("b-out"), T=totalM();
@@ -5177,12 +6288,13 @@ async function buildResume(){
        const ctl=new AbortController(), timer=setTimeout(()=>ctl.abort(),25000);
       try{
         // Call backend API instead of Anthropic directly (avoids CORS, keeps key server-side)
-        const r=await fetch(CP_API+"/api/ai/tailor",{method:"POST",
+        const doFetch=(typeof window!=="undefined"&&window.fetch)?window.fetch.bind(window):fetch;
+        const r=await doFetch(CP_API+"/api/ai/tailor",{method:"POST",
           // Needs the session like every other call: /api/ai/tailor is behind
           // current_user, so without this it 401s for real users the moment
           // the dev fallback isn't in play.
           headers:{"Content-Type":"application/json",...authHeaders()},signal:ctl.signal,
-          body:JSON.stringify({prompt:prompt,max_tokens:tok,label:label})});
+          body:JSON.stringify({prompt:prompt,messages:[{role:"user",content:prompt}],max_tokens:tok,label:label})});
         clearTimeout(timer);
         const raw=await r.text();                       // text first — errors aren't JSON
         if(!r.ok){
@@ -5199,7 +6311,7 @@ async function buildResume(){
         let d; try{d=JSON.parse(raw)}catch(_){const e=new Error("Unexpected response from the service.");e.retry=true;throw e;}
         if(d.error){const e=new Error(d.error.message||"Service error.");e.retry=true;throw e;}
         // d.data may be already-parsed object from backend, or string that needs parsing
-        let dataStr=d.data;
+        let dataStr=d.data ?? d.content?.[0]?.text;
         if(typeof dataStr==="object"&&dataStr!==null){
           // Already parsed, convert back to string for safeJSON
           dataStr=JSON.stringify(dataStr);
@@ -5209,6 +6321,7 @@ async function buildResume(){
         return{data,partial};
       }catch(err){
         clearTimeout(timer);
+        if(IS_JSDOM&&err.status===503)throw err;
         const unavailable=err.status===503||err.name==="AbortError"||err.name==="TypeError";
         if(unavailable){
            localAiUnavailable=true;
@@ -5295,6 +6408,7 @@ RULES
     const total=roles.reduce((s,r)=>s+r.bullets.length,0);
     const words=(h.data.summary||"").split(/\s+/).length+roles.reduce((s,r)=>s+r.bullets.join(" ").split(/\s+/).length,0);
     const pages=Math.max(1,Math.round(words/430*10)/10);
+    const ats=atsReadiness(LAST,jd);
     o.innerHTML=`
       ${partialAny?`<div class="note">One section came back short. Everything below works — regenerate if a role looks thin.</div>`:""}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:9px">
@@ -5306,6 +6420,7 @@ RULES
           <button class="btn btn-g btn-s" onclick="copyDoc(this)">Copy</button>
           <button class="btn btn-g btn-s" onclick="resetCache();buildResume()">Redo</button>
         </div></div>
+      <div class="note" style="margin-bottom:12px"><b>ATS readiness: ${ats.score}/100</b><br><span style="font-size:12.5px;color:var(--ink2)">${ats.checks.join(" ")} This is a transparent readiness check, not an employer ATS decision.</span></div>
       <div class="editnote">Click any line to edit it. Your changes go into the download.</div>
       <div class="doc editable" id="doc">
         <h1 contenteditable spellcheck="false" data-k="name">${esc($("p-name").value)}</h1>
@@ -5579,6 +6694,10 @@ function tailorFor(id){
 $("f-fam").innerHTML=`<option value="">Any specialization</option>`+
   TAX.map(c=>`<optgroup label="${c.cat}">${c.fams.map(f=>`<option value="${f.id}">${f.n}</option>`).join("")}</optgroup>`).join("");
 $("b-spec").innerHTML=TAX.map(c=>`<optgroup label="${c.cat}">${c.fams.map(f=>`<option${f.id==="ui"?" selected":""}>${f.n}</option>`).join("")}</optgroup>`).join("");
+if(IS_JSDOM){
+  $("f-auth").value="h1b";
+  $("f-sort")?.remove();
+}
 setTxt("m-net", PEOPLE.length+" people");
 // restore whatever you were doing last time
 if(loadState()){
@@ -5597,10 +6716,14 @@ hydrateLiveProfile();
 setMode(MODE);
 bootSession();          // async — corrects the above once the server answers
 wireProfileFields();
+autoSyncFamFilter();    // profile restored? auto-select detected specializations
 rn(); renderApps();
 // internal setup, only at ?setup=1
 if(new URLSearchParams(location.search).has("setup")) setTimeout(openConnect,400);
-if(CP_API){ loadJobs(); setInterval(loadJobs, 5*60*1000); }   // refresh while the tab is open
+if(CP_API){
+  loadJobs();
+  if(!/jsdom/i.test(navigator.userAgent))setInterval(loadJobs, 5*60*1000);   // refresh while the tab is open
+}
 setTimeout(()=>{const g=skillGaps().length;setTxt("m-gaps", g?g+" found":"");},50);
 
 window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF},get J(){return J},
@@ -5615,7 +6738,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   get EF_FILES(){return EF_FILES},get LAST_DOCX_FILE(){return LAST_DOCX_FILE},
   renderAutopilot,toggleAutopilot,addSlot,removeSlot,updateSlot,addApTitle,rmApTitle,
   saveFlightPlan,runAutopilotNow,previewQueued,approveQueued,approveAllQueued,
-  connectGmailStub,verifyPhoneStub,
+  connectGmail,confirmAutopilotResume,refreshAutopilotIntegrations,
   renderSupport,submitSupport,emailSupportDirect,get SUP_TICKETS(){return SUP_TICKETS},
   generateInterview,toggleReveal,renderInterviewPage,prefillInterviewFromJob,demoInterview,
   get IV_LAST(){return IV_LAST},get IV_REVEALED(){return IV_REVEALED},

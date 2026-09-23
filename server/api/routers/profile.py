@@ -1,5 +1,6 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
+from __future__ import annotations
 import datetime as dt
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel

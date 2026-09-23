@@ -19,7 +19,7 @@ try { m = JSON.parse(fs.readFileSync(path.join(EXT, "manifest.json"), "utf8")); 
 catch (e) { ok("manifest is valid JSON", false, e.message); console.log("PASS 0 FAIL 1"); process.exit(1); }
 
 ok("manifest v3", m.manifest_version === 3, String(m.manifest_version));
-ok("named CareerPilot AI", m.name === "CareerPilot AI", m.name);
+ok("named careerpilot.ai Extension", m.name === "careerpilot.ai Extension", m.name);
 ok("action title matches the name", m.action.default_title === m.name, m.action.default_title);
 ok("has a version", /^\d+\.\d+\.\d+$/.test(m.version), m.version);
 

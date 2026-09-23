@@ -8,7 +8,7 @@ seed:
 
 backend-test:
 	$(MAKE) -C server test
-	cd server && python test_auth.py && python test_seeker.py && python test_ai_resilience.py && python test_billing.py && python test_evaluation.py && python test_interview.py && python test_support.py
+	cd server && python test_auth.py && python test_seeker.py && python test_ai_resilience.py && python test_gmail_delivery.py && python test_billing.py && python test_evaluation.py && python test_interview.py && python test_support.py
 
 frontend-test:
 	node extension/validate.js

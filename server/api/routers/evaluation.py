@@ -10,6 +10,7 @@ The report is generated once, on the first successful GET after payment, and
 cached on the Evaluation row — regenerating the same $5 report for the same
 person costs nothing on repeat views.
 """
+from __future__ import annotations
 import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel

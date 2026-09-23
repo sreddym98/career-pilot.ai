@@ -1,8 +1,8 @@
 const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
-  const w=d.window;w.scrollTo=()=>{};w.print=()=>{};w.confirm=()=>true;
+const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/",beforeParse:w=>Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true})});
+   const w=d.window;Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.print=()=>{};w.confirm=()=>true;
 
   Object.defineProperty(w,"innerWidth",{value:800,configurable:true});  w.navigator.clipboard={writeText:()=>Promise.resolve()};
   w.__o=[];w.open=u=>{w.__o.push(u);return{focus(){}}};return w;};
@@ -27,7 +27,7 @@ SKILLS
 Playwright, Cypress, Selenium, PySpark, SQL, Java, Jenkins`;
 
 (async()=>{
-console.log("\n╔═══ PROFILE EVALUATION — $5 onboarding ═══╗\n");
+console.log("\n╔═══ PROFILE EVALUATION — free onboarding ═══╗\n");
 
 const w=mk(); await sleep(700);
 const d=w.document,$=i=>d.getElementById(i),qa=s=>[...d.querySelectorAll(s)];
@@ -43,7 +43,7 @@ ok("  explains why",$("toast").textContent.includes("Upload your resume"));
 console.log("── After upload, prompt appears ──");
 w.parseResume(RESUME,"r.txt"); await sleep(60);
 ok("evaluation prompt shown",$("evalPrompt").innerHTML.includes("Get evaluated"));
-ok("  states the price",$("evalPrompt").innerHTML.includes("$5"));
+ok("  states that it is free",!$("evalPrompt").innerHTML.includes("$5"));
 ok("  in the sidebar too",[...d.querySelectorAll(".sbi")].some(a=>a.textContent.includes("Get Evaluated")));
 
 console.log("── Goals form ──");
@@ -53,8 +53,8 @@ ok("  asks target role",!!$("ev-title"));
 ok("  asks industries",!!$("ev-inds"));
 ok("  asks timeline",!!$("ev-time"));
 ok("  asks priorities",!!$("ev-pri"));
-ok("  states price clearly",$("md").innerHTML.includes("$5")&&$("md").innerHTML.includes("one time"));
-ok("  reassures on payment",$("md").textContent.includes("never see your card"));
+ok("  states that it is free",$("md").innerHTML.includes("FREE")&&$("md").textContent.includes("no card"));
+ok("  does not request payment",!$("md").textContent.includes("Continue to payment"));
 
 console.log("── Validation ──");
 $("ev-title").value="";
@@ -81,10 +81,8 @@ ok("  industries captured",w.CP.EVAL_GOALS.target_industries.length===2);
 ok("  priorities captured",w.CP.EVAL_GOALS.priorities.length===3);
 ok("  notes captured",w.CP.EVAL_GOALS.notes.includes("gap"));
 
-console.log("── Demo mode shows a real paywall screen ──");
-ok("paywall/demo screen shown",$("md").innerHTML.includes("payment")||$("md").innerHTML.includes("Demo mode"),
-   $("md").textContent.slice(0,80));
-click(qa("#md button").find(b=>b.textContent.includes("See the report")));
+console.log("── Free evaluation generates the report directly ──");
+ok("report generation starts without a paywall",!$("md").textContent.includes("This is where payment happens"));
 await sleep(300);
 
 console.log("── The report ──");
@@ -93,6 +91,10 @@ ok("  has a score",!!$("md").querySelector(".scoresvg"));
 const score=parseInt($("md").querySelector(".scoresvg text").textContent);
 ok("  score is 0-100",score>=0&&score<=100,score+"");
 ok("  covers experience",!!$("md").querySelector(".skillbars"));
+ok("  shows ATS score",!!$("md").textContent.match(/ATS score:\s*\d+\/100/));
+ok("  shows required resume fixes",!!$("md").querySelectorAll(".atsfix").length);
+ok("  explains where fixes belong",$("md").textContent.includes("Where:"));
+ok("  explains why fixes matter",$("md").textContent.includes("Why:"));
 ok("  covers visa",$("md").textContent.match(/H1B|risk/i));
 ok("  covers the timeline they set",$("md").textContent.length>500);
 ok("  gives numbered next steps",!!$("md").querySelector(".steplist"));
@@ -110,6 +112,18 @@ ok("  same score",parseInt($("md").querySelector(".scoresvg text").textContent)=
 console.log("── Survives reload ──");
 const saved=w.localStorage.getItem("cp_eval_report");
 ok("report saved to storage",!!saved&&JSON.parse(saved).readiness_score===score);
+
+console.log("── Multiple evaluations ──");
+w.startNewEvaluation();
+ok("new evaluation form opens",!!$("ev-title")&&$("md").textContent.includes("Free profile evaluation"));
+$("ev-title").value="QA Automation Engineer";
+click(qa("#md .evalPrice button")[0]); await sleep(300);
+ok("second evaluation is generated",w.CP.EVAL_REPORT._goals.target_title==="QA Automation Engineer");
+const history=JSON.parse(w.localStorage.getItem("cp_eval_reports_v1")||"[]");
+ok("multiple reports are persisted",history.length>=2,history.length+"");
+ok("history selector is visible",!!$("md").querySelector(".evalhistoryitem"));
+click($("md").querySelectorAll(".evalhistoryitem")[1]); await sleep(50);
+ok("older evaluation can be reopened",w.CP.EVAL_REPORT._goals.target_title!=="QA Automation Engineer");
 
 console.log("── Honest, not just flattering ──");
 ok("can flag an unrealistic timeline",typeof w.CP.EVAL_REPORT.goal_alignment.realistic==="boolean");

@@ -217,6 +217,39 @@ teamtailor:
   - {slug: tink,              label: Tink}
   - {slug: einride,           label: Einride}
 
+greenhouse:
+  # ── Staffing & consulting (contract, temp, consulting roles) ──
+  # These agencies and consulting firms have modern ATS setups and post open roles
+  - {slug: nttdata,           label: NTT DATA}
+  - {slug: cognizant,         label: Cognizant}
+  - {slug: capgemini,         label: Capgemini}
+  - {slug: infosys,           label: Infosys}
+  - {slug: accenture,         label: Accenture}
+  - {slug: teksystems,        label: TekSystems}
+  - {slug: insightglobal,     label: Insight Global}
+  - {slug: collabera,         label: Collabera}
+  - {slug: kforce,            label: KFORCE}
+  - {slug: apexgroup,         label: Apex Group}
+  - {slug: genpact,           label: Genpact}
+  - {slug: wippro,            label: Wipro}
+  - {slug: mphasis,           label: Mphasis}
+  - {slug: mindtree,          label: Mindtree}
+  - {slug: ltimindtree,       label: LTIMindtree}
+  - {slug: zensar,            label: Zensar}
+  - {slug: mazars,            label: Mazars}
+  - {slug: deloitte,          label: Deloitte}
+  - {slug: pwc,               label: PwC}
+  - {slug: ey,                label: EY}
+  - {slug: kpmg,              label: KPMG}
+  - {slug: bain,              label: Bain & Company}
+  - {slug: mckinsey,          label: McKinsey}
+  - {slug: bcg,               label: Boston Consulting Group}
+  - {slug: maersk,            label: Maersk}
+  - {slug: selbyjennings,     label: Selby Jennings}
+  - {slug: heidrick,          label: Heidrick & Struggles}
+  - {slug: provera,           label: Provera}
+  - {slug: techmaestro,       label: TechMaestro}
+
 # Slugs the verifier found dead. Kept so they aren't re-added by mistake.
 retired:
   - {slug: unit, label: Unit}  # 404 — slug not found

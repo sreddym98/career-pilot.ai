@@ -8,7 +8,7 @@ const ok=(n,c,x)=>{c?P++:(F++,fails.push(n+(x?"  →  "+x:"")))};
 const detailSel = (d) => d.querySelector("#jobDetailPane .splitcard") ? "#jobDetailPane" : "#md";
 const mk=(url="https://careerpilot.ai/")=>{
   const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url});
-  const w=d.window;w.scrollTo=()=>{};w.print=()=>{};w.confirm=()=>true;
+  const w=d.window;Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.print=()=>{};w.confirm=()=>true;
 
   Object.defineProperty(w,"innerWidth",{value:800,configurable:true});  w.navigator.clipboard={writeText:()=>Promise.resolve()};
   w.__o=[];w.open=u=>{w.__o.push(u);return{focus(){}}};return w;};

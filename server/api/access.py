@@ -12,6 +12,7 @@ someone adds the next handler:
 
     router = APIRouter(prefix="/api/bench", dependencies=[Depends(require_recruiter)])
 """
+from __future__ import annotations
 from fastapi import Depends, HTTPException
 from api.auth import current_user
 from api.models import User

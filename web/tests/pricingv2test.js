@@ -2,7 +2,7 @@ const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
-  const w=d.window;w.scrollTo=()=>{};w.confirm=()=>true;
+   const w=d.window;Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.confirm=()=>true;
   Object.defineProperty(w,"innerWidth",{value:1280,configurable:true});
   w.navigator.clipboard={writeText:()=>Promise.resolve()};
   w.__o=[];w.open=u=>{w.__o.push(u);return{focus(){}}};return w;};

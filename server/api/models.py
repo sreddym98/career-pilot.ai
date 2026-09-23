@@ -1,5 +1,6 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
+from __future__ import annotations
 import uuid, datetime as dt
 from sqlalchemy import (Column, String, Text, Boolean, Integer, Date, DateTime,
                         ForeignKey, SmallInteger, JSON, Index, UniqueConstraint, func)
