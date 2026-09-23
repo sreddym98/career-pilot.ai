@@ -1,8 +1,11 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import dotenv_values
+import os
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=(".env", ".env.gmail.local"), extra="ignore")
     # Relative to wherever the server is started, which is server/. An absolute
     # path to one developer's home directory is not a default anyone else — or
     # any container — can use, and silently running production on SQLite
@@ -10,6 +13,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./dev.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     ANTHROPIC_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "qwen/qwen3.8-27b"
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
     SUPABASE_URL: str = ""
     SUPABASE_JWT_SECRET: str = ""
     STRIPE_SECRET_KEY: str = ""
@@ -21,6 +27,7 @@ class Settings(BaseSettings):
     STRIPE_PRICE_PRO_6MO: str = ""
     STRIPE_PRICE_EVAL: str = ""
     RAPIDAPI_KEY: str = ""
+    CORESIGNAL_API_KEY: str = ""
     GMAIL_CLIENT_ID: str = ""
     GMAIL_CLIENT_SECRET: str = ""
     GMAIL_REDIRECT_URI: str = "http://localhost:8000/api/integrations/gmail/callback"
@@ -34,11 +41,19 @@ class Settings(BaseSettings):
     AUTH_TOKEN_DAYS: int = 7
     FRONTEND_URL: str = "http://localhost:3000"
     ENV: str = "dev"
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
-
 settings = Settings()
+
+# Some shells export blank variables from an earlier startup, and those blank
+# values override dotenv files. Recover non-empty local values for integrations
+# so restarting from any working directory does not silently disable billing or
+# job providers.
+_local_env = {
+    **dotenv_values(os.path.join(os.path.dirname(__file__), "..", ".env")),
+    **dotenv_values(os.path.join(os.path.dirname(__file__), "..", ".env.gmail.local")),
+}
+for _name in ("STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_RECRUITER", "STRIPE_PRICE_PRO_3MO", "STRIPE_PRICE_PRO_6MO", "STRIPE_PRICE_EVAL", "RAPIDAPI_KEY", "GROQ_API_KEY", "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REDIRECT_URI", "INTEGRATION_ENCRYPTION_KEY"):
+    if not getattr(settings, _name, "") and _local_env.get(_name):
+        setattr(settings, _name, _local_env[_name])
 
 
 def auth_secret() -> str:

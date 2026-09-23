@@ -1,7 +1,7 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, and_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import optional_user
@@ -16,8 +16,8 @@ def list_jobs(
     q: str = "", auth: str = "any",
     fields: str = "", families: str = "", employment: str = "",
     modes: str = "", company: str = "",
-    fresh_days: int = 0, hide_reposts: bool = False,
-    limit: int = Query(25, le=100), offset: int = 0,
+    fresh_days: int = 0, hide_reposts: bool = False, exp_min: int = 0, salary_min: int = 0,
+    limit: int = Query(25, le=250), offset: int = 0,
     sort: str = "match",
     db: Session = Depends(get_db), user=Depends(optional_user),
 ):
@@ -26,7 +26,7 @@ def list_jobs(
     if q:
         like = f"%{q.lower()}%"
         Q = Q.filter(or_(Job.title.ilike(like), Job.company.ilike(like),
-                         Job.description.ilike(like)))
+                         Job.location.ilike(like), Job.description.ilike(like)))
 
     # Visa: hide only postings that EXPLICITLY exclude this status.
     # 'u' (not stated) stays visible — most postings say nothing, and
@@ -52,10 +52,55 @@ def list_jobs(
         Q = Q.filter(Job.posted_at >= cutoff)
     if hide_reposts:
         Q = Q.filter(Job.seen_count < 3)
+    if exp_min:
+        Q = Q.filter(or_(Job.exp_min >= exp_min, Job.exp_min.is_(None)))
+    if salary_min:
+        Q = Q.filter(or_(Job.comp_max >= salary_min, Job.comp_max.is_(None)))
 
-    total = Q.count()
-    Q = Q.order_by(Job.posted_at.desc() if sort == "new" else Job.first_seen.desc())
-    rows = Q.offset(offset).limit(limit).all()
+    if hide_reposts:
+        # Some sources publish the same role under changing IDs. seen_count
+        # catches reposts from one fingerprint, but not duplicate rows across
+        # source IDs, so collapse the normalized company/title/location key.
+        if sort == "new":
+            ordered = Q.order_by(func.coalesce(Job.posted_at, Job.first_seen).desc()).all()
+        elif sort == "salary":
+            ordered = Q.order_by(func.coalesce(Job.comp_max, Job.comp_min, 0).desc(), Job.first_seen.desc()).all()
+        else:
+            ordered = Q.order_by(Job.first_seen.desc()).all()
+        unique = []
+        seen_keys = set()
+        for job in ordered:
+            key = (" ".join((job.company or "").lower().split()),
+                   " ".join((job.title or "").lower().split()),
+                   " ".join((job.location or "").lower().split()))
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            unique.append(job)
+        total = len(unique)
+        rows = unique[offset:offset + limit]
+    else:
+        total = Q.count()
+        rows = None
+    family_counts = dict(
+        db.query(Job.role_family, func.count(Job.fingerprint))
+        .filter(Job.active.is_(True))
+        .group_by(Job.role_family)
+        .all()
+    )
+    company_counts = {
+        "f500": db.query(Job).filter(Job.active.is_(True), Job.is_fortune500.is_(True)).count(),
+        "employer": db.query(Job).filter(Job.active.is_(True), Job.company_type == "employer").count(),
+        "staffing": db.query(Job).filter(Job.active.is_(True), Job.company_type == "staffing").count(),
+    }
+    if not hide_reposts:
+        if sort == "new":
+            Q = Q.order_by(func.coalesce(Job.posted_at, Job.first_seen).desc())
+        elif sort == "salary":
+            Q = Q.order_by(func.coalesce(Job.comp_max, Job.comp_min, 0).desc(), Job.first_seen.desc())
+        else:
+            Q = Q.order_by(Job.first_seen.desc())
+        rows = Q.offset(offset).limit(limit).all()
 
     # referral paths — a referral beats any cover letter
     refs = {}
@@ -63,7 +108,8 @@ def list_jobs(
         for c in db.query(Connection).filter(Connection.user_id == user.id).all():
             refs.setdefault(c.company, []).append({"name": c.name, "role": c.role, "degree": c.degree})
 
-    return {"total": total, "offset": offset, "limit": limit,
+        return {"total": total, "offset": offset, "limit": limit,
+            "family_counts": family_counts, "company_counts": company_counts,
             "jobs": [_shape(j, refs.get(j.company, [])) for j in rows]}
 
 
@@ -100,6 +146,7 @@ def _shape(j: Job, refs):
     return {
         "fingerprint": j.fingerprint, "company": j.company, "title": j.title,
         "location": j.location, "work_mode": j.work_mode, "employment": j.employment,
+        "description": j.description or "",
         "company_type": j.company_type, "is_fortune500": j.is_fortune500,
         "apply_url": j.apply_url,
         "comp": {"min": j.comp_min, "max": j.comp_max, "unit": j.comp_unit},

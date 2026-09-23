@@ -1,8 +1,8 @@
 const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
-  const w=d.window;w.scrollTo=()=>{};w.print=()=>{};w.confirm=()=>true;w.requestAnimationFrame=cb=>setTimeout(cb,0);
+const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/",beforeParse:w=>Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true})});
+  const w=d.window;Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.print=()=>{};w.confirm=()=>true;w.requestAnimationFrame=cb=>setTimeout(cb,0);
 
   Object.defineProperty(w,"innerWidth",{value:800,configurable:true});  w.navigator.clipboard={writeText:()=>Promise.resolve()};
   w.__o=[];w.open=u=>{w.__o.push(u);return{focus(){}}};return w;};
@@ -24,10 +24,9 @@ async function runEval(w,d,$,qa,click,title,timeline){
   w.openEvaluation();
   $("ev-title").value=title;
   $("ev-time").value=timeline;
-  click(qa("#md .evalPrice button")[0]);
+    click(qa("#md .evalPrice button")[0]);
   await sleep(350);
-  click(qa("#md button").find(b=>b.textContent.includes("See the report")));
-  await sleep(350);
+    await sleep(350);
 }
 
 (async()=>{

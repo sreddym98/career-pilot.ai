@@ -6,13 +6,15 @@ import hashlib
 import hmac
 import secrets
 import time
+from email.message import EmailMessage
+from mimetypes import guess_type
 from urllib.parse import urlencode
 
 import requests
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from api.auth import current_user
@@ -27,6 +29,7 @@ from api.settings import settings
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GMAIL_API_URL = "https://gmail.googleapis.com/gmail/v1/users/me"
 TWILIO_VERIFY_BASE = "https://verify.twilio.com/v2"
 
 
@@ -36,6 +39,14 @@ class PhoneStartIn(BaseModel):
 
 class PhoneConfirmIn(PhoneStartIn):
     code: str = Field(pattern=r"^\d{4,10}$")
+
+
+class GmailSendIn(BaseModel):
+    to: EmailStr
+    subject: str = Field(min_length=1, max_length=250)
+    body: str = Field(min_length=1, max_length=20000)
+    attachment_name: str = Field(default="", max_length=180)
+    attachment_base64: str = Field(default="", max_length=8_000_000)
 
 
 def _configured_gmail():
@@ -89,6 +100,30 @@ def _upsert(db: Session, user_id: str, provider: str, **values):
     return row
 
 
+def _gmail_access_token(row: Integration, db: Session):
+    """Exchange the encrypted long-lived refresh token for a short-lived token."""
+    if not row.credential:
+        raise HTTPException(409, "Reconnect Gmail to read your inbox")
+    try:
+        refresh_token = _fernet().decrypt(row.credential.encode()).decode()
+    except InvalidToken:
+        raise HTTPException(409, "Gmail credentials can no longer be read. Reconnect Gmail.")
+    response = requests.post(GOOGLE_TOKEN_URL, data={
+        "client_id": settings.GMAIL_CLIENT_ID,
+        "client_secret": settings.GMAIL_CLIENT_SECRET,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token",
+    }, timeout=15)
+    if response.status_code != 200:
+        row.status = "disconnected"
+        db.commit()
+        raise HTTPException(409, "Gmail connection expired or was revoked. Reconnect Gmail.")
+    token = response.json().get("access_token")
+    if not token:
+        raise HTTPException(502, "Google did not return a mailbox access token")
+    return token
+
+
 @router.get("/status")
 def status(user: User = Depends(require_seeker), db: Session = Depends(get_db)):
     rows = {row.provider: row for row in db.query(Integration).filter(Integration.user_id == user.id).all()}
@@ -113,7 +148,7 @@ def gmail_start(user: User = Depends(require_seeker)):
         "client_id": settings.GMAIL_CLIENT_ID,
         "redirect_uri": settings.GMAIL_REDIRECT_URI,
         "response_type": "code",
-        "scope": "openid email https://www.googleapis.com/auth/gmail.send",
+        "scope": "openid email https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly",
         "access_type": "offline",
         "prompt": "consent",
         "state": _state_for(user.id),
@@ -139,8 +174,74 @@ def gmail_callback(code: str = Query(...), state: str = Query(...), db: Session 
     refresh = token.get("refresh_token")
     if not refresh:
         raise HTTPException(400, "Google did not return a refresh token. Remove CareerPilot from Google account permissions and connect again.")
-    _upsert(db, user.id, "gmail", status="connected", credential=_fernet().encrypt(refresh.encode()).decode(), metadata_json={})
+    access_token = token.get("access_token", "")
+    account_email = ""
+    if access_token:
+        profile = requests.get(f"{GMAIL_API_URL}/profile", headers={"Authorization": f"Bearer {access_token}"}, timeout=15)
+        if profile.status_code == 200:
+            account_email = profile.json().get("emailAddress", "")
+    _upsert(db, user.id, "gmail", status="connected", credential=_fernet().encrypt(refresh.encode()).decode(), metadata_json={"account_email": account_email})
     return HTMLResponse(f"""<!doctype html><title>Gmail connected</title><script>window.opener&&window.opener.postMessage({{type:'careerpilot:gmail-connected'}},{settings.FRONTEND_URL!r});window.close()</script><p>Gmail connected. You may close this window.</p>""")
+
+
+@router.get("/gmail/messages")
+def gmail_messages(limit: int = Query(30, ge=1, le=100), user: User = Depends(require_seeker), db: Session = Depends(get_db)):
+    """Return recent inbox metadata only; message bodies never leave Gmail."""
+    if not _configured_gmail():
+        raise HTTPException(503, "Gmail OAuth is not configured")
+    row = db.query(Integration).filter(Integration.user_id == user.id, Integration.provider == "gmail", Integration.status == "connected").first()
+    if not row:
+        raise HTTPException(409, "Connect Gmail to see application replies")
+    headers = {"Authorization": f"Bearer {_gmail_access_token(row, db)}"}
+    listing = requests.get(f"{GMAIL_API_URL}/messages", headers=headers,
+                           params={"labelIds": "INBOX", "q": "newer_than:90d", "maxResults": limit}, timeout=20)
+    if listing.status_code != 200:
+        raise HTTPException(502, "Google could not load your inbox")
+    messages = []
+    for item in listing.json().get("messages", []):
+        detail = requests.get(f"{GMAIL_API_URL}/messages/{item['id']}", headers=headers,
+                              params=[("format", "metadata"), ("metadataHeaders", "From"), ("metadataHeaders", "Subject"), ("metadataHeaders", "Date")], timeout=15)
+        if detail.status_code != 200:
+            continue
+        data = detail.json()
+        values = {header["name"].lower(): header.get("value", "") for header in data.get("payload", {}).get("headers", [])}
+        messages.append({
+            "id": data["id"], "thread_id": data.get("threadId", ""), "from": values.get("from", ""),
+            "subject": values.get("subject", "(no subject)"), "date": values.get("date", ""),
+            "snippet": data.get("snippet", ""), "unread": "UNREAD" in data.get("labelIds", []),
+        })
+    return {"account_email": (row.metadata_json or {}).get("account_email", ""), "messages": messages}
+
+
+@router.post("/gmail/send")
+def gmail_send(body: GmailSendIn, user: User = Depends(require_seeker), db: Session = Depends(get_db)):
+    """Send only an explicitly approved message through the user's Gmail account."""
+    if not _configured_gmail():
+        raise HTTPException(503, "Gmail OAuth is not configured")
+    row = db.query(Integration).filter(Integration.user_id == user.id, Integration.provider == "gmail", Integration.status == "connected").first()
+    if not row:
+        raise HTTPException(409, "Connect Gmail before sending an application email")
+    message = EmailMessage()
+    message["To"] = str(body.to)
+    message["Subject"] = body.subject.replace("\r", " ").replace("\n", " ").strip()
+    message.set_content(body.body)
+    if body.attachment_base64:
+        try:
+            attachment = base64.b64decode(body.attachment_base64, validate=True)
+        except ValueError:
+            raise HTTPException(400, "Resume attachment could not be read")
+        if len(attachment) > 5_000_000:
+            raise HTTPException(400, "Resume attachment must be under 5 MB")
+        filename = body.attachment_name.replace("/", "_").replace("\\", "_") or "resume.docx"
+        mime, _ = guess_type(filename)
+        major, minor = (mime or "application/octet-stream").split("/", 1)
+        message.add_attachment(attachment, maintype=major, subtype=minor, filename=filename)
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode().rstrip("=")
+    response = requests.post(f"{GMAIL_API_URL}/messages/send", headers={"Authorization": f"Bearer {_gmail_access_token(row, db)}"}, json={"raw": raw}, timeout=20)
+    if response.status_code >= 400:
+        raise HTTPException(502, "Gmail could not send this message")
+    sent = response.json()
+    return {"sent": True, "message_id": sent.get("id", ""), "thread_id": sent.get("threadId", "")}
 
 
 @router.post("/phone/start")

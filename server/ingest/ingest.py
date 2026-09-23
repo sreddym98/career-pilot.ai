@@ -192,7 +192,8 @@ STAFFING_PATTERNS = [
     r"\bservices?$",
 ]
 
-# Text-level tells — stronger signal than the name
+# Text-level tells — stronger signal than the name. Strong agency phrases are
+# weighted more heavily than generic company suffixes.
 STAFFING_TEXT = [
     "our client", "client is seeking", "on behalf of our client", "end client",
     "implementation partner", "c2c", "corp to corp", "corp-to-corp",
@@ -200,21 +201,66 @@ STAFFING_TEXT = [
     "usc, h1b", "h1b, h4", "only h1", "third party", "prime vendor",
 ]
 
+# Explicit allow/deny lists keep the classifier from drifting when a direct
+# employer uses a generic corporate suffix or a staffing firm uses a strong brand.
+DIRECT_EMPLOYER_DENYLIST = {
+    "affirm", "stripe", "ro", "brex", "justworks", "faire", "guild", "doordash",
+    "uber", "airbnb", "linkedin", "meta", "google", "amazon", "microsoft",
+    "apple", "netflix", "paypal", "visa", "adp", "intuit", "slack", "datadog",
+    "shopify", "atlassian", "salesforce", "oracle", "ibm", "palantir", "reddit",
+    "snap", "x", "nvidia"
+}
 
-def guess_company_type(company, text=""):
-    c = (company or "").strip().lower()
+STAFFING_ALLOWLIST = {
+    "net2source", "tekresources", "collabera", "teksystems", "randstad",
+    "manpower", "modis", "synergis", "compunnel", "kforce", "cognizant",
+    "deloitte", "accenture", "capgemini", "tcs", "infosys", "wipro",
+    "virtusa", "hexaware", "pillar", "maven", "c2c", "aon", "insightglobal",
+    "toptal", "experis", "diversant", "vgroup", "nityo", "aetec", "apetan",
+    "systel", "veterans", "sagitec", "dagger", "scio", "triunity", "gsp", "intersys"
+}
+
+
+def _normalize_company_name(company):
+    return (company or "").strip().lower().replace("&", " and ")
+
+
+def guess_company_type(company, text="", direct_ats=False):
+    """Prefer explicit employer/agency lists first; otherwise require multiple
+    staffing signals before returning 'staffing'. This keeps direct employers from
+    being misclassified just because they have a generic corporate suffix."""
+    c = _normalize_company_name(company)
     t = (text or "").lower()[:3000]
 
-    # Text signal wins — an agency posting always reveals itself in the body
-    hits = sum(k in t for k in STAFFING_TEXT)
-    if hits >= 2:
+    if not c and not t:
+        return "employer"
+
+    # Strong overrides and known employers.
+    if c in DIRECT_EMPLOYER_DENYLIST:
+        return "employer"
+    if c in STAFFING_ALLOWLIST:
         return "staffing"
+    if direct_ats:
+        return "employer" if c not in STAFFING_ALLOWLIST else "staffing"
+
+    name_score = 0
+    text_score = 0
 
     if any(m in c for m in STAFFING_SUBSTR):
-        return "staffing"
+        name_score += 1
     if any(re.search(p, c) for p in STAFFING_PATTERNS):
+        name_score += 2
+
+    for token in STAFFING_TEXT:
+        if token in t:
+            text_score += 2
+
+    # A weak single signal should not flip a direct employer to staffing.
+    if text_score >= 4 or (name_score >= 2 and text_score >= 2):
         return "staffing"
-    if hits >= 1:
+    if name_score >= 3:
+        return "staffing"
+    if text_score >= 2 and name_score >= 1:
         return "staffing"
     return "employer"
 

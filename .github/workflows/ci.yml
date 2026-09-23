@@ -72,8 +72,8 @@ jobs:
             fs.writeFileSync('/tmp/a.js', h.slice(h.indexOf('<script>')+8, h.lastIndexOf('</script>')));
           "
           node --check /tmp/a.js
-      - name: Extension manifest
-        run: node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json'));console.log('manifest ok')"
+      - name: Extension
+        run: node extension/validate.js
 
   guard:
     name: No secrets in the frontend

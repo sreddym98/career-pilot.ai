@@ -48,8 +48,11 @@ def config():
 
 
 @router.post("/checkout")
-def checkout(plan: str, user: User = Depends(current_user), db: Session = Depends(get_db), term: int = 1):
+def checkout(plan: str, user: User = Depends(current_user), db: Session = Depends(get_db), term: int = 1,
+             terms_accepted: bool = False, terms_version: str = ""):
     _require_config()
+    if not terms_accepted or not terms_version:
+        raise HTTPException(400, "You must accept the CareerPilot Terms and Conditions before checkout.")
     if plan not in PRICES:
         raise HTTPException(400, "Unknown plan")
     price_id = PRICES[plan]
@@ -71,6 +74,8 @@ def checkout(plan: str, user: User = Depends(current_user), db: Session = Depend
         cancel_url=f"{settings.FRONTEND_URL}/?pricing=1",
         client_reference_id=user.id,
         allow_promotion_codes=True,
+        custom_text={"submit": {"message": "By subscribing, you confirm that you reviewed and accepted the CareerPilot Terms and Conditions and cancellation policy."}},
+        metadata={"terms_version": terms_version, "terms_accepted": "true", "terms_accepted_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()},
     )
     return {"url": s.url}
 

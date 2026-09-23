@@ -43,11 +43,21 @@ ADZUNA_APP_KEY=...
 RAPIDAPI_KEY=...
 ```
 
+USAJobs and Adzuna add free full-time and internship coverage. JSearch adds the
+staffing/contract market and the part-time queries that employer ATS boards
+rarely publish. The pipeline runs dedicated QA/SDET queries for all four
+employment types automatically once the credentials are present.
+
 Run the fast aggregation cycle every 10 minutes once the keys are configured:
 
 ```bash
 PYTHONPATH=/app/server python /app/server/ingest/run.py --fast
 ```
+
+For a single-process local deployment, `make dev` starts `ingest/run.py --loop`
+automatically. In production, run the ingestion loop as a separate worker or
+schedule the `--fast` command every five minutes and the full `--once` sweep
+every two hours.
 
 Run the source verifier monthly and commit the updated catalog:
 
@@ -81,8 +91,8 @@ Browser acceptance checks:
 1. Verify a real job card opens and its application link goes to the employer or ATS.
 2. Build a resume, edit a bullet, download Word, and save the resume-only PDF.
 3. Generate a mock interview with a job description and inspect the technical and behavioral sections.
-4. Confirm Gmail and phone setup show Done only after provider verification.
-5. Confirm email fallback offers copy/drag-in instructions when no desktop mail client exists.
+4. Confirm Gmail, Inbox, and phone setup show Done only after provider verification. Inbox should display only recent Gmail message metadata and tag replies that mention tracked application companies.
+Run the fast U.S. aggregation cycle every 5 minutes once the keys are configured:
 6. Complete Stripe test checkout and verify the webhook changes the plan only after signature validation.
 
 ## Operational safeguards

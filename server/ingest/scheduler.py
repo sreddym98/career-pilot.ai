@@ -16,7 +16,7 @@ WHAT ACTUALLY WORKS
 -------------------
   Match the poll rate to how fast each source really changes:
 
-    FAST   every 10 min   aggregators, date_posted=today only
+    FAST   every 5 min    aggregators, date_posted=today only
                           this is where new contract roles appear first
     WARM   every 2 hours  ATS boards that posted something in the last week
     SLOW   every 12 hours everything else
@@ -36,7 +36,7 @@ import datetime as dt
 
 FAST, WARM, SLOW = "fast", "warm", "slow"
 
-INTERVAL = {FAST: 10 * 60, WARM: 2 * 3600, SLOW: 12 * 3600}
+INTERVAL = {FAST: 5 * 60, WARM: 2 * 3600, SLOW: 12 * 3600}
 
 # Promote/demote thresholds, in days since that source last produced a new job
 PROMOTE_WARM_DAYS = 7

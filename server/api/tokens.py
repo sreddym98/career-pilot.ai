@@ -9,6 +9,7 @@ rotation is worse than none. When a hosted provider (Supabase, Firebase) takes
 over sign-in, that provider brings real rotation with it and this module stops
 being the primary path — see api/auth.py, which already accepts both.
 """
+from __future__ import annotations
 import datetime as dt
 from jose import jwt, JWTError
 from api.settings import settings, auth_secret

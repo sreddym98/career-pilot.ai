@@ -1,8 +1,8 @@
 const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-const mk=(width)=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
-  const w=d.window;w.scrollTo=()=>{};w.print=()=>{};w.confirm=()=>true;w.requestAnimationFrame=cb=>setTimeout(cb,0);
+const mk=(width)=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/",beforeParse:w=>Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true})});
+  const w=d.window;Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.print=()=>{};w.confirm=()=>true;w.requestAnimationFrame=cb=>setTimeout(cb,0);
   Object.defineProperty(w,"innerWidth",{value:width,configurable:true});
   w.navigator.clipboard={writeText:()=>Promise.resolve()};
   w.__o=[];w.open=u=>{w.__o.push(u);return{focus(){}}};return w;};
@@ -114,7 +114,7 @@ w.parseResume(RESUME,"r.txt"); await sleep(60);
 click(qa(".sbi").find(b=>b.textContent.includes("Get Evaluated")));
 await sleep(60);
 ok("evaluation opens from the sidebar",$("ov").classList.contains("on"));
-ok("  price badge shown in sidebar",qa(".sbbadge.price").some(b=>b.textContent==="$5"));
+  ok("  free badge shown in sidebar",qa(".sbbadge.new").some(b=>b.textContent==="FREE"));
 }
 
 console.log("\n"+"═".repeat(50));

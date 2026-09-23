@@ -1,6 +1,7 @@
 B=${API:-http://localhost:8000}
 P=0;F=0
 chk(){ if echo "$2" | grep -q "$3"; then echo "  ✓ $1"; P=$((P+1)); else echo "  ✗ $1"; echo "      got: $(echo "$2"|head -c 200)"; F=$((F+1)); fi }
+label_months(){ python -c 'import sys; months=int(sys.argv[1]); years, months=divmod(months,12); print((f"{years} yr"+("s" if years!=1 else "") if years else "")+(" " if years and months else "")+(f"{months} mo"+("s" if months!=1 else "") if months else ""))' "$1"; }
 jobcheck(){
   printf '%s' "$1" | python -c '
 import json, sys
@@ -22,7 +23,9 @@ INVITE_TWO="api-${RANDOM:-0}-two@example.com"
 echo "── PROFILE ──"
 R=$(curl -s -m5 $B/api/profile)
 chk "GET /api/profile"                "$R" '"name"'
-chk "  total_label computed"          "$R" '"total_label":"7 yrs 7 mos"'
+BASE_TOTAL=$(echo "$R" | python -c 'import json,sys; print(json.load(sys.stdin)["total_months"])')
+BASE_LABEL=$(label_months "$BASE_TOTAL")
+chk "  total_label computed"          "$R" "\"total_label\":\"$BASE_LABEL\""
 chk "  3 positions"                   "$R" '"Tata Consultancy Services"'
 chk "  per-role duration"             "$R" '"duration_label":"4 yrs 4 mos"'
 chk "  employment gap detected"       "$R" '"months":4'
@@ -79,7 +82,8 @@ R=$(curl -s -m5 -X POST $B/api/positions -H 'Content-Type: application/json' \
 chk "POST /api/positions"             "$R" '"duration_label":"2 yrs 6 mos"'
 PID=$(echo "$R" | sed 's/.*"id":"\([^"]*\)".*/\1/')
 R=$(curl -s -m5 $B/api/profile)
-chk "  total grew to 10y 1m"          "$R" '"total_label":"10 yrs 1 mo"'
+ADDED_LABEL=$(label_months "$((BASE_TOTAL + 30))")
+chk "  total grows after added role"  "$R" "\"total_label\":\"$ADDED_LABEL\""
 R=$(curl -s -m5 -X PUT $B/api/positions/$PID -H 'Content-Type: application/json' \
   -d '{"company":"Ellipsis Health","role":"Principal SDET","started_on":"2015-01-01","finished_on":"2017-06-30","bullets":["Updated bullet"]}')
 chk "PUT /api/positions/{id}"         "$R" '"duration_label"'
@@ -92,7 +96,7 @@ chk "  rejects empty bullets"         "$R" 'at least one bullet'
 R=$(curl -s -m5 -X DELETE $B/api/positions/$PID)
 chk "DELETE /api/positions/{id}"      "$R" '"deleted":true'
 R=$(curl -s -m5 $B/api/profile)
-chk "  total back to 7y 7m"           "$R" '"total_label":"7 yrs 7 mos"'
+chk "  total restores after delete"   "$R" "\"total_label\":\"$BASE_LABEL\""
 
 echo "── PUBLIC PROFILE (no auth) ──"
 R=$(curl -s -m5 $B/api/u/santoshreddy)

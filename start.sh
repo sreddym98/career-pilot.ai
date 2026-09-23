@@ -7,6 +7,7 @@ set -e
 PROJECT_ROOT="/Users/santoshreddy/career-pilot.ai"
 BACKEND_DIR="$PROJECT_ROOT/server"
 FRONTEND_DIR="$PROJECT_ROOT/web"
+PYTHON="$PROJECT_ROOT/.venv/bin/python"
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
 
@@ -28,6 +29,7 @@ cleanup() {
     echo "🛑 Stopping services..."
     kill $BACKEND_PID 2>/dev/null || true
     kill $FRONTEND_PID 2>/dev/null || true
+    kill ${INGEST_PID:-} 2>/dev/null || true
     echo "✅ All services stopped"
     exit 0
 }
@@ -43,7 +45,7 @@ fi
 
 echo "📦 Starting Backend API (port $BACKEND_PORT)..."
 cd "$BACKEND_DIR"
-PYTHONPATH="$BACKEND_DIR" python -m uvicorn api.main:app --reload --port $BACKEND_PORT > /tmp/career-pilot-backend.log 2>&1 &
+PYTHONPATH="$BACKEND_DIR" "$PYTHON" -m uvicorn api.main:app --reload --port $BACKEND_PORT > /tmp/career-pilot-backend.log 2>&1 &
 BACKEND_PID=$!
 echo "   Backend PID: $BACKEND_PID"
 sleep 2
@@ -61,6 +63,14 @@ python3 -m http.server $FRONTEND_PORT --directory . > /tmp/career-pilot-frontend
 FRONTEND_PID=$!
 echo "   Frontend PID: $FRONTEND_PID"
 sleep 1
+
+# Fast public feeds refresh every 5 minutes; the ingestion runner keeps direct
+# employer ATS boards on its own slower cadence to avoid provider rate limits.
+echo "🔄 Starting U.S. job refresh scheduler..."
+cd "$BACKEND_DIR"
+PYTHONPATH="$BACKEND_DIR" "$PYTHON" "$BACKEND_DIR/ingest/run.py" --loop > /tmp/career-pilot-ingest.log 2>&1 &
+INGEST_PID=$!
+echo "   Scheduler PID: $INGEST_PID"
 
 # Verify services are running
 echo ""
@@ -80,6 +90,7 @@ echo ""
 echo "📋 Logs:"
 echo "   Backend:  tail -f /tmp/career-pilot-backend.log"
 echo "   Frontend: tail -f /tmp/career-pilot-frontend.log"
+echo "   Jobs:     tail -f /tmp/career-pilot-ingest.log"
 echo ""
 echo "🛑 To stop: Press Ctrl+C"
 echo ""

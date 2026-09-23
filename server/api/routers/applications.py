@@ -11,11 +11,13 @@ They aren't the same axis, but users only ever think in the second one, so the
 short codes are accepted on the way in and echoed back alongside the canonical
 status. The client never has to know the mapping exists.
 """
+from __future__ import annotations
 import datetime as dt
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from urllib.parse import urlsplit, urlunsplit
 from api.db import get_db
 from api.access import require_seeker
 from api.models import User, Application, Job
@@ -24,7 +26,7 @@ router = APIRouter(prefix="/api/applications", tags=["applications"],
                    dependencies=[Depends(require_seeker)])
 
 STATUSES = ["opened", "skipped",
-            "queued", "preparing", "needs_input", "ready",
+            "queued", "preparing", "needs_input", "ready", "failed",
             "submitted", "responded", "interview", "selected", "rejected"]
 
 # What the tracker calls each stage ⇄ what the pipeline calls it. Anything not
@@ -39,6 +41,15 @@ LONG = {v: k for k, v in SHORT.items()}
 # Nothing here means the application was actually sent, so none of them should
 # stamp applied_at.
 NOT_YET_APPLIED = ("opened", "skipped", "queued", "preparing", "needs_input", "ready")
+
+# How far each stage is into the pipeline. Only meaningful for the stages the
+# frontend's own "queued -> preparing -> ..." tracking writes through this
+# endpoint — a background Autopilot run can finish (and move a row past
+# "queued") before the browser's own "mark as queued" request lands, and that
+# late, stale write must not clobber the real outcome. Anything not listed
+# (recruiter-pipeline stages, "closed" written directly by the engine, etc.)
+# is always allowed through unranked.
+STAGE_RANK = {"queued": 0, "preparing": 1, "needs_input": 2, "ready": 2}
 
 MAX_TRACKED = 2000      # a tracker, not a scraper's dumping ground
 
@@ -57,6 +68,13 @@ class StatusIn(BaseModel):
     status: str
     note: str | None = None
     blocker: str | None = None
+
+
+class AutofillIn(BaseModel):
+    url: str
+    filled: list[str] = []
+    flagged: list[dict] = []
+    skipped: int = 0
 
 
 def _canonical(status: str) -> str:
@@ -117,14 +135,56 @@ def track(body: ApplicationIn, user: User = Depends(require_seeker),
     if body.location is not None: row.location = body.location
     if body.note is not None:     row.note = body.note
     if body.blocker is not None:  row.blocker = body.blocker
-    row.status = status
-    # Only link a fingerprint we actually ingested — the column is a real
-    # foreign key, and a posting found elsewhere has no row to point at.
+    # A late "queued"/"preparing" write (the browser's own request, delayed
+    # behind a background Autopilot run that already finished) must not
+    # regress a row past that stage — the run's real outcome wins.
+    incoming_rank = STAGE_RANK.get(status)
+    current_rank = STAGE_RANK.get(row.status)
+    if incoming_rank is None or current_rank is None or incoming_rank >= current_rank:
+        row.status = status
     if body.fingerprint and db.query(Job).filter(Job.fingerprint == body.fingerprint).first():
         row.fingerprint = body.fingerprint
-    if status not in NOT_YET_APPLIED and not row.applied_at:
+    if row.status not in NOT_YET_APPLIED and not row.applied_at:
         row.applied_at = dt.datetime.now(dt.timezone.utc)
 
+    db.commit(); db.refresh(row)
+    return _out(row)
+
+
+@router.post("/autofill")
+def record_autofill(body: AutofillIn, user: User = Depends(require_seeker),
+                    db: Session = Depends(get_db)):
+    """Called by the Chrome extension after it fills a real ATS form.
+
+    This is the honest automatic-apply boundary: CareerPilot can select the
+    job, open the ATS form, fill known fields, and track whether anything still
+    needs the user's answer before submission.
+    """
+    job = _job_for_url(db, body.url)
+    if not job:
+        raise HTTPException(404, "This application URL is not in the live job feed")
+
+    status = "needs_input" if body.flagged else "ready"
+    blocker = body.flagged[0].get("reason") if body.flagged else None
+    row = _find(db, user.id, job.company, job.title, job.fingerprint)
+    if not row:
+        n = db.query(Application).filter(Application.user_id == user.id).count()
+        if n >= MAX_TRACKED:
+            raise HTTPException(400, f"You're tracking {MAX_TRACKED} applications. Clear some out first.")
+        row = Application(user_id=user.id, company=job.company, title=job.title)
+        db.add(row)
+
+    row.fingerprint = job.fingerprint
+    row.location = job.location
+    row.status = status
+    row.note = "Autofilled by CareerPilot extension"
+    row.blocker = blocker
+    row.form_fields = {
+        "url": body.url,
+        "filled": body.filled,
+        "flagged": body.flagged,
+        "skipped": body.skipped,
+    }
     db.commit(); db.refresh(row)
     return _out(row)
 
@@ -166,3 +226,18 @@ def _find(db: Session, user_id: str, company: str, title: str, fingerprint: str 
         Application.user_id == user_id,
         func.lower(Application.company) == company.lower(),
         func.lower(Application.title) == title.lower()).first()
+
+
+def _clean_url(value: str) -> str:
+    p = urlsplit(value or "")
+    return urlunsplit((p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/"), p.query, ""))
+
+
+def _job_for_url(db: Session, url: str):
+    clean = _clean_url(url)
+    if not clean:
+        return None
+    for job in db.query(Job).filter(Job.active.is_(True), Job.apply_url.isnot(None)).all():
+        if _clean_url(job.apply_url) == clean:
+            return job
+    return None

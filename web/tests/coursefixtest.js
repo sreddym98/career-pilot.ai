@@ -2,7 +2,7 @@ const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const dom=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
-const w=dom.window,d=w.document;w.scrollTo=()=>{};w.open=()=>({focus(){}});
+const w=dom.window,d=w.document;Object.defineProperty(w,"scrollTo",{value:()=>{},configurable:true});w.open=()=>({focus(){}});
 Object.defineProperty(w,"innerWidth",{value:1280,configurable:true});
 let P=0,F=0;const fails=[];
 const ok=(n,c,x)=>{c?P++:(F++,fails.push(n+(x?"  →  "+x:"")))};

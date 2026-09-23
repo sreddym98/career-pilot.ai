@@ -8,10 +8,19 @@ before you've touched Postgres at all.
 """
 from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker
+import os
 from api.settings import settings
 
 url = settings.DATABASE_URL
 IS_SQLITE = url.startswith("sqlite")
+
+# Canonicalize dev SQLite path so running from any subdirectory (web/tests, root, server)
+# connects to the same database file rather than creating an empty dev.db in that folder.
+if IS_SQLITE and settings.ENV == "dev":
+    if url in ("sqlite:///./dev.db", "sqlite:///dev.db", "sqlite://dev.db"):
+        server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        db_file = os.path.join(server_dir, "dev.db")
+        url = f"sqlite:///{db_file}"
 
 if IS_SQLITE and settings.ENV != "dev":
     # SQLite has no business holding production data, and reaching here means
