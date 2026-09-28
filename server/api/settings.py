@@ -14,7 +14,14 @@ class Settings(BaseSettings):
     # autopilot matching where cost per call matters more than prose quality.
     ANTHROPIC_MODEL: str = "claude-sonnet-5-5"
     ANTHROPIC_FAST_MODEL: str = "claude-haiku-4-5-20251001"
-    # "auto" = Anthropic when a key is set, otherwise local Ollama (dev only).
+    # Any OpenAI-compatible gateway (Ashna AI, OpenRouter, ...). Set AI_BASE_URL
+    # to the URL that /chat/completions hangs off, e.g. https://api.ashna.ai/v1/api
+    AI_BASE_URL: str = ""
+    AI_API_KEY: str = ""
+    AI_MODEL: str = "claude-sonnet-5"          # resumes, cover letters, evaluations
+    AI_FAST_MODEL: str = "claude-haiku-4.5"    # high-volume autopilot tailoring
+    # "auto" picks: gateway (AI_BASE_URL+AI_API_KEY) > Anthropic key > local Ollama (dev only).
+    # Or force one of: openai | anthropic | ollama
     AI_PROVIDER: str = "auto"
     OLLAMA_URL: str = "http://localhost:11434"
     # Shared secret for the scheduled autopilot trigger (GitHub Actions cron).
@@ -74,8 +81,10 @@ def production_problems() -> list[str]:
         problems.append("AUTH_SECRET is not set")
     if settings.DATABASE_URL.startswith("sqlite"):
         problems.append("DATABASE_URL is SQLite; use Postgres")
-    if not settings.ANTHROPIC_API_KEY and settings.AI_PROVIDER in ("auto", "anthropic"):
-        problems.append("ANTHROPIC_API_KEY is not set (AI features would 503)")
+    if not (settings.AI_API_KEY and settings.AI_BASE_URL) and not settings.ANTHROPIC_API_KEY \
+            and settings.AI_PROVIDER != "ollama":
+        problems.append("No AI provider configured: set AI_BASE_URL + AI_API_KEY "
+                        "(or ANTHROPIC_API_KEY) — AI features would 503")
     if settings.FRONTEND_URL.startswith("http://localhost"):
         problems.append("FRONTEND_URL still points at localhost (CORS, Stripe and OAuth redirects)")
     return problems

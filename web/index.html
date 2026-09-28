@@ -1324,6 +1324,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
 </div>
 <div class="ov" id="ov" onclick="if(event.target===this)closeM()"><div class="md" id="md"></div></div>
 <div class="toast" id="toast"></div>
+<script src="config.js"></script>
 <script>
 /* ═══ TAXONOMY (unchanged — this is the moat) ═══ */
 const TAX=[
@@ -2131,7 +2132,7 @@ function go(p){
   if(p==="people")renderPeople();
   if(p==="refer")renderRefer();
   if(p==="apps")renderApps();
-  if(p==="autopilot"){renderAutopilot();refreshAutopilotIntegrations();}
+  if(p==="autopilot"){renderAutopilot();refreshAutopilotIntegrations();syncAP();}
   if(p==="support")renderSupport();
   if(p==="interview")renderInterviewPage();
 }
@@ -2474,7 +2475,8 @@ function deb(){clearTimeout(debT);debT=setTimeout(()=>{LIVE?loadJobs():rn();},25
    Customers never see or configure this. A setup screen is available at
    ?setup=1 for your own use on staging.
    ═══════════════════════════════════════════════════════════════ */
-const API_ENDPOINT = "http://localhost:8000";
+const API_ENDPOINT = (typeof window!=="undefined" && window.CP_CONFIG && window.CP_CONFIG.api)
+  || (["localhost","127.0.0.1",""].includes(location.hostname) ? "http://localhost:8000" : "");
 
 const CP_API = API_ENDPOINT || store.get("cp_api","") || "";
 const DEMO   = !CP_API;
@@ -4667,13 +4669,14 @@ function renderAutopilot(){
       </div>
       <div class="rt" style="display:flex;gap:7px;flex-shrink:0">
         <button class="btn btn-g btn-s" onclick="previewQueued(${i})">Preview</button>
+        <button class="btn btn-g btn-s" onclick="skipQueued(${i})">Skip</button>
         <button class="btn btn-p btn-s" onclick="approveQueued(${i})">Approve</button>
       </div>
     </div>`).join("")
     : `<div class="empty" style="padding:30px 20px"><h3>Nothing waiting</h3><p>${AP.on?"Your next run will prepare fresh matches at your next slot.":"Turn Autopilot on to start preparing applications."}</p></div>`);
 
   setHtml("ap-runs", AP.runs.length ? AP.runs.map(r=>`
-    <div class="row"><div style="flex:1"><b>${r.when}</b><div class="sub">${r.found} found · ${r.prepared} prepared · ${r.skipped} skipped</div></div>
+    <div class="row"><div style="flex:1"><b>${r.when}</b><div class="sub">${r.found} found · ${r.prepared} prepared · ${r.skipped} skipped${r.note?` · ${esc(r.note)}`:""}</div></div>
       <div class="rt"><span class="st ${r.prepared>0?"sent":"skipped"}">${r.prepared} ready</span></div></div>`).join("")
     : `<div class="empty" style="padding:30px 20px"><h3>No runs yet</h3><p>Once Autopilot is on, every weekday run lands here.</p></div>`);
 }
@@ -4689,8 +4692,13 @@ async function connectGmail(){
     },1500);
   }catch(e){toast(e.message||"Couldn't start Gmail connection");}
 }
-function confirmAutopilotResume(){
+async function confirmAutopilotResume(){
   if(!PROFILE_READY){toast("Add your resume before confirming it");go("me");return;}
+  if(apLive()){
+    try{ adoptAP(await CP_API_call("/api/autopilot/confirm-resume",{method:"POST"})); renderAutopilot(); toast("Resume confirmed for Autopilot"); }
+    catch(e){ toast(e.message||"Couldn't confirm your resume"); }
+    return;
+  }
   AP.resumeConfirmed=true;saveAP();renderAutopilot();toast("Resume confirmed for Autopilot");
 }
 function openPhoneVerification(){
@@ -4715,39 +4723,92 @@ async function confirmPhoneVerification(){
   }catch(e){error.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;}
 }
 
+/* ── Live mode ────────────────────────────────────────────────────────
+   Signed in against a real backend, Autopilot lives on the server: settings,
+   the schedule, matching, tailoring and the approval queue. The browser only
+   renders it, which is what lets runs happen with the tab closed. With no
+   backend (demo mode) the local simulation below stays as-is. */
+const apLive = () => !!(CP_API && SESSION && SESSION.account_type==="seeker");
+const AP_TZ  = () => { try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||"America/Chicago"; }catch(_){ return "America/Chicago"; } };
+function apAgo(t){
+  if(!t) return "recently";
+  const d=new Date(/(Z|[+-]\d\d:?\d\d)$/.test(t)?t:t+"Z"), m=Math.max(0,Math.round((Date.now()-d)/60000));
+  return m<2?"just now":m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} hr ago`:`${Math.round(m/1440)} d ago`;
+}
+function adoptAP(s){
+  AP.on=s.on; AP.slots=s.slots; AP.titles=s.titles||[]; if((s.skills||[]).length) AP.skills=s.skills;
+  AP.workStyle=s.workStyle||""; AP.dailyCap=s.dailyCap||AP.dailyCap;
+  AP.gmailConnected=s.gmailConnected; AP.resumeConfirmed=s.resumeConfirmed; AP.phoneVerified=s.phoneVerified;
+  AP.queue=(s.queue||[]).map(q=>{
+    let host="the employer's application form";
+    try{ if(q.apply_url) host=new URL(q.apply_url).hostname.replace(/^www\./,""); }catch(_){}
+    return {id:q.id, jobId:q.fingerprint, co:q.company, ti:q.title, subject:q.subject, to:host, url:q.apply_url, matchedAgo:apAgo(q.matched_at)};
+  });
+  AP.runs=(s.runs||[]).map(r=>({
+    when:new Date(/(Z|[+-]\d\d:?\d\d)$/.test(r.at)?r.at:r.at+"Z").toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit"}),
+    found:r.found, prepared:r.prepared, skipped:r.skipped, note:r.note}));
+  saveAP();
+}
+async function syncAP(){
+  if(!apLive()) return;
+  try{ adoptAP(await CP_API_call("/api/autopilot")); renderAutopilot(); }
+  catch(e){ console.warn("autopilot sync:", e.message); }
+}
+async function apPut(patch){
+  try{
+    adoptAP(await CP_API_call("/api/autopilot",{method:"PUT",body:JSON.stringify({tz:AP_TZ(),...patch})}));
+    renderAutopilot(); return true;
+  }catch(e){ toast(e.message||"Couldn't save that"); await syncAP(); return false; }
+}
+
 function addSlot(){
   initAP();
   if(AP.slots.length>=8){toast("8 slots is the most useful in one day");return;}
   let h=9; while(AP.slots.includes(h) && h<23) h++;
+  if(apLive()) return void apPut({slots:[...AP.slots,h]});
   AP.slots.push(h); saveAP(); renderAutopilot();
 }
 function updateSlot(oldH,newH){
   initAP();
   if(AP.slots.includes(newH)){toast("That slot already exists");renderAutopilot();return;}
-  AP.slots = AP.slots.map(h=>h===oldH?newH:h);
-  saveAP(); renderAutopilot();
+  const next=AP.slots.map(h=>h===oldH?newH:h);
+  if(apLive()) return void apPut({slots:next});
+  AP.slots=next; saveAP(); renderAutopilot();
 }
 function removeSlot(h){
   initAP();
   if(AP.slots.length<=1){toast("Keep at least one slot while Autopilot is set up");return;}
-  AP.slots = AP.slots.filter(x=>x!==h);
-  saveAP(); renderAutopilot();
+  const next=AP.slots.filter(x=>x!==h);
+  if(apLive()) return void apPut({slots:next});
+  AP.slots=next; saveAP(); renderAutopilot();
 }
 function addApTitle(){
   initAP();
   const v=$("ap-title-in").value.trim(); if(!v)return;
-  if(!AP.titles.some(t=>t.toLowerCase()===v.toLowerCase())) AP.titles.push(v);
-  $("ap-title-in").value=""; saveAP(); renderAutopilot();
+  if(AP.titles.some(t=>t.toLowerCase()===v.toLowerCase())){$("ap-title-in").value="";return;}
+  $("ap-title-in").value="";
+  if(apLive()) return void apPut({titles:[...AP.titles,v]});
+  AP.titles.push(v); saveAP(); renderAutopilot();
 }
-function rmApTitle(i){ initAP(); AP.titles.splice(i,1); saveAP(); renderAutopilot(); }
+function rmApTitle(i){
+  initAP();
+  if(apLive()) return void apPut({titles:AP.titles.filter((_,k)=>k!==i)});
+  AP.titles.splice(i,1); saveAP(); renderAutopilot();
+}
 
-function toggleAutopilot(){
+async function toggleAutopilot(){
   initAP();
   const wantOn = $("ap-on").checked;
   const steps = ["gmailConnected","resumeConfirmed","phoneVerified"];
   if(wantOn && steps.some(k=>!AP[k])){
     $("ap-on").checked=false;
     toast("Finish setup first — Gmail, resume, and phone verification");
+    return;
+  }
+  if(apLive()){
+    if(!(await apPut({on:wantOn}))){ renderAutopilot(); return; }
+    toast(AP.on ? "Autopilot is on — finding your first matches…" : "Autopilot paused");
+    if(AP.on) await runAutopilotNow();
     return;
   }
   AP.on = wantOn; saveAP(); renderAutopilot();
@@ -4757,18 +4818,28 @@ function toggleAutopilot(){
 
 function saveFlightPlan(){
   initAP();
-  AP.workStyle = $("ap-loc").value;
+  const v=$("ap-loc").value;
+  if(apLive()) return void apPut({workStyle:v}).then(ok=>ok&&toast("Flight plan saved"));
+  AP.workStyle = v;
   saveAP();
   toast("Flight plan saved");
 }
 
-/* Simulates one run: finds matches against titles/skills, "tailors" a
-   plain resume for each (reuses the same non-AI basicResumeDoc path used
-   in the recruiter email flow, so this never depends on a paid call
-   either), and queues for approval. Never sends anything itself. */
-function runAutopilotNow(){
+/* Live: asks the server to run this account's slot now. Demo: simulates one
+   run against the sample roles (no AI involved), and never sends anything. */
+async function runAutopilotNow(){
   initAP();
   if(!AP.on) return;
+  if(apLive()){
+    try{
+      adoptAP(await CP_API_call("/api/autopilot/run",{method:"POST"}));
+      renderAutopilot();
+      const n=AP.queue.length, last=AP.runs[0];
+      if(last && last.prepared) toast(`${last.prepared} application${last.prepared>1?"s":""} ready for your approval`);
+      else if(last && last.note) toast(last.note);
+    }catch(e){ toast(e.message||"Couldn't run Autopilot"); await syncAP(); }
+    return;
+  }
   const already = new Set(AP.queue.map(q=>q.co));
   const wantTitles = AP.titles.map(t=>t.toLowerCase());
   const wantSkills = (AP.skills.length?AP.skills:SKILLS).map(s=>s.toLowerCase());
@@ -4803,30 +4874,75 @@ function runAutopilotNow(){
   if(toQueue.length) toast(`${toQueue.length} application${toQueue.length>1?"s":""} ready for your approval`);
 }
 
-function previewQueued(i){
+async function previewQueued(i){
   initAP();
   const q = AP.queue[i]; if(!q) return;
+  if(apLive() && q.id){
+    try{
+      const d = await CP_API_call(`/api/autopilot/queue/${q.id}`);
+      setHtml("md",`<div class="mh"><div style="flex:1"><h2>${esc(d.title)} · ${esc(d.company)}</h2>
+        <p style="color:var(--ink2);font-size:14px;margin-top:3px">Subject: ${esc(d.subject)}</p></div><button class="mx" onclick="closeM()">×</button></div>
+        <div class="mb">
+          ${d.summary?`<h4>Summary</h4><p>${esc(d.summary)}</p>`:""}
+          ${(d.highlights||[]).length?`<h4>Highlights for this role</h4><ul>${d.highlights.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
+          <h4>Cover letter</h4><p style="white-space:pre-wrap">${esc(d.cover_letter||"")}</p>
+          <div class="acts" style="margin-top:16px">
+            <button class="btn btn-p" onclick="closeM();approveQueued(${i})">Approve</button>
+            <button class="btn btn-g" onclick="closeM();skipQueued(${i})">Skip this one</button>
+            <button class="btn btn-g" onclick="closeM()">Close</button></div>
+        </div>`);
+      openM();
+    }catch(e){ toast(e.message||"Couldn't load the preview"); }
+    return;
+  }
   const j = J.find(x=>x.id===q.jobId);
   if(j) openJob(j.id);
   else toast("That role is no longer available");
 }
-function approveQueued(i){
+async function approveQueued(i){
   initAP();
   const q = AP.queue[i]; if(!q) return;
+  if(apLive() && q.id){
+    try{
+      const r = await CP_API_call(`/api/autopilot/queue/${q.id}/approve`,{method:"POST"});
+      const j = J.find(x=>x.id===q.jobId); if(j) mark(j,"opened","Approved for manual application");
+      if(r.apply_url) window.open(r.apply_url,"_blank","noopener");
+      toast(`Approved for ${q.co} — submit it on the posting that just opened`);
+    }catch(e){ toast(e.message||"Couldn't approve that"); }
+    return syncAP();
+  }
   const j = J.find(x=>x.id===q.jobId);
   AP.queue.splice(i,1); saveAP();
   if(j) mark(j, "opened", "Approved for manual application");
   renderAutopilot();
   toast(`Approved for ${q.co} — open the posting to submit it`);
 }
+async function skipQueued(i){
+  initAP();
+  const q = AP.queue[i]; if(!q) return;
+  if(apLive() && q.id){
+    try{ await CP_API_call(`/api/autopilot/queue/${q.id}`,{method:"DELETE"}); toast("Skipped"); }
+    catch(e){ toast(e.message||"Couldn't skip that"); }
+    return syncAP();
+  }
+  AP.queue.splice(i,1); saveAP(); renderAutopilot();
+}
 
 /* The friction-killer: one tap clears the whole batch. Each item still
    got a real subject-and-recipient glance in the list above it — this
    just removes the need to click through them one at a time. */
-function approveAllQueued(){
+async function approveAllQueued(){
   initAP();
   const n = AP.queue.length;
   if(!n) return;
+  if(apLive()){
+    try{
+      await CP_API_call("/api/autopilot/queue/approve-all",{method:"POST"});
+      AP.queue.forEach(q=>{ const j=J.find(x=>x.id===q.jobId); if(j) mark(j,"opened","Approved for manual application"); });
+      toast(`${n} application${n>1?"s":""} approved for manual submission`);
+    }catch(e){ toast(e.message||"Couldn't approve the batch"); }
+    return syncAP();
+  }
   AP.queue.forEach(q=>{
     const j = J.find(x=>x.id===q.jobId);
     if(j) mark(j, "opened", "Approved for manual application");
@@ -5615,7 +5731,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   get EF_FILES(){return EF_FILES},get LAST_DOCX_FILE(){return LAST_DOCX_FILE},
   renderAutopilot,toggleAutopilot,addSlot,removeSlot,updateSlot,addApTitle,rmApTitle,
   saveFlightPlan,runAutopilotNow,previewQueued,approveQueued,approveAllQueued,
-  connectGmailStub,verifyPhoneStub,
+  skipQueued,syncAP,adoptAP,apLive,confirmAutopilotResume,
   renderSupport,submitSupport,emailSupportDirect,get SUP_TICKETS(){return SUP_TICKETS},
   generateInterview,toggleReveal,renderInterviewPage,prefillInterviewFromJob,demoInterview,
   get IV_LAST(){return IV_LAST},get IV_REVEALED(){return IV_REVEALED},

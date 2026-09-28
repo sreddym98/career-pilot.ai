@@ -2,8 +2,9 @@
 # Proprietary and confidential. See LICENSE.
 """AI proxy. Claude (Anthropic) in production, local Ollama for offline dev.
 
-Provider choice (AI_PROVIDER): "auto" uses Anthropic whenever ANTHROPIC_API_KEY
-is set and falls back to a local Ollama otherwise. In production there is no
+Provider choice (AI_PROVIDER): "auto" prefers an OpenAI-compatible gateway
+(AI_BASE_URL + AI_API_KEY, e.g. Ashna AI, which routes many models), then a
+direct Anthropic key, then a local Ollama. In production there is no
 Ollama to fall back to, so a missing key is a clear 503, not a mystery timeout.
 """
 import hashlib, json, re, requests
@@ -28,13 +29,15 @@ OLLAMA_MODEL = "neural-chat"
 def provider() -> str:
     p = (settings.AI_PROVIDER or "auto").lower()
     if p == "auto":
+        if settings.AI_API_KEY and settings.AI_BASE_URL:
+            return "openai"
         return "anthropic" if settings.ANTHROPIC_API_KEY else "ollama"
     return p
 
 
 # Part of every cache key, so switching model or provider never serves an
 # answer that a different model wrote.
-MODEL = settings.ANTHROPIC_MODEL if provider() == "anthropic" else OLLAMA_MODEL
+MODEL = {"openai": settings.AI_MODEL, "anthropic": settings.ANTHROPIC_MODEL}.get(provider(), OLLAMA_MODEL)
 
 # Ceiling on a single generation. High enough for the 12-15 bullet resume
 # prompts, low enough that one request can't tie the model up indefinitely.
@@ -77,6 +80,42 @@ def _extract_json(text: str) -> dict:
         return json.loads(text)
     except json.JSONDecodeError:
         raise _Transient("response was not valid JSON")
+
+
+def _call_openai(prompt: str, budget: int, timeout: int, fast: bool) -> dict:
+    """OpenAI-compatible /chat/completions (Ashna AI and most gateways).
+    One attempt; the caller's fallback handles failure."""
+    if not (settings.AI_API_KEY and settings.AI_BASE_URL):
+        raise HTTPException(503, "AI is not configured on this server (AI_BASE_URL / AI_API_KEY).")
+    model = settings.AI_FAST_MODEL if fast else settings.AI_MODEL
+    try:
+        r = requests.post(
+            settings.AI_BASE_URL.rstrip("/") + "/chat/completions",
+            headers={"Authorization": f"Bearer {settings.AI_API_KEY}"},
+            json={"model": model, "max_tokens": budget, "temperature": 0.3,
+                  "response_format": {"type": "json_object"},
+                  "messages": [
+                      {"role": "system", "content": "You are a precise writing assistant. "
+                       "Reply with a single JSON object and nothing else."},
+                      {"role": "user", "content": prompt}]},
+            timeout=timeout)
+    except requests.Timeout:
+        raise HTTPException(503, "AI is taking too long to respond. Try again in a moment.")
+    except requests.ConnectionError:
+        raise HTTPException(503, "Couldn't reach the AI service. Try again in a moment.")
+    if r.status_code in (401, 403):
+        print(f"[ai] gateway rejected our key: {r.status_code} {r.text[:200]}")
+        raise HTTPException(503, "AI request could not be completed.")
+    if r.status_code == 429 or r.status_code >= 500:
+        raise HTTPException(503, "AI is busy right now. Retry in a moment.")
+    if r.status_code >= 400:
+        print(f"[ai] gateway 4xx: {r.status_code} {r.text[:200]}")
+        raise HTTPException(400, "AI request could not be completed.")
+    try:
+        text = r.json()["choices"][0]["message"]["content"]
+        return _extract_json(text)
+    except (KeyError, IndexError, ValueError, _Transient):
+        raise HTTPException(503, "AI returned an unreadable answer. Retry in a moment.")
 
 
 def _call_anthropic(prompt: str, budget: int, timeout: int, fast: bool) -> dict:
@@ -122,7 +161,10 @@ def _call(prompt: str, max_tokens: int = 1400, label: str = "", fast: bool = Fal
     budget = max(256, min(max_tokens, TOKEN_CEILING))
     timeout = TIMEOUT_BASE + (budget // 100) * TIMEOUT_PER_100_TOKENS
 
-    if provider() == "anthropic":
+    prov = provider()
+    if prov == "openai":
+        return _call_openai(prompt, budget, timeout, fast)
+    if prov == "anthropic":
         return _call_anthropic(prompt, budget, timeout, fast)
 
     try:

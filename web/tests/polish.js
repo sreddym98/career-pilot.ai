@@ -1,7 +1,7 @@
 const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
+const mk=()=>{const d=new JSDOM(HTML,{beforeParse(w){w.CP_CONFIG={api:"http://localhost:8000"}},runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
   const w=d.window;w.scrollTo=()=>{};w.print=()=>{};w.confirm=()=>true;
 
   Object.defineProperty(w,"innerWidth",{value:800,configurable:true});  w.navigator.clipboard={writeText:()=>Promise.resolve()};
@@ -44,7 +44,7 @@ $("p-li").value="linkedin.com/in/santoshreddy"; w.saveState();
 const bullets=w.CP.EXP[0].b.length, apps=w.CP.APPS.length;
 
 // reload, sharing the same storage
-const w2=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/",
+const w2=new JSDOM(HTML,{beforeParse(w){w.CP_CONFIG={api:"http://localhost:8000"}},runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/",
   storageQuota:1e7}).window;
 // jsdom gives each window its own storage, so replay through the same API
 w2.scrollTo=()=>{};w2.open=()=>({focus(){}});

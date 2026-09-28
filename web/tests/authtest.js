@@ -1,7 +1,7 @@
 const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-const mk=()=>{const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
+const mk=()=>{const d=new JSDOM(HTML,{beforeParse(w){w.CP_CONFIG={api:"http://localhost:8000"}},runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
   const w=d.window;w.scrollTo=()=>{};w.confirm=()=>true;w.print=()=>{};
   Object.defineProperty(w,"innerWidth",{value:1200,configurable:true});
   w.navigator.clipboard={writeText:()=>Promise.resolve()};
