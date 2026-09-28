@@ -7,7 +7,7 @@ const ok=(n,c,x)=>{c?P++:(F++,fails.push(n+(x?"  →  "+x:"")))};
 // .splitcard) depending on viewport width. Tests query whichever is active.
 const detailSel = (d) => d.querySelector("#jobDetailPane .splitcard") ? "#jobDetailPane" : "#md";
 const mk=(url="https://careerpilot.ai/")=>{
-  const d=new JSDOM(HTML,{beforeParse(w){w.CP_CONFIG={api:"http://localhost:8000"}},runScripts:"dangerously",pretendToBeVisual:true,url});
+  const d=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url});
   const w=d.window;w.scrollTo=()=>{};w.print=()=>{};w.confirm=()=>true;
 
   Object.defineProperty(w,"innerWidth",{value:800,configurable:true});  w.navigator.clipboard={writeText:()=>Promise.resolve()};

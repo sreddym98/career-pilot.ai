@@ -1,7 +1,7 @@
 const path=require('path');
 const {JSDOM}=require('jsdom');const fs=require('fs');
 const HTML=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-const dom=new JSDOM(HTML,{beforeParse(w){w.CP_CONFIG={api:"http://localhost:8000"}},runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
+const dom=new JSDOM(HTML,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
 const w=dom.window,d=w.document;w.scrollTo=()=>{};w.open=()=>({focus(){}});
 Object.defineProperty(w,"innerWidth",{value:1280,configurable:true});
 let P=0,F=0;const fails=[];
