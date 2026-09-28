@@ -12,12 +12,12 @@ import json as _json
 class UUIDStr(TypeDecorator):
     impl = String; cache_ok = True
     def load_dialect_impl(self, d):
-        return d.type_descriptor(PG_UUIDStr()) if d.name == "postgresql" else d.type_descriptor(String(36))
+        return d.type_descriptor(PG_UUID(as_uuid=False)) if d.name == "postgresql" else d.type_descriptor(String(36))
 
 class StrArray(TypeDecorator):
     impl = TEXT; cache_ok = True
     def load_dialect_impl(self, d):
-        return d.type_descriptor(PG_StrArray()) if d.name == "postgresql" else d.type_descriptor(TEXT)
+        return d.type_descriptor(PG_ARRAY(String)) if d.name == "postgresql" else d.type_descriptor(TEXT)
     def process_bind_param(self, v, d):
         if v is None: return None
         return v if d.name == "postgresql" else _json.dumps(list(v))
