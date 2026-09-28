@@ -140,7 +140,6 @@ def save(body: ConfigIn, user: User = Depends(require_seeker), db: Session = Dep
         if _cap(user) == 0:
             raise HTTPException(402, "Autopilot is part of Pro. Upgrade to turn it on.")
         missing = [label for ok, label in (
-            (_gates(db, user, cfg)["gmailConnected"], "connect Gmail"),
             (_gates(db, user, cfg)["resumeConfirmed"], "confirm your resume"),
             (_gates(db, user, cfg)["phoneVerified"], "verify your phone")) if not ok]
         if missing:

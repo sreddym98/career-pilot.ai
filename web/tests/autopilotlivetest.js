@@ -96,7 +96,7 @@ w.go("autopilot"); await sleep(200);
 ok("state fetched with the bearer token",calls("GET","/api/autopilot").length>=1&&calls("GET","/api/autopilot")[0].auth==="Bearer tok");
 ok("server slots rendered (not the demo defaults)",qa("#ap-slots select").length===2&&qa("#ap-slots select").map(s=>+s.value).join()==="8,12",qa("#ap-slots select").map(s=>s.value).join());
 ok("  plan cap shown",$("ap-cap").textContent.includes("60"));
-ok("  setup 0/3",$("ap-setup-count").textContent.includes("0/3"));
+ok("  setup 0/2",$("ap-setup-count").textContent.includes("0/2"));
 ok("  toggle off",$("ap-on").checked===false);
 
 console.log("── Editing writes to the server ──");
@@ -122,7 +122,7 @@ ok("  switch snaps back off",$("ap-on").checked===false);
 console.log("── With setup done: PUT then run, queue appears ──");
 S.gmailConnected=S.phoneVerified=S.resumeConfirmed=true;
 await w.syncAP(); await sleep(60);
-ok("setup shows 3/3 after resync",$("ap-setup-count").textContent.includes("3/3"));
+ok("setup shows 2/2 after resync",$("ap-setup-count").textContent.includes("2/2"));
 const n0=S.calls.length;
 $("ap-on").checked=true; await w.toggleAutopilot(); await sleep(150);
 const seq=S.calls.slice(n0).map(c=>c.m+" "+c.p);

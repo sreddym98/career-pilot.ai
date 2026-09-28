@@ -3,6 +3,7 @@ const {JSDOM}=require('jsdom');const fs=require('fs');
 const dom=new JSDOM(fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8'),
   {runScripts:"dangerously",pretendToBeVisual:true,url:"https://careerpilot.ai/"});
 const w=dom.window,d=w.document;
+for(const [i,v] of [["p-name","Test User"],["p-email","test@example.com"],["p-phone","+1 555 000 0000"],["p-loc","St. Louis, MO"]]){const e=d.getElementById(i); if(e) e.value=v;}
 Object.defineProperty(w,"innerWidth",{value:800,configurable:true});
 w.scrollTo=()=>{};w.print=()=>{};w.navigator.clipboard={writeText:()=>Promise.resolve()};
 w.URL.createObjectURL=w.URL.createObjectURL||(()=>"blob:mock");

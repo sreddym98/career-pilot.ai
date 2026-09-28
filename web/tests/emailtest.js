@@ -35,6 +35,7 @@ Playwright, Cypress, Selenium, PySpark, SQL`;
 console.log("\n╔═══ EMAIL FLOW — no false attachment claims ═══╗\n");
 
 const w=mk(); await sleep(700);
+for(const [i,v] of [["p-name","Test User"],["p-email","test@example.com"],["p-phone","+1 555 000 0000"],["p-loc","St. Louis, MO"]]){const e=w.document.getElementById(i); if(e) e.value=v;}
 const d=w.document,$=i=>d.getElementById(i),qa=s=>[...d.querySelectorAll(s)];
 const click=e=>{if(!e)throw new Error("missing");e.dispatchEvent(new w.MouseEvent("click",{bubbles:true}))};
 const ERR=[];w.addEventListener("error",e=>ERR.push(e.message));

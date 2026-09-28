@@ -1015,10 +1015,10 @@ select.sel:focus{border-color:var(--moss);outline:none}
       <div class="card">
         <h2>Details</h2>
         <p>Used when you apply. Only these five fields.</p>
-        <div class="fld"><label>Name</label><input id="p-name" value="Santosh Reddy"></div>
-        <div class="fld"><label>Email</label><input id="p-email" value="mamindlasreddy@gmail.com"></div>
-        <div class="fld"><label>Phone</label><input id="p-phone" value="+1 919-454-6356"></div>
-        <div class="fld"><label>Location</label><input id="p-loc" value="St. Louis, MO"></div>
+        <div class="fld"><label>Name</label><input id="p-name" placeholder="Your name"></div>
+        <div class="fld"><label>Email</label><input id="p-email" placeholder="you@example.com"></div>
+        <div class="fld"><label>Phone</label><input id="p-phone" placeholder="+1 555 000 0000"></div>
+        <div class="fld"><label>Location</label><input id="p-loc" placeholder="City, ST"></div>
         <div class="fld"><label>LinkedIn</label><input id="p-li" placeholder="linkedin.com/in/yourname">
           <small>Paste your URL. LinkedIn closed profile import to independent developers, so this stays manual — it's one field, once.</small></div>
         <div class="fld"><label>Work authorization</label>
@@ -4838,7 +4838,6 @@ function renderAutopilot(){
     : `<span class="apdot"></span>Off`);
 
   const steps = [
-    {k:"gmailConnected", label:"Connect Gmail", sub:"Google OAuth grants send permission only after you approve it.", cta:"Connect Gmail", fn:"connectGmail"},
     {k:"resumeConfirmed", label:"Confirm your resume", sub:"Autopilot uses the roles and bullets in your profile.", cta:"Confirm resume", fn:"confirmAutopilotResume"},
     {k:"phoneVerified", label:"Verify phone", sub:"A Twilio SMS code confirms this account before preparation begins.", cta:"Verify phone", fn:"openPhoneVerification"},
   ];
@@ -5045,10 +5044,10 @@ function rmApTitle(i){
 async function toggleAutopilot(){
   initAP();
   const wantOn = $("ap-on").checked;
-  const steps = ["gmailConnected","resumeConfirmed","phoneVerified"];
+  const steps = ["resumeConfirmed","phoneVerified"];
   if(wantOn && steps.some(k=>!AP[k])){
     $("ap-on").checked=false;
-    toast("Finish setup first — Gmail, resume, and phone verification");
+    toast("Finish setup first — resume and phone verification");
     return;
   }
   if(apLive()){

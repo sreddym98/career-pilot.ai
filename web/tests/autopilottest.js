@@ -39,7 +39,7 @@ ok("  explains the Gmail risk in plain terms",/flagged as spam/.test(noteText));
 ok("  it's the first thing on the page, not buried",$("p-autopilot").innerHTML.indexOf("apnote") < $("p-autopilot").innerHTML.indexOf("ap-checklist"));
 
 console.log("── Setup checklist ──");
-ok("starts at 0 of 3",$("ap-setup-count").textContent.includes("0/3"));
+ok("starts at 0 of 2",$("ap-setup-count").textContent.includes("0/2"));
 ok("  toggle is blocked while setup incomplete",$("ap-on").checked===false);
 $("ap-on").checked=true;
 w.toggleAutopilot();
@@ -49,10 +49,11 @@ ok("  explains why",$("toast").textContent.includes("Finish setup"));
 
 // Connect Gmail / Verify phone now go through the real API (OAuth, SMS code)
 // and can't complete in demo mode, so the steps are marked done directly.
-ok("Gmail and phone steps are offered while incomplete",
-   qa("#ap-checklist button").some(b=>b.textContent.includes("Connect Gmail"))&&qa("#ap-checklist button").some(b=>b.textContent.includes("Verify")));
+ok("Resume and phone steps are offered while incomplete",
+   qa("#ap-checklist button").some(b=>b.textContent.includes("Confirm"))&&qa("#ap-checklist button").some(b=>b.textContent.includes("Verify")));
+ok("Gmail is not a setup step (nothing sends mail yet)",!qa("#ap-checklist button").some(b=>b.textContent.includes("Gmail")));
 w.CP.AP.gmailConnected=true; w.CP.AP.phoneVerified=true; w.CP.AP.resumeConfirmed=true; w.CP.saveAP(); w.renderAutopilot();
-ok("all 3 steps now done",$("ap-setup-count").textContent.includes("3/3"));
+ok("both steps now done",$("ap-setup-count").textContent.includes("2/2"));
 
 console.log("── Flight plan: slots ──");
 const initialSlots = w.CP.AP.slots.length;

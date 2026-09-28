@@ -141,7 +141,7 @@ except HTTPException as e:
 try:
     AP.save(AP.ConfigIn(on=True), u, db); ok("gates enforced server-side", False)
 except HTTPException as e:
-    ok("gates enforced server-side", e.status_code == 400 and "Gmail" in e.detail, e.detail)
+    ok("gates enforced server-side", e.status_code == 400 and "phone" in e.detail, e.detail)
 for bad in (AP.ConfigIn(slots=[]), AP.ConfigIn(slots=[25]), AP.ConfigIn(tz="Mars/Base"), AP.ConfigIn(workStyle="moon")):
     try:
         AP.save(bad, u, db); ok(f"rejects {bad.model_dump(exclude_none=True)}", False)
