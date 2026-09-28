@@ -2504,6 +2504,9 @@ async function loadJobs(){
     d.jobs.forEach((x,i)=>J.push(mapJob(x,i)));
     LIVE=true; LAST_SYNC=new Date(); TOTAL_LIVE=d.total;
     rn();
+    if(!d.total && !$("q").value.trim() && !($("f-fam").value||$("f-type").value||$("f-mode").value)){
+      $("count").innerHTML=`<span style="color:var(--ink3)">No roles loaded yet. The board fills after the first job import runs — check back shortly.</span>`;
+    }
   }catch(e){
     LIVE=false;
     $("count").innerHTML=`<span style="color:var(--clay)">Having trouble loading jobs. Retrying shortly.</span>`;
