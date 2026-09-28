@@ -47,6 +47,30 @@ jobs:
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
         run: python test_ai_resilience.py
+      - name: Autopilot
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_autopilot.db", ENV: dev }
+        run: python test_autopilot.py
+      - name: Evaluation
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_evaluation.db", ENV: dev }
+        run: python test_evaluation.py
+      - name: Interview prep
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_interview.db", ENV: dev }
+        run: python test_interview.py
+      - name: Support routing
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_support.db", ENV: dev }
+        run: python test_support.py
+      - name: Hardening (rate limits, headers, webhook idempotency)
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_hardening.db", ENV: dev }
+        run: python test_hardening.py
+      - name: Job ingest (mocked network)
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_ingest.db", ENV: dev }
+        run: python test_ingest.py
       - name: API endpoints
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }
@@ -55,6 +79,14 @@ jobs:
           uvicorn api.main:app --port 8000 --log-level error &
           for i in $(seq 1 40); do curl -sf localhost:8000/health && break; sleep 0.5; done
           API=http://localhost:8000 bash test_api.sh
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build server image (no push)
+        run: docker build -t careerpilot-api:ci server
 
   web:
     name: Frontend tests

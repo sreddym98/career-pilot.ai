@@ -144,6 +144,68 @@ try:
 finally:
     AI.requests.post = original_post
 
+# ── OpenAI-compatible gateway path (_call_openai) ──
+class GwResponse:
+    def __init__(self, status=200, body=None, text=""):
+        self.status_code = status
+        self._body = body
+        self.text = text or "upstream-secret-detail-key-sk-123"
+    def json(self):
+        if self._body is None:
+            raise ValueError("no json")
+        return self._body
+
+def _gw_body(content):
+    return {"choices": [{"message": {"content": content}}]}
+
+_saved = (AI.settings.AI_API_KEY, AI.settings.AI_BASE_URL)
+_saved_post = AI.requests.post
+AI.settings.AI_API_KEY = "test-key"
+AI.settings.AI_BASE_URL = "https://gateway.example.test/v1"
+try:
+    seen = {}
+    def gw_ok(url, **kw):
+        seen["url"] = url; seen["auth"] = kw["headers"]["Authorization"]
+        return GwResponse(200, _gw_body('{"summary": "gw ok"}'))
+    AI.requests.post = gw_ok
+    out = AI._call_openai("p", 100, 5, False)
+    ok("gateway: success parses the JSON answer", out == {"summary": "gw ok"}, out)
+    ok("gateway: hits <base>/chat/completions with the key",
+       seen["url"] == "https://gateway.example.test/v1/chat/completions" and seen["auth"] == "Bearer test-key", seen)
+
+    AI.requests.post = lambda *a, **k: GwResponse(200, _gw_body('```json\n{"summary": "fenced"}\n```'))
+    ok("gateway: fenced JSON is unwrapped", AI._call_openai("p", 100, 5, False) == {"summary": "fenced"})
+
+    def expect_503(name, fn, forbidden=()):
+        AI.requests.post = fn
+        try:
+            AI._call_openai("p", 100, 5, False)
+            ok(name, False, "no exception")
+        except HTTPException as e:
+            leaked = [f for f in forbidden if f in str(e.detail)]
+            ok(name, e.status_code == 503 and not leaked, (e.status_code, e.detail))
+
+    expect_503("gateway: 401 -> 503 without leaking detail",
+               lambda *a, **k: GwResponse(401), forbidden=("sk-123", "upstream-secret", "401"))
+    expect_503("gateway: 429 -> 503", lambda *a, **k: GwResponse(429))
+    expect_503("gateway: 500 -> 503", lambda *a, **k: GwResponse(500))
+    def _timeout(*a, **k): raise requests.Timeout("slow")
+    expect_503("gateway: timeout -> 503", _timeout)
+    def _conn(*a, **k): raise requests.ConnectionError("refused")
+    expect_503("gateway: connection error -> 503", _conn)
+    expect_503("gateway: unreadable answer -> 503",
+               lambda *a, **k: GwResponse(200, {"choices": []}))
+
+    AI.settings.AI_API_KEY = ""
+    try:
+        AI._call_openai("p", 100, 5, False)
+        ok("gateway: unconfigured -> 503", False)
+    except HTTPException as e:
+        ok("gateway: unconfigured -> 503", e.status_code == 503, e.status_code)
+finally:
+    AI.settings.AI_API_KEY, AI.settings.AI_BASE_URL = _saved
+    AI.requests.post = _saved_post
+
 print("\n" + "=" * 48)
 print(f"PASS {P}    FAIL {F}")
 if F:

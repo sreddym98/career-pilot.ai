@@ -7,6 +7,8 @@ from api.db import get_db
 from api.auth import current_user
 from api.models import User
 from api.settings import settings
+from api.models_events import ProcessedEvent
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -18,6 +20,30 @@ PRICES = {"pro": settings.STRIPE_PRICE_PRO_MONTHLY,
 PRO_TERM_PRICES = {1: settings.STRIPE_PRICE_PRO_MONTHLY,
                    3: settings.STRIPE_PRICE_PRO_3MO,
                    6: settings.STRIPE_PRICE_PRO_6MO}
+_events_table_ready = False
+
+
+def _ensure_events_table():
+    """init_db() creates processed_events once models_events is imported, but a
+    process that ran init_db() earlier (tests, scripts) may predate it."""
+    global _events_table_ready
+    if not _events_table_ready:
+        from api.db import engine
+        ProcessedEvent.__table__.create(bind=engine, checkfirst=True)
+        _events_table_ready = True
+
+
+def _plan_for_price(price_id):
+    """Map a Stripe price id to a plan, or None when we don't recognise it.
+    An unrecognised price must never default to a paid plan."""
+    if price_id and price_id == PRICES.get("recruiter"):
+        return "recruiter"
+    pro = {PRICES.get("pro"), *PRO_TERM_PRICES.values()} - {"", None}
+    if price_id and price_id in pro:
+        return "pro"
+    return None
+
+
 EVAL_PRICE = "eval"   # separate namespace — one-time, not a plan
 
 
@@ -131,6 +157,14 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
 
     t, obj = event["type"], event["data"]["object"]
 
+    # Stripe delivers at-least-once and retries on any non-2xx. Recorded only
+    # after the handler succeeds, so a failed run is retried rather than lost.
+    event_id = event.get("id")
+    if event_id:
+        _ensure_events_table()
+        if db.query(ProcessedEvent).get(event_id):
+            return {"received": True, "duplicate": True}
+
     if t == "checkout.session.completed" and obj.get("mode") == "payment" \
             and (obj.get("metadata") or {}).get("kind") == "evaluation":
         from api.models import Evaluation
@@ -148,17 +182,25 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
             u.stripe_subscription = obj.get("subscription")
             sub = stripe.Subscription.retrieve(obj["subscription"])
             price = sub["items"]["data"][0]["price"]["id"]
-            u.plan = "recruiter" if price == PRICES["recruiter"] else "pro"
+            plan = _plan_for_price(price)
+            if plan:
+                u.plan = plan
+            else:
+                print(f"[billing] UNKNOWN price {price} on checkout for {u.email} — plan not changed")
             db.commit()
 
     elif t in ("customer.subscription.updated", "customer.subscription.deleted"):
         u = db.query(User).filter(User.stripe_customer == obj["customer"]).first()
         if u:
-            if t.endswith("deleted") or obj["status"] in ("canceled", "unpaid"):
+            if t.endswith("deleted") or obj["status"] in ("canceled", "unpaid", "incomplete_expired"):
                 u.plan = "free"
-            else:
+            elif obj["status"] in ("active", "trialing", "past_due"):
                 price = obj["items"]["data"][0]["price"]["id"]
-                u.plan = "recruiter" if price == PRICES["recruiter"] else "pro"
+                plan = _plan_for_price(price)
+                if plan:
+                    u.plan = plan
+                else:
+                    print(f"[billing] UNKNOWN price {price} on subscription update for {u.email} — plan not changed")
             db.commit()
 
     elif t == "invoice.payment_failed":
@@ -171,4 +213,10 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
     else:
         print(f"[billing] unhandled event: {t}")
 
+    if event_id:
+        db.add(ProcessedEvent(id=event_id, type=t))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()     # concurrent delivery of the same event; already recorded
     return {"received": True}

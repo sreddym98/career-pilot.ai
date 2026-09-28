@@ -17,22 +17,98 @@ Grouped by what they cost you and what they're good for:
 
 Nothing here scrapes. Every endpoint is a published API or a public feed.
 """
-import os, re, time, datetime as dt
-from typing import Iterable
+import os, random, re, threading, time, datetime as dt
+from urllib.parse import urlparse
 
 try:
     import requests
 except ImportError:
     raise SystemExit("pip install requests")
 
-UA = {"User-Agent": "careerpilot/1.0 (+contact@yourdomain.com)"}
-TIMEOUT = 20
+UA = {"User-Agent": "careerpilot-ingest/1.0 (+https://careerpilot.ai)"}
+TIMEOUT = (5, 20)          # (connect, read) seconds — every request has one
+
+RETRY_STATUS = {429, 500, 502, 503, 504}
+MAX_ATTEMPTS = 3
+BACKOFF_BASE = 1.0         # 1s, 2s, 4s (+ jitter); Retry-After wins, capped
+MAX_RETRY_WAIT = 30.0
+
+# Minimum seconds between requests to the same host, across all threads.
+HOST_INTERVAL = {"remoteok.com": 1.5, "remotive.com": 2.0, "data.usajobs.gov": 0.5,
+                 "jsearch.p.rapidapi.com": 1.0, "api.adzuna.com": 0.5,
+                 "www.arbeitnow.com": 0.5}
+DEFAULT_INTERVAL = 0.1
+
+_sleep = time.sleep        # patched in tests
+_host_lock = threading.Lock()
+_host_next = {}
+_deadline = None           # time.monotonic() value; None = unbounded
+
+
+class DeadlineExceeded(Exception):
+    pass
+
+
+def set_deadline(ts):
+    global _deadline
+    _deadline = ts
+
+
+def _check_deadline():
+    if _deadline is not None and time.monotonic() >= _deadline:
+        raise DeadlineExceeded("run time budget exhausted")
+
+
+def _throttle(url):
+    host = urlparse(url).netloc.lower()
+    gap = HOST_INTERVAL.get(host, DEFAULT_INTERVAL)
+    with _host_lock:
+        now = time.monotonic()
+        at = max(now, _host_next.get(host, 0.0))
+        _host_next[host] = at + gap
+    if at > now:
+        _sleep(at - now)
+
+
+def _retry_after(r, attempt):
+    try:
+        ra = float(r.headers.get("Retry-After", ""))
+    except (TypeError, ValueError, AttributeError):
+        ra = None
+    wait = ra if ra is not None else BACKOFF_BASE * (2 ** attempt) + random.random() * 0.5
+    return min(max(wait, 0.0), MAX_RETRY_WAIT)
 
 
 def _get(url, **kw):
+    """GET with a timeout, per-host spacing, and retries on 429/5xx/network
+    errors. Returns the final response (which may still be an error status —
+    callers use _ok())."""
     kw.setdefault("headers", UA)
     kw.setdefault("timeout", TIMEOUT)
-    return requests.get(url, **kw)
+    last_exc = None
+    for attempt in range(MAX_ATTEMPTS):
+        _check_deadline()
+        _throttle(url)
+        try:
+            r = requests.get(url, **kw)
+        except (requests.ConnectionError, requests.Timeout) as e:
+            last_exc = e
+            if attempt == MAX_ATTEMPTS - 1:
+                raise
+            _sleep(min(BACKOFF_BASE * (2 ** attempt) + random.random() * 0.5, MAX_RETRY_WAIT))
+            continue
+        if r.status_code in RETRY_STATUS and attempt < MAX_ATTEMPTS - 1:
+            _sleep(_retry_after(r, attempt))
+            continue
+        return r
+    raise last_exc  # pragma: no cover
+
+
+def _ok(r):
+    """Raise on any non-2xx so a failed fetch is an ERROR, never an empty
+    success — the runner only sweeps a source after a clean fetch."""
+    r.raise_for_status()
+    return r
 
 
 def _iso(v):
@@ -204,8 +280,7 @@ def usajobs(keyword, email=None, key=None, pages=3):
     for p in range(1, pages + 1):
         r = _get("https://data.usajobs.gov/api/search", headers=h,
                  params={"Keyword": keyword, "ResultsPerPage": 500, "Page": p})
-        if r.status_code != 200:
-            return
+        _ok(r)
         items = r.json().get("SearchResult", {}).get("SearchResultItems", [])
         if not items:
             return
@@ -220,14 +295,12 @@ def usajobs(keyword, email=None, key=None, pages=3):
                        employment=(d.get("PositionSchedule") or [{}])[0].get("Name"),
                        description=_clean((d.get("UserArea", {}).get("Details", {}) or {}).get("JobSummary", "")),
                        url=d.get("PositionURI", ""), posted_at=d.get("PublicationStartDate"))
-        time.sleep(0.3)
 
 
 def remotive(search=""):
     """Remote-only board with a free public API."""
     r = _get("https://remotive.com/api/remote-jobs", params={"search": search, "limit": 200})
-    if r.status_code != 200:
-        return
+    _ok(r)
     for j in r.json().get("jobs", []):
         yield _rec(source="remotive", source_id=str(j.get("id")),
                    company=j.get("company_name", ""), title=j.get("title", ""),
@@ -241,8 +314,7 @@ def arbeitnow():
     """Free, no key, paginated. Mostly EU but carries US remote roles."""
     for page in range(1, 6):
         r = _get("https://www.arbeitnow.com/api/job-board-api", params={"page": page})
-        if r.status_code != 200:
-            return
+        _ok(r)
         data = r.json().get("data", [])
         if not data:
             return
@@ -253,13 +325,11 @@ def arbeitnow():
                        employment=(j.get("job_types") or [None])[0],
                        description=_clean(j.get("description", "")),
                        url=j.get("url", ""), posted_at=_iso(j.get("created_at")))
-        time.sleep(0.3)
 
 
 def remoteok():
     r = _get("https://remoteok.com/api")
-    if r.status_code != 200:
-        return
+    _ok(r)
     for j in r.json()[1:]:
         yield _rec(source="remoteok", source_id=str(j.get("id")),
                    company=j.get("company", ""), title=j.get("position", ""),
@@ -280,8 +350,7 @@ def adzuna(what, where="us", pages=3, app_id=None, app_key=None):
                  params={"app_id": app_id, "app_key": app_key, "what": what,
                          "results_per_page": 50, "max_days_old": 7,
                          "content-type": "application/json"})
-        if r.status_code != 200:
-            return
+        _ok(r)
         res = r.json().get("results", [])
         if not res:
             return
@@ -293,7 +362,6 @@ def adzuna(what, where="us", pages=3, app_id=None, app_key=None):
                        employment=j.get("contract_time"),
                        description=_clean(j.get("description", "")),
                        url=j.get("redirect_url", ""), posted_at=j.get("created"))
-        time.sleep(0.4)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -311,8 +379,7 @@ def jsearch(query, pages=2, date_posted="today", key=None):
                  headers={"X-RapidAPI-Key": key, "X-RapidAPI-Host": "jsearch.p.rapidapi.com"},
                  params={"query": query, "page": p, "num_pages": 1,
                          "date_posted": date_posted, "country": "us"})
-        if r.status_code != 200:
-            return
+        _ok(r)
         for j in r.json().get("data", []):
             yield _rec(source="jsearch", source_id=j.get("job_id"),
                        company=j.get("employer_name", ""), title=j.get("job_title", ""),
@@ -322,7 +389,6 @@ def jsearch(query, pages=2, date_posted="today", key=None):
                        description=j.get("job_description", ""),
                        url=j.get("job_apply_link", ""),
                        posted_at=j.get("job_posted_at_datetime_utc"))
-        time.sleep(1)
 
 
 AGGREGATORS = {"usajobs": usajobs, "remotive": remotive, "arbeitnow": arbeitnow,

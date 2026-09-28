@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.git/
+node_modules/
+test_*.py
+test_api.sh
+docker-compose.yml
+Dockerfile
+.dockerignore

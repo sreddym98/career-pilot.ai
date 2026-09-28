@@ -3490,7 +3490,7 @@ async function authSubmit(){
    positions, skills, applications AND the name/email/phone fields, so leaving
    it behind hands the next person at this browser the last user's profile.
    Separate from signOut() so it can be tested without navigating. */
-const ACCOUNT_KEYS = ["cp_token","cp_role","cp_bench","cp_subs",SKEY];
+const ACCOUNT_KEYS = ["cp_token","cp_role","cp_bench","cp_subs","cp_autopilot",SKEY];
 function clearAccountData(){
   ACCOUNT_KEYS.forEach(k=>store.del(k));
   SESSION = null; SYNC_ARMED = false; SERVER_POSITIONS = [];
@@ -4573,33 +4573,32 @@ function renderPlanContext(){
    tap approve.
    ═══════════════════════════════════════════════════════════════ */
 
+const apBlank = () => ({on:false, gmailConnected:false, resumeConfirmed:false, phoneVerified:false,
+  slots:[9,13,17], titles:[], skills:[], workStyle:"", dailyCap:60, queue:[], runs:[], owner:""});
 let AP = store.get("cp_autopilot", null);
-if(!AP){
-  AP = {on:false, gmailConnected:false, resumeConfirmed:false, phoneVerified:false,
-        slots:[9,13,17], titles:[], skills:[], workStyle:"", dailyCap:60, queue:[], runs:[]};
+// A copy that belongs to a signed-in account must not outlive that session:
+// sign-out doesn't clear this key, so the next person on this browser would
+// otherwise see the previous account's queue, titles and setup state.
+if(AP && AP.owner && !store.get("cp_token","")) AP = null;
+if(!AP) AP = apBlank();
+/* AP is scoped to whoever it was loaded for ("" = demo). Called on every entry
+   point so switching accounts without a reload can't show or write the
+   previous account's state. */
+function apScope(){
+  const want = apLive() ? String(SESSION.id||SESSION.email||"") : "";
+  const have = AP.owner || "";
+  if(have === want) return;
+  if(!want && store.get("cp_token","")) return;   // session still resolving on boot
+  AP = apBlank(); AP.owner = want; saveAP();
 }
-function initAP(){
-  if(AP) return;
-  AP = {
-    on: false,
-    gmailConnected: false,
-    resumeConfirmed: false,
-    phoneVerified: false,
-    slots: [9, 13, 17],           // hours, 24h local
-    titles: [],
-    skills: PROFILE_READY ? SKILLS.slice(0, 5) : [],
-    workStyle: "",
-    dailyCap: 60,
-    queue: [],
-    runs: [],
-  };
-  saveAP();
-}
+function initAP(){ apScope(); }
 function saveAP(){ store.set("cp_autopilot", AP); }
 
 async function refreshAutopilotIntegrations(){
   try{
+    initAP(); const owner=AP.owner;
     const status=await CP_API_call("/api/integrations/status");
+    if(AP.owner!==owner) return null;     // account changed while this was in flight
     const changed=AP.gmailConnected!==status.gmail.connected||AP.phoneVerified!==status.phone.verified;
     AP.gmailConnected=status.gmail.connected;
     AP.phoneVerified=status.phone.verified;
@@ -4662,9 +4661,9 @@ function renderAutopilot(){
   if(allBtn){ allBtn.style.display = AP.queue.length>1 ? "" : "none"; allBtn.textContent = `Approve all ${AP.queue.length} — one tap`; }
   setHtml("ap-queue", AP.queue.length ? AP.queue.map((q,i)=>`
     <div class="row apqueue">
-      <div class="lg2">${q.co[0]}</div>
+      <div class="lg2">${esc(String(q.co||"?")[0])}</div>
       <div style="flex:1;min-width:0">
-        <b>${esc(q.ti)}</b><div class="sub">${esc(q.co)} · matched ${q.matchedAgo}</div>
+        <b>${esc(q.ti)}</b><div class="sub">${esc(q.co)} · matched ${esc(q.matchedAgo)}</div>
         <div class="apqueuesubject">"${esc(q.subject||q.ti+' — application')}" → ${esc(q.to)}</div>
       </div>
       <div class="rt" style="display:flex;gap:7px;flex-shrink:0">
@@ -4676,8 +4675,8 @@ function renderAutopilot(){
     : `<div class="empty" style="padding:30px 20px"><h3>Nothing waiting</h3><p>${AP.on?"Your next run will prepare fresh matches at your next slot.":"Turn Autopilot on to start preparing applications."}</p></div>`);
 
   setHtml("ap-runs", AP.runs.length ? AP.runs.map(r=>`
-    <div class="row"><div style="flex:1"><b>${r.when}</b><div class="sub">${r.found} found · ${r.prepared} prepared · ${r.skipped} skipped${r.note?` · ${esc(r.note)}`:""}</div></div>
-      <div class="rt"><span class="st ${r.prepared>0?"sent":"skipped"}">${r.prepared} ready</span></div></div>`).join("")
+    <div class="row"><div style="flex:1"><b>${esc(r.when)}</b><div class="sub">${+r.found||0} found · ${+r.prepared||0} prepared · ${+r.skipped||0} skipped${r.note?` · ${esc(r.note)}`:""}</div></div>
+      <div class="rt"><span class="st ${r.prepared>0?"sent":"skipped"}">${+r.prepared||0} ready</span></div></div>`).join("")
     : `<div class="empty" style="padding:30px 20px"><h3>No runs yet</h3><p>Once Autopilot is on, every weekday run lands here.</p></div>`);
 }
 
@@ -4719,7 +4718,7 @@ async function confirmPhoneVerification(){
   const phone=$("pv-phone").value.trim(), code=$("pv-code").value.trim(), error=$("pv-error");
   try{
     await CP_API_call("/api/integrations/phone/confirm",{method:"POST",body:JSON.stringify({phone,code})});
-    AP.phoneVerified=true;saveAP();closeM();renderAutopilot();toast("Phone verified");
+    AP.phoneVerified=true;saveAP();closeM();renderAutopilot();toast("Phone verified");syncAP();
   }catch(e){error.innerHTML=`<div class="note bad">${esc(e.message)}</div>`;}
 }
 
@@ -4736,13 +4735,15 @@ function apAgo(t){
   return m<2?"just now":m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} hr ago`:`${Math.round(m/1440)} d ago`;
 }
 function adoptAP(s){
-  AP.on=s.on; AP.slots=s.slots; AP.titles=s.titles||[]; if((s.skills||[]).length) AP.skills=s.skills;
-  AP.workStyle=s.workStyle||""; AP.dailyCap=s.dailyCap||AP.dailyCap;
-  AP.gmailConnected=s.gmailConnected; AP.resumeConfirmed=s.resumeConfirmed; AP.phoneVerified=s.phoneVerified;
+  AP.on=!!s.on; AP.slots=(s.slots||[]).map(Number).filter(h=>Number.isInteger(h)&&h>=0&&h<=23);
+  AP.titles=(s.titles||[]).map(String); AP.skills=(s.skills||[]).map(String);
+  AP.workStyle=["remote","hybrid","onsite"].includes(s.workStyle)?s.workStyle:""; AP.dailyCap=+s.dailyCap||0;
+  AP.gmailConnected=!!s.gmailConnected; AP.resumeConfirmed=!!s.resumeConfirmed; AP.phoneVerified=!!s.phoneVerified;
   AP.queue=(s.queue||[]).map(q=>{
     let host="the employer's application form";
     try{ if(q.apply_url) host=new URL(q.apply_url).hostname.replace(/^www\./,""); }catch(_){}
-    return {id:q.id, jobId:q.fingerprint, co:q.company, ti:q.title, subject:q.subject, to:host, url:q.apply_url, matchedAgo:apAgo(q.matched_at)};
+    const url=/^https?:\/\//i.test(q.apply_url||"")?q.apply_url:"";   // never open javascript:/data: links
+    return {id:String(q.id), jobId:q.fingerprint, co:String(q.company||""), ti:String(q.title||""), subject:q.subject, to:host, url, matchedAgo:apAgo(q.matched_at)};
   });
   AP.runs=(s.runs||[]).map(r=>({
     when:new Date(/(Z|[+-]\d\d:?\d\d)$/.test(r.at)?r.at:r.at+"Z").toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit"}),
@@ -4751,8 +4752,22 @@ function adoptAP(s){
 }
 async function syncAP(){
   if(!apLive()) return;
-  try{ adoptAP(await CP_API_call("/api/autopilot")); renderAutopilot(); }
+  initAP(); const owner=AP.owner;
+  try{
+    const s=await CP_API_call("/api/autopilot");
+    if(AP.owner!==owner) return;          // account changed while this was in flight
+    adoptAP(s); renderAutopilot();
+  }
   catch(e){ console.warn("autopilot sync:", e.message); }
+}
+/* One server-changing action at a time. Queue rows are addressed by position,
+   so a second click before the re-sync lands would hit whatever slid into that
+   slot. Clicks during an action are dropped and the UI re-rendered. */
+let apBusy=false;
+async function apAct(fn){
+  if(apBusy){ renderAutopilot(); return; }
+  apBusy=true;
+  try{ return await fn(); } finally{ apBusy=false; }
 }
 async function apPut(patch){
   try{
@@ -4765,21 +4780,21 @@ function addSlot(){
   initAP();
   if(AP.slots.length>=8){toast("8 slots is the most useful in one day");return;}
   let h=9; while(AP.slots.includes(h) && h<23) h++;
-  if(apLive()) return void apPut({slots:[...AP.slots,h]});
+  if(apLive()) return void apAct(()=>apPut({slots:[...AP.slots,h]}));
   AP.slots.push(h); saveAP(); renderAutopilot();
 }
 function updateSlot(oldH,newH){
   initAP();
   if(AP.slots.includes(newH)){toast("That slot already exists");renderAutopilot();return;}
   const next=AP.slots.map(h=>h===oldH?newH:h);
-  if(apLive()) return void apPut({slots:next});
+  if(apLive()) return void apAct(()=>apPut({slots:next}));
   AP.slots=next; saveAP(); renderAutopilot();
 }
 function removeSlot(h){
   initAP();
   if(AP.slots.length<=1){toast("Keep at least one slot while Autopilot is set up");return;}
   const next=AP.slots.filter(x=>x!==h);
-  if(apLive()) return void apPut({slots:next});
+  if(apLive()) return void apAct(()=>apPut({slots:next}));
   AP.slots=next; saveAP(); renderAutopilot();
 }
 function addApTitle(){
@@ -4787,12 +4802,12 @@ function addApTitle(){
   const v=$("ap-title-in").value.trim(); if(!v)return;
   if(AP.titles.some(t=>t.toLowerCase()===v.toLowerCase())){$("ap-title-in").value="";return;}
   $("ap-title-in").value="";
-  if(apLive()) return void apPut({titles:[...AP.titles,v]});
+  if(apLive()) return void apAct(()=>apPut({titles:[...AP.titles,v]}));
   AP.titles.push(v); saveAP(); renderAutopilot();
 }
 function rmApTitle(i){
   initAP();
-  if(apLive()) return void apPut({titles:AP.titles.filter((_,k)=>k!==i)});
+  if(apLive()) return void apAct(()=>apPut({titles:AP.titles.filter((_,k)=>k!==i)}));
   AP.titles.splice(i,1); saveAP(); renderAutopilot();
 }
 
@@ -4806,10 +4821,11 @@ async function toggleAutopilot(){
     return;
   }
   if(apLive()){
-    if(!(await apPut({on:wantOn}))){ renderAutopilot(); return; }
-    toast(AP.on ? "Autopilot is on — finding your first matches…" : "Autopilot paused");
-    if(AP.on) await runAutopilotNow();
-    return;
+    return apAct(async()=>{
+      if(!(await apPut({on:wantOn}))){ renderAutopilot(); return; }
+      toast(AP.on ? "Autopilot is on — finding your first matches…" : "Autopilot paused");
+      if(AP.on) await apRunLive();
+    });
   }
   AP.on = wantOn; saveAP(); renderAutopilot();
   toast(AP.on ? "Autopilot is on" : "Autopilot paused");
@@ -4819,7 +4835,7 @@ async function toggleAutopilot(){
 function saveFlightPlan(){
   initAP();
   const v=$("ap-loc").value;
-  if(apLive()) return void apPut({workStyle:v}).then(ok=>ok&&toast("Flight plan saved"));
+  if(apLive()) return void apAct(()=>apPut({workStyle:v}).then(ok=>ok&&toast("Flight plan saved")));
   AP.workStyle = v;
   saveAP();
   toast("Flight plan saved");
@@ -4827,19 +4843,19 @@ function saveFlightPlan(){
 
 /* Live: asks the server to run this account's slot now. Demo: simulates one
    run against the sample roles (no AI involved), and never sends anything. */
+async function apRunLive(){
+  try{
+    adoptAP(await CP_API_call("/api/autopilot/run",{method:"POST"}));
+    renderAutopilot();
+    const last=AP.runs[0];
+    if(last && last.prepared) toast(`${last.prepared} application${last.prepared>1?"s":""} ready for your approval`);
+    else if(last && last.note) toast(last.note);
+  }catch(e){ toast(e.message||"Couldn't run Autopilot"); await syncAP(); }
+}
 async function runAutopilotNow(){
   initAP();
   if(!AP.on) return;
-  if(apLive()){
-    try{
-      adoptAP(await CP_API_call("/api/autopilot/run",{method:"POST"}));
-      renderAutopilot();
-      const n=AP.queue.length, last=AP.runs[0];
-      if(last && last.prepared) toast(`${last.prepared} application${last.prepared>1?"s":""} ready for your approval`);
-      else if(last && last.note) toast(last.note);
-    }catch(e){ toast(e.message||"Couldn't run Autopilot"); await syncAP(); }
-    return;
-  }
+  if(apLive()) return apAct(apRunLive);
   const already = new Set(AP.queue.map(q=>q.co));
   const wantTitles = AP.titles.map(t=>t.toLowerCase());
   const wantSkills = (AP.skills.length?AP.skills:SKILLS).map(s=>s.toLowerCase());
@@ -4879,7 +4895,8 @@ async function previewQueued(i){
   const q = AP.queue[i]; if(!q) return;
   if(apLive() && q.id){
     try{
-      const d = await CP_API_call(`/api/autopilot/queue/${q.id}`);
+      const d = await CP_API_call(`/api/autopilot/queue/${encodeURIComponent(q.id)}`);
+      const sid = String(d.id||q.id).replace(/[^\w-]/g,"");
       setHtml("md",`<div class="mh"><div style="flex:1"><h2>${esc(d.title)} · ${esc(d.company)}</h2>
         <p style="color:var(--ink2);font-size:14px;margin-top:3px">Subject: ${esc(d.subject)}</p></div><button class="mx" onclick="closeM()">×</button></div>
         <div class="mb">
@@ -4887,8 +4904,8 @@ async function previewQueued(i){
           ${(d.highlights||[]).length?`<h4>Highlights for this role</h4><ul>${d.highlights.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
           <h4>Cover letter</h4><p style="white-space:pre-wrap">${esc(d.cover_letter||"")}</p>
           <div class="acts" style="margin-top:16px">
-            <button class="btn btn-p" onclick="closeM();approveQueued(${i})">Approve</button>
-            <button class="btn btn-g" onclick="closeM();skipQueued(${i})">Skip this one</button>
+            <button class="btn btn-p" onclick="closeM();approveQueued(${i},'${sid}')">Approve</button>
+            <button class="btn btn-g" onclick="closeM();skipQueued(${i},'${sid}')">Skip this one</button>
             <button class="btn btn-g" onclick="closeM()">Close</button></div>
         </div>`);
       openM();
@@ -4899,32 +4916,37 @@ async function previewQueued(i){
   if(j) openJob(j.id);
   else toast("That role is no longer available");
 }
-async function approveQueued(i){
+/* `id` (optional) pins the action to a specific item, for buttons rendered
+   earlier than the current list (the preview modal). */
+const apIdx = (i,id) => id ? AP.queue.findIndex(x=>x.id===id) : i;
+async function approveQueued(i,id){
   initAP();
-  const q = AP.queue[i]; if(!q) return;
-  if(apLive() && q.id){
+  if(apLive()) return apAct(async()=>{
+    const q = AP.queue[apIdx(i,id)]; if(!q) return;
     try{
-      const r = await CP_API_call(`/api/autopilot/queue/${q.id}/approve`,{method:"POST"});
+      const r = await CP_API_call(`/api/autopilot/queue/${encodeURIComponent(q.id)}/approve`,{method:"POST"});
       const j = J.find(x=>x.id===q.jobId); if(j) mark(j,"opened","Approved for manual application");
-      if(r.apply_url) window.open(r.apply_url,"_blank","noopener");
+      if(/^https?:\/\//i.test(r.apply_url||"")) window.open(r.apply_url,"_blank","noopener");
       toast(`Approved for ${q.co} — submit it on the posting that just opened`);
     }catch(e){ toast(e.message||"Couldn't approve that"); }
     return syncAP();
-  }
+  });
+  const q = AP.queue[i]; if(!q) return;
   const j = J.find(x=>x.id===q.jobId);
   AP.queue.splice(i,1); saveAP();
   if(j) mark(j, "opened", "Approved for manual application");
   renderAutopilot();
   toast(`Approved for ${q.co} — open the posting to submit it`);
 }
-async function skipQueued(i){
+async function skipQueued(i,id){
   initAP();
-  const q = AP.queue[i]; if(!q) return;
-  if(apLive() && q.id){
-    try{ await CP_API_call(`/api/autopilot/queue/${q.id}`,{method:"DELETE"}); toast("Skipped"); }
+  if(apLive()) return apAct(async()=>{
+    const q = AP.queue[apIdx(i,id)]; if(!q) return;
+    try{ await CP_API_call(`/api/autopilot/queue/${encodeURIComponent(q.id)}`,{method:"DELETE"}); toast("Skipped"); }
     catch(e){ toast(e.message||"Couldn't skip that"); }
     return syncAP();
-  }
+  });
+  const q = AP.queue[i]; if(!q) return;
   AP.queue.splice(i,1); saveAP(); renderAutopilot();
 }
 
@@ -4935,14 +4957,15 @@ async function approveAllQueued(){
   initAP();
   const n = AP.queue.length;
   if(!n) return;
-  if(apLive()){
+  if(apLive()) return apAct(async()=>{
     try{
-      await CP_API_call("/api/autopilot/queue/approve-all",{method:"POST"});
+      const r = await CP_API_call("/api/autopilot/queue/approve-all",{method:"POST"});
       AP.queue.forEach(q=>{ const j=J.find(x=>x.id===q.jobId); if(j) mark(j,"opened","Approved for manual application"); });
-      toast(`${n} application${n>1?"s":""} approved for manual submission`);
+      const k = Number.isInteger(r&&r.approved) ? r.approved : n;
+      toast(`${k} application${k>1?"s":""} approved for manual submission`);
     }catch(e){ toast(e.message||"Couldn't approve the batch"); }
     return syncAP();
-  }
+  });
   AP.queue.forEach(q=>{
     const j = J.find(x=>x.id===q.jobId);
     if(j) mark(j, "opened", "Approved for manual application");

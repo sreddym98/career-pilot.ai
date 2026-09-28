@@ -47,13 +47,11 @@ await sleep(60);
 ok("  turning on without setup is refused",w.CP.AP.on===false);
 ok("  explains why",$("toast").textContent.includes("Finish setup"));
 
-click(qa("#ap-checklist button").find(b=>b.textContent.includes("Connect Gmail")));
-await sleep(60);
-ok("Gmail step completes",w.CP.AP.gmailConnected===true);
-click(qa("#ap-checklist button").find(b=>b.textContent.includes("Verify")));
-await sleep(60);
-ok("phone step completes",w.CP.AP.phoneVerified===true);
-w.CP.AP.resumeConfirmed = true; w.CP.saveAP(); w.renderAutopilot();
+// Connect Gmail / Verify phone now go through the real API (OAuth, SMS code)
+// and can't complete in demo mode, so the steps are marked done directly.
+ok("Gmail and phone steps are offered while incomplete",
+   qa("#ap-checklist button").some(b=>b.textContent.includes("Connect Gmail"))&&qa("#ap-checklist button").some(b=>b.textContent.includes("Verify")));
+w.CP.AP.gmailConnected=true; w.CP.AP.phoneVerified=true; w.CP.AP.resumeConfirmed=true; w.CP.saveAP(); w.renderAutopilot();
 ok("all 3 steps now done",$("ap-setup-count").textContent.includes("3/3"));
 
 console.log("── Flight plan: slots ──");

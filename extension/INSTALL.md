@@ -55,8 +55,15 @@ Click ✈ → **Settings**:
 
 | | |
 |---|---|
-| API address | `http://localhost:8000` while testing, your deployed URL later |
-| Session token | leave blank in dev mode — the API signs you in as a dev user |
+| API address | Blank = the default production API. For local testing enter `http://localhost:8000` |
+| Session token | Copy from the CareerPilot site; blank in dev mode (API signs you in as a dev user) |
+
+When you save a new API address Chrome asks permission to contact that one
+address (the manifest only pre-approves the default production API). Decline
+and nothing is saved. Only `https://` is accepted, except `localhost` and
+`127.0.0.1`. The default lives in `DEFAULT_API_BASE_PLACEHOLDER` at the top of
+`background.js`; change it (and `host_permissions` in `manifest.json`) before
+publishing.
 
 Then `make dev` in the `be/` folder and the popup will show
 *"Profile loaded — 7 yrs 7 mos, 3 roles."*
@@ -83,10 +90,6 @@ Only needed so strangers can install it.
 4. Review takes 1–3 weeks. First submissions are commonly rejected over
    privacy-policy wording — write that page before you submit
 
-Your permissions justification, ready to paste:
-
-> `storage` — saves the user's own API address and session token locally.
-> `activeTab` / `scripting` — reads form field labels on the page the user is
-> actively applying through, in order to fill them. Host permissions are
-> limited to six named ATS domains. No data is collected, sold, or transmitted
-> anywhere except the user's own CareerPilot account.
+Permissions justification, listing text, data disclosures and the Google OAuth
+(gmail.send) checklist are in `docs/STORE_LISTING.md`. Privacy policy: `web/privacy.html`
+(served at `/privacy`).

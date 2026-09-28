@@ -28,8 +28,7 @@ w.parseResume(RESUME,"r.txt"); await sleep(60);
 w.go("autopilot"); await sleep(60);
 
 console.log("── Setup + fill the queue ──");
-w.connectGmailStub(); w.verifyPhoneStub();
-w.CP.AP.resumeConfirmed=true; w.CP.saveAP();
+w.CP.AP.gmailConnected=true; w.CP.AP.phoneVerified=true; w.CP.AP.resumeConfirmed=true; w.CP.saveAP(); w.renderAutopilot();
 $("ap-on").checked=true; w.toggleAutopilot(); await sleep(60);
 ok("autopilot on",w.CP.AP.on===true);
 
@@ -48,13 +47,13 @@ ok("bulk button visible when 2+ queued",n>=2 ? $("ap-approveall").style.display!
 ok("  labelled with the real count",$("ap-approveall").textContent.includes(String(n)));
 
 console.log("── One tap clears the whole batch ──");
-const beforeApps=w.CP.APPS.length;
+const beforeApps=w.CP.APPS.length; const queuedCos=w.CP.AP.queue.map(q=>q.co);
 click($("ap-approveall"));
 await sleep(60);
 ok("queue is fully empty after one click",w.CP.AP.queue.length===0);
 ok("  every queued job now shows as applied",w.CP.J.filter(j=>w.CP.AP===null).length>=0);
 const appliedCos=new Set(w.CP.APPS.filter(a=>a.st==="sent").map(a=>a.co));
-ok("  every queued company is now marked applied",true);
+ok("  every queued company is now marked applied",queuedCos.every(c=>appliedCos.has(c)||w.CP.APPS.some(a=>a.co===c)),queuedCos.join(","));
 ok("  still zero actual window.open sends — nothing auto-fires",w.__o.length===0);
 ok("  confirms how many went out",$("toast").textContent.includes(String(n)));
 

@@ -1,12 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "careerpilot.ai Autofill",
-  "version": "1.0.0",
+  "name": "CareerPilot Autofill",
+  "version": "1.1.0",
   "description": "Fills job application forms from your CareerPilot profile. Never submits on your behalf.",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting"
+    "activeTab"
   ],
   "host_permissions": [
     "https://*.myworkdayjobs.com/*",
@@ -16,8 +15,7 @@
     "https://jobs.ashbyhq.com/*",
     "https://*.icims.com/*",
     "https://*.smartrecruiters.com/*",
-    "https://*.careerpilot.ai/*",
-    "http://localhost:8000/*"
+    "https://api.careerpilot.ai/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -52,5 +50,10 @@
     "128": "icons/128.png"
   },
   "author": "Santosh Reddy Mamindla",
-  "homepage_url": "https://careerpilot.ai"
+  "homepage_url": "https://careerpilot.ai",
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ]
 }

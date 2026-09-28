@@ -1,0 +1,5 @@
+# Cloudflare Pages serves /privacy -> privacy.html and /terms -> terms.html
+# automatically (clean URLs). Explicit 200 rewrites to *.html would loop, so
+# only the trailing-slash variants are handled here.
+/privacy/ /privacy 301
+/terms/ /terms 301

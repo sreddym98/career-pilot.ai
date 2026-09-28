@@ -13,21 +13,21 @@ a source of truth — this makes it true.
 import argparse, json, re, sys, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import os
 try:
     import requests
 except ImportError:
     sys.exit("pip install requests")
+try:
+    import sources                       # run as a script from server/ or ingest/
+except ImportError:
+    from ingest import sources
 
-HERE = __file__.rsplit("/", 1)[0]
-YAML = f"{HERE}/companies.yaml"
-UA = {"User-Agent": "careerpilot-verifier/1.0 (+contact@yourdomain.com)"}
-TIMEOUT = 15
+HERE = os.path.dirname(os.path.abspath(__file__))
+YAML = os.path.join(HERE, "companies.yaml")
 
-ENDPOINTS = {
-    "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true",
-    "lever":      "https://api.lever.co/v0/postings/{slug}?mode=json",
-    "ashby":      "https://api.ashbyhq.com/posting-api/job-board/{slug}",
-}
+# Probe with the SAME connectors the ingest uses, so "live" means "ingestable".
+ENDPOINTS = {k: None for k in sources.ATS}
 
 QA_WORDS = re.compile(
     r"\b(sdet|qa|quality engineer|test engineer|automation engineer|"
@@ -56,32 +56,19 @@ def load():
 
 
 def probe(ats, slug):
-    url = ENDPOINTS[ats].format(slug=slug)
+    """ok=False + dead=True only for a definite 404. Timeouts, 429s and 5xx are
+    'unverified' (dead=False) so a network blip never retires a good board."""
     try:
-        r = requests.get(url, headers=UA, timeout=TIMEOUT)
+        recs = list(sources.ATS[ats](slug, slug))
+    except requests.HTTPError as e:
+        code = getattr(e.response, "status_code", None)
+        return {"ok": False, "dead": code in (404, 410), "n": 0, "qa": 0,
+                "why": "404 — slug not found" if code in (404, 410) else f"HTTP {code}"}
     except Exception as e:
-        return {"ok": False, "n": 0, "qa": 0, "why": type(e).__name__}
-    if r.status_code == 404:
-        return {"ok": False, "n": 0, "qa": 0, "why": "404 — slug not found"}
-    if r.status_code != 200:
-        return {"ok": False, "n": 0, "qa": 0, "why": f"HTTP {r.status_code}"}
-    try:
-        d = r.json()
-    except Exception:
-        return {"ok": False, "n": 0, "qa": 0, "why": "not JSON"}
-
-    if ats == "greenhouse":
-        jobs = d.get("jobs", [])
-        titles = [j.get("title", "") for j in jobs]
-    elif ats == "lever":
-        jobs = d if isinstance(d, list) else []
-        titles = [j.get("text", "") for j in jobs]
-    else:
-        jobs = d.get("jobs", [])
-        titles = [j.get("title", "") for j in jobs]
-
+        return {"ok": False, "dead": False, "n": 0, "qa": 0, "why": type(e).__name__}
+    titles = [r.get("title", "") for r in recs]
     qa = sum(1 for t in titles if QA_WORDS.search(t))
-    return {"ok": True, "n": len(jobs), "qa": qa, "why": "",
+    return {"ok": True, "dead": False, "n": len(recs), "qa": qa, "why": "",
             "sample": [t for t in titles if QA_WORDS.search(t)][:3]}
 
 
@@ -89,14 +76,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fix", action="store_true", help="move dead slugs to `retired`")
     ap.add_argument("--qa", action="store_true", help="show QA/SDET titles found")
-    ap.add_argument("--workers", type=int, default=12)
+    ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args()
 
     data = load()
     tasks = [(ats, c) for ats in ENDPOINTS for c in data.get(ats, [])]
     print(f"Probing {len(tasks)} boards across {len(ENDPOINTS)} ATS vendors…\n")
 
-    live, dead, t0 = [], [], time.time()
+    live, dead, unverified, t0 = [], [], [], time.time()
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
         futs = {ex.submit(probe, ats, c["slug"]): (ats, c) for ats, c in tasks}
         done = 0
@@ -112,9 +99,12 @@ def main():
                 if a.qa and r.get("sample"):
                     for t in r["sample"]:
                         print(f"        · {t[:70]}")
-            else:
+            elif r["dead"]:
                 dead.append((ats, c, r))
                 print(f"  ✗ {c['label'][:26]:28} {ats:11} {r['why']}")
+            else:
+                unverified.append((ats, c, r))
+                print(f"  ? {c['label'][:26]:28} {ats:11} {r['why']} (not retired)")
             if done % 50 == 0:
                 print(f"    … {done}/{len(tasks)}")
 
@@ -125,6 +115,7 @@ def main():
     print("\n" + "=" * 62)
     print(f"  live boards      {len(live)} / {len(tasks)}  ({len(live)/max(1,len(tasks))*100:.0f}%)")
     print(f"  dead slugs       {len(dead)}")
+    print(f"  unverified       {len(unverified)}   (timeouts / rate limits — left alone)")
     print(f"  live but empty   {empty}   (real board, nothing posted right now)")
     print(f"  total jobs       {total_jobs:,}")
     print(f"  QA / SDET roles  {total_qa:,}")
@@ -147,17 +138,40 @@ def main():
             print(f"    {ats:11} {c['slug']:24} {c['label'][:24]:26} {r['why']}")
 
     if a.fix and dead:
-        txt = open(YAML, encoding="utf-8").read()
-        for ats, c, _ in dead:
-            txt = re.sub(rf"^\s*-\s*\{{slug:\s*{re.escape(c['slug'])},.*$\n", "",
-                         txt, flags=re.M)
-        block = "\n".join(f"  - {{slug: {c['slug']}, label: {c['label']}}}  # {r['why']}"
-                          for ats, c, r in dead)
-        txt = txt.replace("retired: []", "retired:\n" + block)
-        open(YAML, "w", encoding="utf-8").write(txt)
+        if len(dead) > 0.5 * len(tasks):
+            print(f"\n  ! {len(dead)}/{len(tasks)} boards look dead — that is a network problem, "
+                  "not stale slugs. Refusing to rewrite companies.yaml.")
+            return
+        retire_in_yaml(dead)
         print(f"\n  ✓ moved {len(dead)} dead slugs to `retired` in companies.yaml")
     elif dead:
         print("\n  run with --fix to move these to `retired`")
+
+
+def retire_in_yaml(dead):
+    """Remove each dead entry from ITS OWN section only (the same slug may be
+    live under another ATS) and append it to `retired`, keeping the record."""
+    lines = open(YAML, encoding="utf-8").read().split("\n")
+    gone = {(ats, c["slug"]): r["why"] for ats, c, r in dead}
+    out, section, moved = [], None, []
+    for line in lines:
+        m = re.match(r"^(\w+):", line)
+        if m and not line.startswith(" "):
+            section = m.group(1)
+        e = re.match(r"^\s*-\s*\{slug:\s*([^,}]+),\s*label:\s*([^}]+)\}", line)
+        if e and (section, e.group(1).strip()) in gone:
+            moved.append(f"  - {{slug: {e.group(1).strip()}, label: {e.group(2).strip()}}}"
+                         f"  # {gone[(section, e.group(1).strip())]}")
+            continue
+        out.append(line)
+    txt = "\n".join(out)
+    if re.search(r"^retired:\s*\[\]\s*$", txt, re.M):
+        txt = re.sub(r"^retired:\s*\[\]\s*$", "retired:\n" + "\n".join(moved), txt, flags=re.M)
+    elif re.search(r"^retired:\s*$", txt, re.M):
+        txt = re.sub(r"^retired:\s*$", "retired:\n" + "\n".join(moved), txt, count=1, flags=re.M)
+    else:
+        txt = txt.rstrip("\n") + "\n\nretired:\n" + "\n".join(moved) + "\n"
+    open(YAML, "w", encoding="utf-8").write(txt)
 
 
 if __name__ == "__main__":

@@ -63,7 +63,28 @@ $("fill").onclick = async () => {
 
 $("settings").onclick = (e) => { e.preventDefault(); $("panel").hidden = !$("panel").hidden; };
 $("save").onclick = async () => {
-  await chrome.storage.local.set({ apiBase: $("apiBase").value.trim(), token: $("token").value.trim() });
+  const err = $("apiErr"); err.hidden = true;
+  const raw = $("apiBase").value.trim().replace(/\/+$/, "");
+  const token = $("token").value.trim();
+  if (raw) {
+    let u;
+    try { u = new URL(raw); } catch (_) { err.textContent = "Enter a full address, e.g. https://api.example.com"; err.hidden = false; return; }
+    const local = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+    if (!(u.protocol === "https:" || (u.protocol === "http:" && local))) {
+      err.textContent = "Use https:// (http:// is only allowed for localhost)."; err.hidden = false; return;
+    }
+    // permissions.request needs the click's user gesture; do it before any slow work.
+    const origins = [u.origin + "/*"];
+    try {
+      const has = await chrome.permissions.contains({ origins });
+      const ok = has || await chrome.permissions.request({ origins });
+      if (!ok) { err.textContent = "Permission to contact that address was declined, so it was not saved."; err.hidden = false; return; }
+    } catch (e) { err.textContent = "Could not request permission: " + e.message; err.hidden = false; return; }
+    await chrome.storage.local.set({ apiBase: u.origin, token });
+  } else {
+    await chrome.storage.local.remove("apiBase");
+    await chrome.storage.local.set({ token });
+  }
   $("panel").hidden = true;
   init();
 };

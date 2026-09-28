@@ -1,5 +1,6 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -54,6 +55,45 @@ class Settings(BaseSettings):
     AUTH_TOKEN_DAYS: int = 7
     FRONTEND_URL: str = "http://localhost:3000"
     ENV: str = "dev"
+    # ── Hardening (rate limits, request caps, support mail) ──
+    # All limits are per process (in-memory); fine for one Render instance.
+    # *_WINDOW_S is the sliding window in seconds. RATE_LIMIT_ENABLED=false is
+    # for local experiments only; tests run with it on.
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_AUTH_PER_IP_EMAIL: int = 10     # sign-in/up attempts per IP+email
+    RATE_AUTH_PER_IP: int = 30           # ... per IP
+    RATE_AUTH_PER_EMAIL: int = 20        # ... per email from any IP (blocks IP rotation)
+    RATE_AUTH_GLOBAL: int = 600          # ... whole server (ceiling if XFF is spoofed)
+    RATE_AUTH_WINDOW_S: int = 900
+    RATE_PHONE_START: int = 3            # Twilio SMS sends per user
+    RATE_PHONE_WINDOW_S: int = 3600
+    RATE_GMAIL_START: int = 10
+    RATE_GMAIL_WINDOW_S: int = 3600
+    RATE_SUPPORT: int = 5                # tickets per user
+    RATE_SUPPORT_WINDOW_S: int = 3600
+    RATE_AI_PER_USER: int = 30           # /api/ai/* calls per user per window
+    RATE_AI_PER_IP: int = 120
+    RATE_AI_WINDOW_S: int = 60
+    # Which X-Forwarded-For entry is the client when ENV != dev. 0 = first hop,
+    # -1 = last (the address the platform proxy itself saw; unspoofable).
+    TRUSTED_IP_HOP: int = 0
+    MAX_BODY_BYTES: int = 1_000_000
+    MAX_WEBHOOK_BODY_BYTES: int = 5_000_000
+    # Comma-separated. Only these accounts may read/resolve the support queue.
+    ADMIN_EMAILS: str = ""
+    SUPPORT_EMAIL: str = ""              # empty = don't email new tickets
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _driver(cls, v: str) -> str:
+        """Neon, Render and Heroku hand out postgres:// or postgresql:// URLs,
+        which SQLAlchemy resolves to psycopg2. This project ships psycopg 3
+        only, so name the driver here and every consumer (API, ingest, seed)
+        gets a URL that works."""
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
+
     class Config:
         env_file = ".env"
         extra = "ignore"
@@ -131,3 +171,4 @@ PLAN_PRICE_CENTS = {"pro": 11999, "pro_list": 14999, "recruiter": 16999}  # cent
 REFERRAL_BONUS = 100        # per active referral, per month
 CREDIT_CAP = 700            # ceiling regardless of referral count — above Pro's 400 base + a few referrals
 REFERRAL_QUALIFY_DAYS = 7   # referee must stay active this long to count
+

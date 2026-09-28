@@ -1,0 +1,57 @@
+name: Job ingest
+
+# Even hours: full pass (company boards + aggregators).
+# Odd hours: fast pass (aggregators only).
+# Sundays 04:30 UTC: prune stale jobs (deactivates, never deletes referenced rows).
+on:
+  schedule:
+    - cron: "10 */2 * * *"
+    - cron: "10 1-23/2 * * *"
+    - cron: "30 4 * * 0"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Ingest mode"
+        type: choice
+        options: [full, fast, prune]
+        default: full
+
+concurrency:
+  group: job-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+      ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+      ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+      USAJOBS_KEY: ${{ secrets.USAJOBS_KEY }}
+      USAJOBS_EMAIL: ${{ secrets.USAJOBS_EMAIL }}
+      ENV: prod
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check secrets
+        run: |
+          [ -n "$DATABASE_URL" ] || { echo "::error::Missing DATABASE_URL secret (Neon connection string). See docs/DEPLOY_PRODUCTION.md."; exit 1; }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: server/requirements.txt }
+      - run: pip install -r server/requirements.txt
+      - name: Run ingest
+        working-directory: server
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ "${{ github.event.schedule }}" = "30 4 * * 0" ]; then MODE=prune; fi
+          if [ -z "$MODE" ]; then
+            H=$(date -u +%H)
+            if [ $((10#$H % 2)) -eq 0 ]; then MODE=full; else MODE=fast; fi
+          fi
+          echo "mode=$MODE"
+          case "$MODE" in
+            fast)  python ingest/run.py --fast ;;
+            prune) python ingest/run.py --prune ;;
+            *)     python ingest/run.py --once ;;
+          esac

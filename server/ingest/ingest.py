@@ -1,6 +1,10 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
 """
+LEGACY standalone sqlite prototype (JOBS_DB). NOT used by production: the scheduled
+job is ingest/run.py, which writes to the API database (DATABASE_URL). Kept for
+reference only; do not point it at Postgres.
+
 Job ingestion pipeline.
 
 Two legs:

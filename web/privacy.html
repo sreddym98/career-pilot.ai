@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy Policy · CareerPilot</title>
+<meta name="description" content="How CareerPilot collects, uses and shares your data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FAF9F5;--card:#FFFFFF;--sunk:#F3F1EA;--ink:#1E211C;--ink2:#4E544A;--ink3:#8A9083;--line:#E5E2D8;--moss:#4C6B4F;--moss2:#3D5940;--gold:#8A6D2F;--gold-s:#FAF5E8;--gold-l:#E6D9B4;--d:'Fraunces',Georgia,serif;--b:'Inter',-apple-system,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.65 var(--b);-webkit-font-smoothing:antialiased}
+a{color:var(--moss2)}a:hover{color:var(--moss)}
+header{border-bottom:1px solid var(--line);background:var(--card)}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+header .wrap{display:flex;justify-content:space-between;align-items:center;padding-top:14px;padding-bottom:14px;gap:12px;flex-wrap:wrap}
+.brand{font-family:var(--d);font-weight:600;font-size:19px;color:var(--ink);text-decoration:none}
+nav a{margin-left:16px;font-size:14px}
+main{padding:32px 20px 48px}
+h1,h2{font-family:var(--d);font-weight:600;letter-spacing:-.015em;line-height:1.25}
+h1{font-size:30px}h2{font-size:20px;margin:30px 0 8px}
+p,ul{margin:0 0 12px}ul{padding-left:22px}li{margin-bottom:5px}
+.meta{color:var(--ink3);font-size:13.5px;margin:6px 0 18px}
+.draft{background:var(--gold-s);border:1px solid var(--gold-l);color:var(--gold);border-radius:9px;padding:10px 14px;font-size:14px;font-weight:500;margin:14px 0 8px}
+.ph{background:var(--gold-s);padding:0 4px;border-radius:3px;font-weight:500}
+table{border-collapse:collapse;width:100%;margin:8px 0 14px;font-size:14px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}th{background:var(--sunk)}
+footer{border-top:1px solid var(--line);padding:20px;text-align:center;color:var(--ink2);font-size:13.5px}
+footer a{margin:0 8px}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="brand" href="/">CareerPilot</a><nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/">Back to app</a></nav></div></header>
+<main class="wrap">
+
+<h1>Privacy Policy</h1>
+<div class="draft">Draft — pending legal review. Not yet final.</div>
+<p class="meta">Last updated: 2026-09-28 · See also our <a href="/terms">Terms of Service</a></p>
+<p>CareerPilot ("we", "us") is operated by <span class="ph">[LEGAL ENTITY NAME]</span>, Missouri, USA. CareerPilot is a job portal and career platform for QA and SDET professionals. This policy explains what we collect, why, who helps us process it, and the choices you have.</p>
+
+<h2>1. What we collect</h2>
+<ul>
+<li><b>Account data:</b> email address, name, account type (job seeker or recruiter), and a password stored only as a bcrypt hash. We never store your password in readable form.</li>
+<li><b>Profile and resume data you provide:</b> headline, location, phone number, LinkedIn link, summary, work authorization, work history, skills, and any resume or cover letter text you enter or generate.</li>
+<li><b>Job activity:</b> jobs you save or apply to, application status, tailored resumes and cover letters, evaluations, mock-interview content, Autopilot settings and runs, connections you add, and support messages you send us.</li>
+<li><b>Billing data:</b> your plan, credit usage, and Stripe customer and subscription identifiers. Card numbers are entered on Stripe's pages and never reach our servers.</li>
+<li><b>Integration data:</b> if you connect Gmail, an encrypted refresh token. If you verify your phone, the verification status.</li>
+<li><b>Usage data:</b> timestamps such as account creation and last activity, and referral codes.</li>
+</ul>
+
+<h2>2. How we use it</h2>
+<ul>
+<li>To provide the service: your profile, tailored resumes, cover letters, job evaluations, mock interviews, Autopilot preparation and autofill.</li>
+<li>To take payment, apply plan credits, and send transactional email (for example, notices that Autopilot has prepared applications for your review).</li>
+<li>To verify your phone number, secure your account, and respond to support requests.</li>
+</ul>
+<p>We do not sell your personal data. We do not use it for advertising.</p>
+
+<h2>3. Who processes your data</h2>
+<table>
+<tr><th>Provider</th><th>Purpose</th><th>Data involved</th></tr>
+<tr><td>Stripe</td><td>Payments and subscription management</td><td>Email, billing details entered with Stripe</td></tr>
+<tr><td>Google (Gmail API, OAuth)</td><td>Optional Gmail connection</td><td>Sign-in identity and permission to send email you approve</td></tr>
+<tr><td>Twilio Verify</td><td>SMS phone verification</td><td>Phone number</td></tr>
+<tr><td>Resend</td><td>Transactional email</td><td>Email address and message content</td></tr>
+<tr><td>AI gateway (an OpenAI-compatible service that routes requests to Claude and other AI models)</td><td>Generating resumes, cover letters, evaluations and mock interviews</td><td>Profile and resume text and job descriptions you submit for these features</td></tr>
+<tr><td>Hosting and database providers <span class="ph">[HOSTING PROVIDERS]</span></td><td>Running the website, API and database</td><td>All data described above</td></tr>
+</table>
+<p>AI providers receive only the text needed for the request you make. <span class="ph">[Confirm AI gateway and model provider data-retention and no-training terms before publishing.]</span> Because AI output is cached for identical requests, the same resume and job description may return a stored result instead of a new call.</p>
+
+<h2>4. Gmail (Google user data)</h2>
+<p>If you choose to connect Gmail, we request only the <code>gmail.send</code> permission, plus your basic sign-in identity (openid, email). It is used solely to send application emails that you have approved. We do not read your inbox. Your refresh token is stored encrypted and you can revoke access at any time in your Google Account settings.</p>
+<p>CareerPilot's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy#limited-use-requirements">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+<p>Autopilot prepares applications and never sends anything without your explicit approval.</p>
+
+<h2>5. Browser extension</h2>
+<p>The CareerPilot Autofill Chrome extension reads form-field labels on supported application sites (Workday, Greenhouse, Lever, Ashby, iCIMS, SmartRecruiters) when you use it, and fills them from your CareerPilot profile. It fetches your profile from the CareerPilot API using a session token you paste into it. The token and API address are stored locally in your browser (chrome.storage.local). The extension never submits an application, does not collect browsing history, and does not send page content to us. Sensitive questions (salary, sponsorship, work authorization, demographics) are left for you to answer.</p>
+
+<h2>6. Cookies and local storage</h2>
+<p>We do not set advertising or analytics cookies. The website stores your session token and preferences in your browser's local storage so you stay signed in; clearing site data signs you out. Stripe and Google may set their own cookies on their pages.</p>
+
+<h2>7. Retention and deletion</h2>
+<p>We keep your data while your account is active. Account deletion is currently handled by request: email <span class="ph">[SUPPORT EMAIL]</span> from your account email and we will delete your account and associated data, except records we must keep for legal, tax or fraud-prevention reasons. <span class="ph">[Set and confirm the deletion turnaround and backup retention period.]</span> You may also delete individual work-history entries and connections in the app, and revoke Gmail access in your Google Account.</p>
+
+<h2>8. Security</h2>
+<p>Passwords are hashed with bcrypt, integration credentials are encrypted at rest, and traffic uses HTTPS. No system is perfectly secure; please use a strong, unique password.</p>
+
+<h2>9. Your rights</h2>
+<p>Depending on where you live, you may have rights to access, correct, export or delete your data. Contact <span class="ph">[SUPPORT EMAIL]</span> and we will respond within a reasonable time.</p>
+
+<h2>10. Children</h2>
+<p>CareerPilot is not for anyone under 16. We do not knowingly collect data from children under 16; if you believe we have, contact us and we will delete it.</p>
+
+<h2>11. International use and changes</h2>
+<p>Our service providers may process data in the United States and elsewhere. We may update this policy and will post the new date above; material changes will be notified in the app or by email.</p>
+
+<h2>12. Contact</h2>
+<p><span class="ph">[LEGAL ENTITY NAME]</span> · Missouri, USA · <span class="ph">[SUPPORT EMAIL]</span></p>
+</main>
+<footer><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a><a href="/">Back to CareerPilot</a></footer>
+</body>
+</html>

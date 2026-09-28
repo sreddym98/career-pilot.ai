@@ -3,11 +3,16 @@
 /* Service worker. Talks to the CareerPilot API and holds the session token.
    Never stores your password — only the JWT the site already issued. */
 
-const DEFAULT_API = "https://api.careerpilot.ai";
+// PLACEHOLDER: production API origin. Replace with the real deployed API before
+// publishing, and keep it in sync with host_permissions in manifest.json.
+// Users/devs can override at runtime via popup Settings (chrome.storage.local "apiBase").
+const DEFAULT_API_BASE_PLACEHOLDER = "https://api.careerpilot.ai";
+// Public site origin, used only to build the user's public profile link.
+const SITE_ORIGIN = "https://careerpilot.ai";
 
 async function apiBase() {
   const { apiBase } = await chrome.storage.local.get("apiBase");
-  return apiBase || DEFAULT_API;
+  return (apiBase || DEFAULT_API_BASE_PLACEHOLDER).replace(/\/+$/, "");
 }
 
 async function token() {
@@ -17,9 +22,14 @@ async function token() {
 
 async function getProfile() {
   const base = await apiBase(), t = await token();
-  const r = await fetch(`${base}/api/profile`, {
-    headers: t ? { Authorization: `Bearer ${t}` } : {},
-  });
+  let r;
+  try {
+    r = await fetch(`${base}/api/profile`, {
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+    });
+  } catch (e) {
+    throw new Error(`Could not reach ${base}. Check the API address in Settings and that you granted access to it.`);
+  }
   if (r.status === 401) throw new Error("Not signed in — open CareerPilot and sign in first.");
   if (!r.ok) throw new Error(`API returned ${r.status}`);
   const p = await r.json();
@@ -34,7 +44,7 @@ async function getProfile() {
     location: p.location || "",
     linkedin: p.linkedin || "",
     github: p.github || "",
-    website: p.slug ? `https://careerpilot.ai/u/${p.slug}` : "",
+    website: p.slug ? `${SITE_ORIGIN}/u/${p.slug}` : "",
     cover_letter: p.cover_letter || "",
     _meta: { total: p.total_label, positions: (p.positions || []).length },
   };

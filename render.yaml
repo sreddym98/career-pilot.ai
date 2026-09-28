@@ -1,0 +1,48 @@
+# Render Blueprint: New > Blueprint > pick this repo. Secrets (sync:false) are
+# prompted for in the dashboard. Database is external (Neon).
+services:
+  - type: web
+    name: careerpilot-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - { key: ENV, value: prod }
+      # required
+      - { key: DATABASE_URL, sync: false }          # Neon pooled Postgres URL
+      - { key: AUTH_SECRET, sync: false }
+      - { key: FRONTEND_URL, sync: false }          # https://your-site.pages.dev (no trailing slash)
+      - { key: CRON_SECRET, sync: false }
+      # AI
+      - { key: AI_BASE_URL, value: "https://api.ashna.ai/v1/api" }
+      - { key: AI_API_KEY, sync: false }
+      - { key: AI_MODEL, value: claude-sonnet-5 }
+      - { key: AI_FAST_MODEL, value: claude-haiku-4.5 }
+      - { key: AI_PROVIDER, value: auto }
+      - { key: ANTHROPIC_API_KEY, sync: false }     # optional alternative
+      # email
+      - { key: RESEND_API_KEY, sync: false }
+      - { key: MAIL_FROM, sync: false }
+      # billing
+      - { key: STRIPE_SECRET_KEY, sync: false }
+      - { key: STRIPE_PUBLISHABLE_KEY, sync: false }
+      - { key: STRIPE_WEBHOOK_SECRET, sync: false }
+      - { key: STRIPE_PRICE_PRO_MONTHLY, sync: false }
+      - { key: STRIPE_PRICE_PRO_3MO, sync: false }
+      - { key: STRIPE_PRICE_PRO_6MO, sync: false }
+      - { key: STRIPE_PRICE_RECRUITER, sync: false }
+      - { key: STRIPE_PRICE_EVAL, sync: false }
+      # Gmail + Twilio
+      - { key: GMAIL_CLIENT_ID, sync: false }
+      - { key: GMAIL_CLIENT_SECRET, sync: false }
+      - { key: GMAIL_REDIRECT_URI, sync: false }    # https://<api>.onrender.com/api/integrations/gmail/callback
+      - { key: INTEGRATION_ENCRYPTION_KEY, sync: false }
+      - { key: TWILIO_ACCOUNT_SID, sync: false }
+      - { key: TWILIO_AUTH_TOKEN, sync: false }
+      - { key: TWILIO_VERIFY_SERVICE_SID, sync: false }
+      # ingest keys are used by the GitHub Actions job, not this service
+      - { key: AUTH_TOKEN_DAYS, value: "7" }

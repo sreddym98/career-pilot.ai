@@ -1,0 +1,21 @@
+# Cloudflare Pages response headers.
+# CSP notes:
+#  - script-src 'unsafe-inline': index.html is a single file with one large inline <script>
+#    and inline onclick handlers; removing it would need a build step and nonces.
+#  - style-src 'unsafe-inline': inline <style> block and style="" attributes.
+#  - cdnjs.cloudflare.com: pdf.js, mammoth and jszip are lazy-loaded from there (resume upload).
+#    pdf.js runs its worker from a blob/cdnjs URL, hence worker-src.
+#  - connect-src: API host comes from config.js; Render hosts are allowed by wildcard. If you
+#    move the API to a custom domain, add it here.
+#  - img-src https: because job/company logos come from arbitrary hosts.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com")
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.onrender.com https://api.stripe.com https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com; object-src 'none'
+
+/config.js
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache

@@ -15,7 +15,7 @@ someone adds the next handler:
 from fastapi import Depends, HTTPException
 from api.auth import current_user
 from api.models import User
-from api.settings import BENCH_LIMITS
+from api.settings import BENCH_LIMITS, settings
 
 
 def _require(kind: str, other: str):
@@ -48,3 +48,18 @@ def assert_bench_room(user: User, current_count: int) -> None:
     if cap is not None and current_count >= cap:
         raise HTTPException(402, f"Your plan covers {cap} people on the bench. "
                                  f"Upgrade to add more.")
+
+
+def is_admin(user: User) -> bool:
+    allowed = {e.strip().lower() for e in (settings.ADMIN_EMAILS or "").split(",") if e.strip()}
+    if settings.ENV == "dev":
+        return True          # dev mode is already "everyone is the dev user"
+    return (user.email or "").lower() in allowed
+
+
+def require_admin(user: User = Depends(current_user)) -> User:
+    """Staff-only. 404 rather than 403 so the route's existence isn't confirmed
+    to anyone who isn't on ADMIN_EMAILS."""
+    if not is_admin(user):
+        raise HTTPException(404, "Not found")
+    return user

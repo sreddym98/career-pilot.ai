@@ -27,7 +27,10 @@ if IS_SQLITE:
     def _fk(conn, _):
         conn.execute("PRAGMA foreign_keys=ON")
 else:
-    engine = create_engine(url, pool_pre_ping=True, pool_size=10, max_overflow=20)
+    # Small pool: one free Render instance talking to Neon, which also closes idle
+    # connections when it scales to zero — hence pre_ping and a short recycle.
+    engine = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=5,
+                           pool_recycle=300)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 

@@ -14,7 +14,7 @@ TOTAL_FAIL=0
 FAILED_FILES=()
 
 for f in *.js; do
-  OUT=$(node "$f" 2>&1)
+  OUT=$(timeout 90 node "$f" 2>&1)
   LINE=$(echo "$OUT" | grep -oE 'PASS [0-9]+ +FAIL [0-9]+' | tail -1)
   if [ -z "$LINE" ]; then
     printf "  %-22s CRASHED\n" "$f"

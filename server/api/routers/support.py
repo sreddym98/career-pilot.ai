@@ -9,12 +9,17 @@ attached" when nothing was. `priority` is read from the user's plan at
 the moment they submit, not something they can set themselves.
 """
 import datetime as dt
+import threading
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import current_user
+from api.access import require_admin
 from api.models import User, SupportTicket
+from api.ratelimit import per_user
+from api.settings import settings
+from api import mailer
 
 router = APIRouter(prefix="/api/support", tags=["support"])
 
@@ -28,7 +33,22 @@ class TicketIn(BaseModel):
     message: str = Field(min_length=10, max_length=5000)
 
 
-@router.post("")
+def _notify_support(ticket_id: str, priority: str, plan: str, email: str,
+                    subject: str, message: str) -> None:
+    """Best-effort email to the team. Never raises."""
+    try:
+        if not settings.SUPPORT_EMAIL:
+            return
+        tag = "[PRIORITY] " if priority == "priority" else ""
+        clean = " ".join(subject.split())[:150]       # no header-injecting newlines
+        mailer.send(settings.SUPPORT_EMAIL, f"{tag}Support: {clean}",
+                    f"Ticket {ticket_id}\nFrom: {email} (plan: {plan}, {priority}, "
+                    f"SLA {SLA_HOURS[priority]}h)\n\n{message}")
+    except Exception as e:
+        print(f"[support] notification failed: {e}")
+
+
+@router.post("", dependencies=[Depends(per_user("support", "RATE_SUPPORT", "RATE_SUPPORT_WINDOW_S"))])
 def submit_ticket(body: TicketIn, user: User = Depends(current_user),
                   db: Session = Depends(get_db)):
     priority = "priority" if user.plan in ("pro", "recruiter") else "standard"
@@ -36,6 +56,12 @@ def submit_ticket(body: TicketIn, user: User = Depends(current_user),
                       priority=priority, subject=body.subject.strip(),
                       message=body.message.strip())
     db.add(t); db.commit(); db.refresh(t)
+    if settings.SUPPORT_EMAIL:
+        # Off the request path: Resend can take seconds and mail must not slow
+        # or fail the ticket.
+        threading.Thread(target=_notify_support, daemon=True,
+                         args=(t.id, priority, user.plan, user.email,
+                               t.subject, t.message)).start()
     return {"id": t.id, "priority": priority,
             "sla_hours": SLA_HOURS[priority],
             "created_at": t.created_at}
@@ -49,11 +75,10 @@ def my_tickets(user: User = Depends(current_user), db: Session = Depends(get_db)
             "priority": t.priority, "created_at": t.created_at} for t in rows]
 
 
-@router.get("/queue")
+@router.get("/queue", dependencies=[Depends(require_admin)])
 def support_queue(priority: str = None, db: Session = Depends(get_db)):
-    """For whoever is answering tickets. No auth gate here on purpose is
-    wrong for production — wire this behind an admin check before you
-    deploy; it's unguarded now only so you can see it work locally."""
+    """For whoever is answering tickets. Staff only: every user's messages are
+    in here, so it sits behind ADMIN_EMAILS."""
     q = db.query(SupportTicket).filter(SupportTicket.status == "open")
     if priority:
         q = q.filter(SupportTicket.priority == priority)
@@ -73,7 +98,7 @@ def support_queue(priority: str = None, db: Session = Depends(get_db)):
     return out
 
 
-@router.post("/{ticket_id}/resolve")
+@router.post("/{ticket_id}/resolve", dependencies=[Depends(require_admin)])
 def resolve_ticket(ticket_id: str, db: Session = Depends(get_db)):
     t = db.query(SupportTicket).get(ticket_id)
     if not t:

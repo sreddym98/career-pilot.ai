@@ -2,10 +2,22 @@
 # Proprietary and confidential. See LICENSE.
 """The ingest runner.
 
-    python ingest/run.py --once        one full pass, all sources
-    python ingest/run.py --loop        continuous, tier-scheduled (production)
+    python ingest/run.py --once        one full pass, all sources (scheduled job)
     python ingest/run.py --fast        aggregators only — new contract roles
-    python ingest/run.py --report      volume, freshness, gaps vs targets
+    python ingest/run.py --loop        continuous, tier-scheduled (local use)
+    python ingest/run.py --report      volume, freshness, gaps vs targets (no network)
+    python ingest/run.py --prune       drop jobs unseen for --prune-days (default 45)
+
+Scheduled-job contract (GitHub Actions):
+    exit 0   run completed (individual boards may have failed — see summary line)
+    exit 1   every source that was attempted failed
+    exit 2   database unreachable / fatal setup error
+    --max-seconds N   stop fetching in time to exit cleanly (default 1000s when
+                      GITHUB_ACTIONS is set, so the 20 min workflow limit is never hit)
+
+Deactivation safety: a job is deactivated only when ITS OWN source was fetched
+successfully this run and it is absent from that fetch. Failed, empty, partial
+or timed-out fetches never deactivate anything.
 
 Targets it reports against: 100+ live full-time, 200+ live contract.
 It will tell you plainly when you're short and what to add.
@@ -20,10 +32,18 @@ if __package__ in (None, ""):
     sys.path = [path for path in sys.path if path != os.path.dirname(os.path.abspath(__file__))]
     sys.path.insert(0, SERVER_ROOT)
 
+import random
+from sqlalchemy import select, text
+
 from ingest import sources, scheduler
 from ingest.visa_parse import parse_visa
-from api.db import SessionLocal, init_db
-from api.models import Job
+from ingest.skills import extract_skills
+try:
+    from api.db import SessionLocal, init_db
+    from api.models import Job, Application
+except Exception as _e:          # e.g. ENV=prod with a SQLite DATABASE_URL
+    print(f"FATAL: cannot initialise database layer: {_e}", file=sys.stderr)
+    sys.exit(2)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -154,28 +174,76 @@ def load_boards():
     return out
 
 
-def upsert(db, rec, now):
-    title = (rec.get("title") or "").strip()
-    company = (rec.get("company") or "").strip()
+def _s(v):
+    """Strip NUL bytes — Postgres text columns reject them, and scraped
+    descriptions occasionally carry them."""
+    return v.replace("\x00", "") if isinstance(v, str) else v
+
+
+def _parse_dt(v):
+    if not v:
+        return None
+    try:
+        if isinstance(v, (int, float)):
+            return dt.datetime.fromtimestamp(v / 1000 if v > 1e11 else v, dt.timezone.utc)
+        d = dt.datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        return None
+
+
+def _aware(d):
+    return d.replace(tzinfo=dt.timezone.utc) if d is not None and d.tzinfo is None else d
+
+
+def upsert(db, rec, now, seen=None):
+    """Insert or refresh one posting. Portable SQL only (ORM get/add).
+
+    `seen` is the set of fingerprints already handled in this batch. The
+    session runs with autoflush off, so db.get() cannot see rows added earlier
+    in the same batch: without this a source that lists the same id twice (or
+    two JSearch queries returning one job) inserts a duplicate primary key and
+    the whole batch fails at commit.
+
+    Returns "new" | "seen" | "relisted" | "dup" | None (rejected).
+    """
+    title = _s((rec.get("title") or "").strip())
+    company = _s((rec.get("company") or "").strip())
     if not title or not company or PLACEHOLDER_TITLE.match(title):
         return None
-    desc = rec.get("description") or ""
+    desc = _s(rec.get("description") or "")
     fp = fingerprint(company, title, rec.get("location", ""),
                      rec.get("source", ""), rec.get("source_id", ""))
+    if seen is not None:
+        if fp in seen:
+            return "dup"
+        seen.add(fp)
     row = db.get(Job, fp)
 
     if row:
-        gap = (now - (row.last_seen.replace(tzinfo=dt.timezone.utc)
-                      if row.last_seen and row.last_seen.tzinfo is None else row.last_seen)).days \
-              if row.last_seen else 0
+        last = _aware(row.last_seen)
+        gap = (now - last).days if last else 0
         status = "relisted" if (gap >= 21 or not row.active) else "seen"
-        row.last_seen = now
+        row.last_seen = now              # first_seen is never touched
         row.seen_count = (row.seen_count or 1) + 1
         row.active = True
         if status == "relisted":
             row.relisted = True
         if rec.get("url") and not row.apply_url:
             row.apply_url = rec["url"]
+        if desc and desc[:20000] != (row.description or ""):
+            # Refresh what is derived from the text (and backfill rows ingested
+            # before skills extraction existed). Never blank a description a
+            # connector didn't supply (SmartRecruiters).
+            v = parse_visa(desc)
+            row.description = desc[:20000]
+            row.visa_usc, row.visa_gc, row.visa_h1b, row.visa_opt = v["usc"], v["gc"], v["h1b"], v["opt"]
+        if not row.required_skills or desc:
+            sk = extract_skills(title, desc)
+            if sk or not row.required_skills:
+                row.required_skills = sk
+        if row.posted_at is None and rec.get("posted_at"):
+            row.posted_at = _parse_dt(rec.get("posted_at"))
         return status
 
     v = parse_visa(desc)
@@ -183,123 +251,261 @@ def upsert(db, rec, now):
     db.add(Job(
         fingerprint=fp, source=rec.get("source", ""), source_id=rec.get("source_id"),
         company=company, company_type=ct, title=title,
-        location=rec.get("location", ""),
+        location=_s(rec.get("location", "")),
         work_mode=work_mode(rec.get("location", ""), desc, rec.get("remote")),
         employment=employment_of(desc, rec.get("employment")),
-        description=desc[:20000], apply_url=rec.get("url", ""),
+        description=desc[:20000], apply_url=_s(rec.get("url", "")),
         visa_usc=v["usc"], visa_gc=v["gc"], visa_h1b=v["h1b"], visa_opt=v["opt"],
-        required_skills=[], posted_at=None,
+        required_skills=extract_skills(title, desc),
+        posted_at=_parse_dt(rec.get("posted_at")),
         first_seen=now, last_seen=now, seen_count=1, active=True))
     return "new"
 
 
-def clean_live_board(db):
-    """Deactivate sample data and exact duplicate source records.
+def _zero():
+    return {"new": 0, "relisted": 0, "seen": 0, "skipped": 0, "dup": 0, "bad": 0, "kept": 0}
 
-    The API board must contain only postings from live connectors. A seed row
-    is useful during first-run development but should never compete with a
-    verified employer link after the first ingestion succeeds.
+
+def ingest_batch(db, recs, now, pat=WANTED):
+    """Upsert one source's records and commit them together.
+
+    If the batch fails to commit (one poisoned row), roll back and redo it row
+    by row so a single bad record costs one record, not the source — and
+    nothing is left half-committed.
     """
-    seeded = db.query(Job).filter(Job.source == "seed", Job.active.is_(True)).update(
-        {"active": False}, synchronize_session=False)
-    placeholders = 0
-    for row in db.query(Job).filter(Job.active.is_(True)).all():
-        if PLACEHOLDER_TITLE.match((row.title or "").strip()):
-            row.active = False
-            placeholders += 1
-    duplicates = 0
-    seen = set()
-    rows = db.query(Job).filter(Job.active.is_(True)).order_by(Job.first_seen.desc()).all()
-    for row in rows:
-        key = (row.source, row.source_id)
-        if not row.source_id or key not in seen:
-            seen.add(key)
-            continue
-        row.active = False
-        duplicates += 1
-    db.commit()
-    return {"seeded": seeded, "placeholders": placeholders, "duplicates": duplicates}
+    def apply(rows, seen_for_row=None):
+        st = _zero()
+        seen = set()
+        for rec in rows:
+            if not pat.search(rec.get("title", "") or ""):
+                st["skipped"] += 1
+                continue
+            r = upsert(db, rec, now, seen if seen_for_row is None else seen_for_row)
+            if r is None:
+                continue
+            st["kept"] += 1 if r != "dup" else 0
+            st[r] += 1
+        return st
+
+    try:
+        st = apply(recs)
+        db.commit()
+        return st
+    except Exception:
+        db.rollback()
+    st = _zero()
+    for rec in recs:
+        try:
+            one = apply([rec], set())
+            db.commit()
+            for k, v in one.items():
+                st[k] += v
+        except Exception:
+            db.rollback()
+            st["bad"] += 1
+    return st
 
 
 def pull(fn, *a, **kw):
+    """Run a connector to completion. Returns (records, error). Records
+    fetched before a mid-stream failure are kept, but the error means the
+    fetch does NOT count as a clean sweep."""
+    recs, err = [], None
     try:
-        return list(fn(*a, **kw))
+        for r in fn(*a, **kw):
+            recs.append(r)
+    except sources.DeadlineExceeded:
+        err = "DeadlineExceeded"
     except Exception as e:
-        return [{"__error__": f"{type(e).__name__}: {str(e)[:80]}"}]
+        err = f"{type(e).__name__}: {str(e)[:100]}"
+    return recs, err
 
 
-def run_ats(db, now, boards, workers=10):
-    stats = {"new": 0, "relisted": 0, "seen": 0, "skipped": 0}
-    errors = []
+def sweep_board(db, source, company, now, raw, kept):
+    """Deactivate one board's jobs that were absent from a CLEAN full fetch.
+
+    Skipped (returns 0, reason) when the fetch looks untrustworthy:
+      - the board returned no postings at all (empty != "everything closed")
+      - a board that had >=5 live matches now shows fewer than 20% of them
+    """
+    if raw < 1:
+        return 0, "empty fetch"
+    q = db.query(Job).filter(Job.source == source, Job.company == company,
+                             Job.active.is_(True), Job.last_seen < now)
+    prev = q.count()
+    if prev == 0:
+        return 0, ""
+    if prev >= 5 and kept < max(1, 0.2 * prev):
+        return 0, f"suspicious drop ({prev} live -> {kept} listed)"
+    n = q.update({"active": False}, synchronize_session=False)
+    db.commit()
+    return n, ""
+
+
+def _new_result(name, kind):
+    return {"name": name, "kind": kind, "ok": False, "deferred": False, "raw": 0,
+            "err": "", "swept": 0, "note": "", **_zero()}
+
+
+def _finish(res, recs, err, st):
+    res["raw"] = len(recs)
+    for k, v in st.items():
+        res[k] = v
+    if err == "DeadlineExceeded":
+        res["deferred"], res["err"] = True, "not fetched (time budget)"
+    elif err:
+        res["err"] = err
+    elif st["bad"]:
+        res["err"] = f"{st['bad']} rows failed to save"
+    else:
+        res["ok"] = True
+    return res
+
+
+def run_ats(db, now, boards, workers=8):
+    """Fetch boards in parallel (network only); write from this thread only."""
+    results = []
+    boards = list(boards)
+    random.shuffle(boards)       # so a time-boxed run rotates coverage
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(pull, sources.ATS[ats], slug, label): (ats, slug, label)
                 for ats, slug, label in boards}
         for f in as_completed(futs):
             ats, slug, label = futs[f]
-            for rec in f.result():
-                if "__error__" in rec:
-                    errors.append(f"{ats}/{slug}: {rec['__error__']}")
-                    continue
-                if not WANTED.search(rec.get("title", "")):
-                    stats["skipped"] += 1
-                    continue
-                r = upsert(db, rec, now)
-                if r:
-                    stats[r] += 1
-            db.commit()
-    return stats, errors
+            res = _new_result(f"{ats}/{slug}", "ats")
+            try:
+                recs, err = f.result()
+                recs = [r for r in recs if isinstance(r, dict)]
+                st = ingest_batch(db, recs, now)
+                _finish(res, recs, err, st)
+                if res["ok"]:
+                    n, why = sweep_board(db, ats, label.strip(), now, res["raw"], st["kept"])
+                    res["swept"], res["note"] = n, why
+            except Exception as e:           # never let one board kill the run
+                db.rollback()
+                res["err"] = f"{type(e).__name__}: {str(e)[:100]}"
+            results.append(res)
+    return results
 
 
-def run_aggregators(db, now):
+def expire_aggregators(db, now, ok_sources, days):
+    """Aggregator feeds are windows, not full listings, so absence proves
+    nothing. Age out a source's rows only after `days` unseen AND only if that
+    source fetched cleanly with results this run."""
+    if not ok_sources:
+        return 0
+    cutoff = now - dt.timedelta(days=days)
+    n = db.query(Job).filter(Job.source.in_(sorted(ok_sources)), Job.active.is_(True),
+                             Job.last_seen < cutoff).update({"active": False},
+                                                            synchronize_session=False)
+    db.commit()
+    return n
+
+
+def _remotive_due(now):
+    every = int(os.environ.get("INGEST_REMOTIVE_EVERY_HOURS", "6") or 6)
+    return every <= 1 or now.hour % every == 0
+
+
+def run_aggregators(db, now, expire_days=21, deadline=None):
     """Free sources run unconditionally. Keyed ones are skipped silently
     if the key is absent, and reported at the end so you know what you're
     missing rather than wondering why contract roles are thin."""
-    stats = {"new": 0, "relisted": 0, "seen": 0, "skipped": 0}
-    errors = []
-    missing = []
+    results, missing = [], []
+    src_ok, src_bad = set(), set()
 
-    def take(recs, loose=True):
-        pat = WANTED_LOOSE if loose else WANTED
-        for rec in recs:
-            if "__error__" in rec:
-                errors.append(rec["__error__"]); continue
-            if not pat.search(rec.get("title", "")):
-                stats["skipped"] += 1; continue
-            r = upsert(db, rec, now)
-            if r:
-                stats[r] += 1
-        db.commit()
-
-    # free, no key
-    take(pull(sources.remotive, "qa"))
-    take(pull(sources.remotive, "test"))
-    take(pull(sources.remoteok))
-    take(pull(sources.arbeitnow))
-    # free, needs a key you can get in 2 minutes
-    if os.environ.get("USAJOBS_KEY"):
-        for kw in ("quality assurance", "software testing", "test engineer"):
-            take(pull(sources.usajobs, kw))
+    tasks = []
+    if _remotive_due(now):     # Remotive asks for <= ~4 fetches/day
+        tasks += [("remotive:qa", "remotive", sources.remotive, ("qa",)),
+                  ("remotive:test", "remotive", sources.remotive, ("test",))]
+    tasks += [("remoteok", "remoteok", sources.remoteok, ()),
+              ("arbeitnow", "arbeitnow", sources.arbeitnow, ())]
+    if os.environ.get("USAJOBS_KEY") and os.environ.get("USAJOBS_EMAIL"):
+        tasks += [(f"usajobs:{kw}", "usajobs", sources.usajobs, (kw,))
+                  for kw in ("quality assurance", "software testing", "test engineer")]
     else:
-        missing.append("USAJOBS_KEY (free — developer.usajobs.gov — adds ~40-80 federal QA roles)")
-
-    # metered — this is the contract leg
+        missing.append("USAJOBS_KEY + USAJOBS_EMAIL (free — developer.usajobs.gov — adds ~40-80 federal QA roles)")
     if os.environ.get("RAPIDAPI_KEY"):
-        for q in AGG_QUERIES:
-            take(pull(sources.jsearch, q))
+        tasks += [(f"jsearch:{q}", "jsearch", sources.jsearch, (q,)) for q in AGG_QUERIES]
     else:
         missing.append("RAPIDAPI_KEY (~$30/mo — JSearch — this is where 120-200 CONTRACT roles come from)")
-
-    if os.environ.get("ADZUNA_APP_ID"):
-        for w in ("qa automation engineer", "sdet", "test engineer contract"):
-            take(pull(sources.adzuna, w))
+    if os.environ.get("ADZUNA_APP_ID") and os.environ.get("ADZUNA_APP_KEY"):
+        tasks += [(f"adzuna:{w}", "adzuna", sources.adzuna, (w,))
+                  for w in ("qa automation engineer", "sdet", "test engineer contract")]
     else:
         missing.append("ADZUNA_APP_ID + ADZUNA_APP_KEY (free tier — adds ~40-80 mixed roles)")
 
+    for name, src, fn, args in tasks:
+        res = _new_result(name, "agg")
+        try:
+            recs, err = pull(fn, *args)
+            recs = [r for r in recs if isinstance(r, dict)]
+            st = ingest_batch(db, recs, now, WANTED_LOOSE)
+            _finish(res, recs, err, st)
+            (src_ok if res["ok"] and res["raw"] > 0 else src_bad).add(src)
+            if not res["ok"]:
+                src_bad.add(src)
+        except Exception as e:
+            db.rollback()
+            res["err"] = f"{type(e).__name__}: {str(e)[:100]}"
+            src_bad.add(src)
+        results.append(res)
+    expired = expire_aggregators(db, now, src_ok - src_bad, expire_days)
     if missing:
         print("\n  Not configured — each of these adds real volume:")
         for m in missing:
             print(f"    · {m}")
-    return stats, errors
+    return results, expired
+
+
+def clean_live_board(db):
+    """Deactivate sample data, placeholder titles and legacy duplicates.
+
+    Seed rows are only retired once real (non-seed) jobs are live, so a first
+    ingest that fails does not leave a dev board empty.
+    """
+    seeded = 0
+    has_real = db.query(Job.fingerprint).filter(Job.active.is_(True), Job.source != "seed").first()
+    if has_real:
+        seeded = db.query(Job).filter(Job.source == "seed", Job.active.is_(True)).update(
+            {"active": False}, synchronize_session=False)
+    live = db.query(Job.fingerprint, Job.title, Job.source, Job.source_id) \
+        .filter(Job.active.is_(True)).order_by(Job.first_seen.desc()).all()
+    bad, seen = [], set()
+    placeholders = duplicates = 0
+    for fp, title, src, sid in live:
+        if PLACEHOLDER_TITLE.match((title or "").strip()):
+            bad.append(fp); placeholders += 1
+            continue
+        key = (src, sid)
+        if sid and key in seen:
+            bad.append(fp); duplicates += 1
+        else:
+            seen.add(key)
+    for i in range(0, len(bad), 500):
+        db.query(Job).filter(Job.fingerprint.in_(bad[i:i + 500])).update(
+            {"active": False}, synchronize_session=False)
+    db.commit()
+    return {"seeded": seeded, "placeholders": placeholders, "duplicates": duplicates}
+
+
+def prune(db, days=45, now=None):
+    """Remove jobs not seen for `days`. Rows an application points at are
+    deactivated, never deleted (applications.fingerprint is a foreign key and
+    the tracker must keep working). Refuses to run if nothing has been seen
+    recently, since then ingestion is broken and EVERYTHING looks stale."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    if db.query(Job.fingerprint).filter(Job.last_seen >= now - dt.timedelta(days=3)).first() is None:
+        return {"deleted": 0, "deactivated": 0, "skipped": "no job seen in the last 3 days; ingest looks broken"}
+    cutoff = now - dt.timedelta(days=days)
+    referenced = select(Application.fingerprint).where(Application.fingerprint.isnot(None))
+    old = db.query(Job).filter(Job.last_seen < cutoff)
+    deleted = old.filter(~Job.fingerprint.in_(referenced)) \
+        .delete(synchronize_session=False)
+    deactivated = db.query(Job).filter(Job.last_seen < cutoff, Job.active.is_(True)) \
+        .update({"active": False}, synchronize_session=False)
+    db.commit()
+    return {"deleted": deleted, "deactivated": deactivated, "skipped": ""}
 
 
 def report(db):
@@ -312,6 +518,8 @@ def report(db):
     agency = live.filter(Job.company_type == "staffing").count()
     day = now - dt.timedelta(days=1)
     fresh = live.filter(Job.first_seen >= day).count()
+    week = live.filter(Job.first_seen >= now - dt.timedelta(days=7)).count()
+    no_skills = sum(1 for (s,) in live.with_entities(Job.required_skills).all() if not s)
 
     print("\n" + "=" * 58)
     print("  LIVE BOARD")
@@ -321,7 +529,12 @@ def report(db):
     print(f"  contract            {ct:>6,}   target {TARGET_CONTRACT}   {'OK' if ct >= TARGET_CONTRACT else 'SHORT by ' + str(TARGET_CONTRACT - ct)}")
     print(f"  type unclear        {unk:>6,}")
     print(f"  via staffing agency {agency:>6,}")
-    print(f"  added last 24h      {fresh:>6,}")
+    print(f"  added last 24h      {fresh:>6,}   last 7d {week:,}   (autopilot matches on these)")
+    print(f"  with skills tagged  {total - no_skills:>6,}   without {no_skills:,}")
+    by_src = db.query(Job.source, text("count(*)")).filter(Job.active.is_(True)) \
+        .group_by(Job.source).order_by(text("count(*) desc")).all()
+    if by_src:
+        print("  by source           " + "  ".join(f"{s or '?'} {n}" for s, n in by_src))
 
     if ct < TARGET_CONTRACT:
         print("\n  Contract roles are short. They come almost entirely from the")
@@ -333,66 +546,143 @@ def report(db):
     print()
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--once", action="store_true")
-    ap.add_argument("--loop", action="store_true")
-    ap.add_argument("--fast", action="store_true", help="aggregators only")
-    ap.add_argument("--report", action="store_true")
-    ap.add_argument("--workers", type=int, default=10)
-    a = ap.parse_args()
+def summarize(results, expired, closed_by_board, cleaned, t0, mode, deferred_note=""):
+    tot = _zero()
+    for r in results:
+        for k in tot:
+            tot[k] += r.get(k, 0)
+    attempted = [r for r in results if not r["deferred"]]
+    ok = [r for r in attempted if r["ok"]]
+    failed = [r for r in attempted if not r["ok"]]
+    deferred = [r for r in results if r["deferred"]]
+    status = "failed" if attempted and not ok else ("degraded" if failed else "ok")
+    line = (f"INGEST SUMMARY status={status} mode={mode} new={tot['new']} relisted={tot['relisted']} "
+            f"seen={tot['seen']} filtered={tot['skipped']} bad_rows={tot['bad']} "
+            f"deactivated={closed_by_board + expired} sources_ok={len(ok)}/{len(attempted)} "
+            f"failed={len(failed)} deferred={len(deferred)} duration={time.time()-t0:.0f}s")
+    return line, status, failed, deferred
 
-    init_db()
-    db = SessionLocal()
 
-    if a.report:
-        report(db); return
+def _step_summary(line, failed, deferred):
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(f"### Job ingest\n\n`{line}`\n\n")
+            if failed:
+                fh.write("Failed sources (first 15):\n\n")
+                for r in failed[:15]:
+                    fh.write(f"- `{r['name']}` — {r['err']}\n")
+            if deferred:
+                fh.write(f"\n{len(deferred)} sources deferred (time budget); they rotate next run.\n")
+    except OSError:
+        pass
 
-    def cycle(ats=True, agg=True):
-        now = dt.datetime.now(dt.timezone.utc)
-        t0 = time.time()
-        total = {"new": 0, "relisted": 0, "seen": 0, "skipped": 0}
-        errs = []
+
+def cycle(db, a, ats=True, agg=True):
+    """One ingest pass. Returns (exit_code)."""
+    now = dt.datetime.now(dt.timezone.utc)
+    t0 = time.time()
+    mono0 = time.monotonic()
+    max_s = a.max_seconds
+    # Leave 90s of margin after the last fetch for sweeps, report, prune, exit.
+    sources.set_deadline(mono0 + max(30, max_s - 90) if max_s else None)
+    results, expired = [], 0
+    try:
+        if agg:
+            print("[agg] aggregators…")
+            r, expired = run_aggregators(db, now, a.agg_expire_days)
+            results += r
         if ats:
             boards = load_boards()
             print(f"[ats] {len(boards)} boards…")
-            s, e = run_ats(db, now, boards, a.workers)
-            for k in total: total[k] += s[k]
-            errs += e
-        if agg:
-            print("[agg] aggregators…")
-            s, e = run_aggregators(db, now)
-            for k in total: total[k] += s[k]
-            errs += e
-        cutoff = now - dt.timedelta(days=10)
-        closed = db.query(Job).filter(Job.last_seen < cutoff, Job.active.is_(True))\
-            .update({"active": False}, synchronize_session=False)
-        db.commit()
-        cleaned = clean_live_board(db)
-        print(f"  new {total['new']}  relisted {total['relisted']}  seen {total['seen']}  "
-              f"filtered-out {total['skipped']}  closed {closed}  "
-              f"removed seed {cleaned['seeded']}  placeholders {cleaned['placeholders']}  "
-              f"duplicates {cleaned['duplicates']}  errors {len(errs)}  in {time.time()-t0:.0f}s")
-        if errs[:5]:
-            for x in errs[:5]: print(f"    ! {x}")
-        return total
+            results += run_ats(db, now, boards, a.workers)
+    finally:
+        sources.set_deadline(None)
+    closed = sum(r["swept"] for r in results)
+    cleaned = clean_live_board(db)
+    mode = "full" if ats and agg else ("fast" if agg else "ats")
+    line, status, failed, deferred = summarize(results, expired, closed, cleaned, t0, mode)
+    print(f"  {line}")
+    print(f"  cleanup: removed seed {cleaned['seeded']}  placeholders {cleaned['placeholders']}  "
+          f"duplicates {cleaned['duplicates']}")
+    for r in [x for x in results if x["note"]][:5]:
+        print(f"    ~ {r['name']}: sweep skipped — {r['note']}")
+    for r in failed[:10]:
+        print(f"    ! {r['name']}: {r['err']}")
+    if len(failed) > 10:
+        print(f"    … and {len(failed) - 10} more failed sources")
+    if deferred:
+        print(f"    … {len(deferred)} sources not reached before --max-seconds; they rotate next run")
+    _step_summary(line, failed, deferred)
+    return 1 if status == "failed" else 0
 
-    if a.fast:
-        cycle(ats=False, agg=True); report(db); return
-    if a.once:
-        cycle(); report(db); return
-    if a.loop:
-        print("Continuous mode. Aggregators every 10 min, ATS sweep every 2 hours.")
-        last_ats = 0
-        while True:
-            do_ats = time.time() - last_ats > 2 * 3600
-            cycle(ats=do_ats, agg=True)
-            if do_ats:
-                last_ats = time.time()
-                report(db)
-            time.sleep(600)
-    ap.print_help()
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="careerpilot job ingest (see module docstring)")
+    ap.add_argument("--once", action="store_true", help="one full pass: aggregators + ATS boards")
+    ap.add_argument("--loop", action="store_true", help="continuous (local use)")
+    ap.add_argument("--fast", action="store_true", help="aggregators only")
+    ap.add_argument("--report", action="store_true", help="print board stats and exit")
+    ap.add_argument("--prune", action="store_true", help="drop jobs unseen for --prune-days")
+    ap.add_argument("--prune-days", type=int, default=45)
+    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--max-seconds", type=int,
+                    default=1000 if os.environ.get("GITHUB_ACTIONS") else 0,
+                    help="time budget for fetching; 0 = unlimited (default 1000 on GitHub Actions)")
+    ap.add_argument("--agg-expire-days", type=int, default=21,
+                    help="age out aggregator jobs unseen this long (only after a clean fetch)")
+    a = ap.parse_args(argv)
+
+    try:
+        init_db()
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        print(f"FATAL: database unreachable or schema init failed: {type(e).__name__}: {str(e)[:200]}",
+              file=sys.stderr)
+        return 2
+
+    if a.report:
+        report(db); return 0
+
+    code = 0
+    try:
+        if a.fast:
+            code = cycle(db, a, ats=False, agg=True)
+        elif a.once:
+            code = cycle(db, a)
+        elif a.loop:
+            print("Continuous mode. Aggregators every 10 min, ATS sweep every 2 hours.")
+            last_ats = 0
+            while True:
+                do_ats = time.time() - last_ats > 2 * 3600
+                try:
+                    cycle(db, a, ats=do_ats, agg=True)
+                    if do_ats:
+                        last_ats = time.time()
+                        report(db)
+                except Exception as e:
+                    db.rollback()
+                    print(f"  ! cycle failed: {type(e).__name__}: {e}")
+                time.sleep(600)
+        elif not a.prune:
+            ap.print_help(); return 0
+        if a.fast or a.once:
+            report(db)
+        if a.prune:
+            p = prune(db, a.prune_days)
+            print(f"PRUNE days={a.prune_days} deleted={p['deleted']} deactivated={p['deactivated']}"
+                  + (f" skipped: {p['skipped']}" if p["skipped"] else ""))
+    except Exception as e:
+        db.rollback()
+        print(f"FATAL: {type(e).__name__}: {str(e)[:300]}", file=sys.stderr)
+        return 2
+    finally:
+        db.close()
+    return code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

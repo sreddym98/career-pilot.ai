@@ -3,10 +3,20 @@
 """One-command bootstrap: creates tables and loads realistic sample data.
 
     python seed.py
+
+DEV ONLY. It fabricates a demo user, positions, jobs and referrals, so it
+refuses to run unless ENV=dev. Override with --force-i-know (you almost
+certainly should not: the demo rows would appear next to real customer data).
 """
 import datetime as dt, os, sys, hashlib
 sys.path.insert(0, os.path.dirname(__file__))
 os.environ.setdefault("DATABASE_URL", "sqlite:///./dev.db")
+
+from api.settings import settings
+
+if settings.ENV != "dev" and "--force-i-know" not in sys.argv:
+    sys.exit(f"REFUSING to seed: ENV={settings.ENV!r} (not 'dev'). seed.py fabricates demo "
+             "users and jobs. Pass --force-i-know only if you are certain.")
 
 from api.db import init_db, SessionLocal
 from api.models import User, Position, UserSkill, Job, Course, Connection, Referral

@@ -19,6 +19,7 @@ from api.auth import current_user
 from api.access import require_seeker
 from api.db import get_db
 from api.models import Integration, User
+from api.ratelimit import per_user
 from api.settings import settings
 
 # These connect a mailbox and phone to Autopilot, which is a seeker feature.
@@ -105,7 +106,7 @@ def status(user: User = Depends(require_seeker), db: Session = Depends(get_db)):
     }
 
 
-@router.get("/gmail/start")
+@router.get("/gmail/start", dependencies=[Depends(per_user("gmail_start", "RATE_GMAIL_START", "RATE_GMAIL_WINDOW_S"))])
 def gmail_start(user: User = Depends(require_seeker)):
     if not _configured_gmail():
         raise HTTPException(503, "Gmail OAuth is not configured. Add GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and INTEGRATION_ENCRYPTION_KEY.")
@@ -143,7 +144,7 @@ def gmail_callback(code: str = Query(...), state: str = Query(...), db: Session 
     return HTMLResponse(f"""<!doctype html><title>Gmail connected</title><script>window.opener&&window.opener.postMessage({{type:'careerpilot:gmail-connected'}},{settings.FRONTEND_URL!r});window.close()</script><p>Gmail connected. You may close this window.</p>""")
 
 
-@router.post("/phone/start")
+@router.post("/phone/start", dependencies=[Depends(per_user("phone_start", "RATE_PHONE_START", "RATE_PHONE_WINDOW_S"))])
 def phone_start(body: PhoneStartIn, user: User = Depends(require_seeker), db: Session = Depends(get_db)):
     if not _configured_phone():
         raise HTTPException(503, "SMS verification is not configured. Add Twilio Verify credentials first.")

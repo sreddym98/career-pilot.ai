@@ -95,6 +95,35 @@ ok("ticket resolves", r4["resolved"] is True)
 q3 = S.support_queue(db=db)
 ok("resolved ticket drops out of the open queue", not any(t["id"] == r["id"] for t in q3))
 
+print("── Staff-only queue ──")
+from fastapi import HTTPException
+from api.access import require_admin, is_admin
+from api.settings import settings, Settings
+saved = (settings.ENV, settings.ADMIN_EMAILS)
+settings.ENV, settings.ADMIN_EMAILS = "prod", "Boss@Example.com, other@example.com"
+class _U:  # only .email is read
+    def __init__(s, e): s.email = e
+ok("an ordinary user is refused", not is_admin(_U("someone@example.com")))
+try:
+    require_admin(_U("someone@example.com")); ok("gate raises for non-staff", False)
+except HTTPException as e:
+    ok("gate raises 404 for non-staff (route existence not confirmed)", e.status_code == 404)
+ok("a listed admin passes, case-insensitively", require_admin(_U("boss@EXAMPLE.com")) is not None)
+settings.ADMIN_EMAILS = ""
+ok("empty ADMIN_EMAILS means nobody in prod", not is_admin(_U("boss@example.com")))
+settings.ENV, settings.ADMIN_EMAILS = saved
+routes = {(r.path, tuple(sorted(r.methods))): r for r in S.router.routes}
+for path in ("/api/support/queue", "/api/support/{ticket_id}/resolve"):
+    r = next(v for (p, _), v in routes.items() if p == path)
+    ok(f"{path} is behind require_admin", any(d.call is require_admin for d in r.dependant.dependencies))
+
+print("── Database URL driver ──")
+for raw, want in (("postgresql://u:p@h/db?sslmode=require", "postgresql+psycopg://u:p@h/db?sslmode=require"),
+                  ("postgres://u:p@h/db", "postgresql+psycopg://u:p@h/db"),
+                  ("postgresql+psycopg://u:p@h/db", "postgresql+psycopg://u:p@h/db"),
+                  ("sqlite:///./x.db", "sqlite:///./x.db")):
+    ok(f"{raw.split('@')[0][:14]}… -> {want.split(':')[0]}", Settings(DATABASE_URL=raw).DATABASE_URL == want)
+
 print("\n" + "=" * 50)
 print(f"PASS {P}    FAIL {F}")
 if F: print("\nFAILURES"); [print("  ✗ " + f) for f in fails]

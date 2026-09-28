@@ -19,9 +19,11 @@
 </footer>
 
 <div id="panel" hidden>
-  <label>API address</label>
-  <input id="apiBase" placeholder="https://api.careerpilot.ai">
-  <label>Session token</label>
+  <label for="apiBase">API address</label>
+  <input id="apiBase" placeholder="https://api.careerpilot.ai (default)">
+  <div class="note" id="apiHint">Leave blank for the default. Saving a new address asks Chrome for permission to contact it.</div>
+  <div class="note" id="apiErr" style="color:#B45309" hidden></div>
+  <label for="token">Session token</label>
   <input id="token" type="password" placeholder="paste from careerpilot.ai → Settings">
   <button id="save" class="primary">Save</button>
 </div>
