@@ -10,6 +10,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./ci_hardening.db")
 os.environ.setdefault("ENV", "dev")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+RUN = str(int(time.time() * 1000))  # event ids must be unique per run: DB persists
 P = F = 0
 fails = []
 def ok(name, cond, extra=""):
@@ -217,35 +218,35 @@ def post(event, sig="good"):
 def plan():
     db.expire_all(); return db.query(User).filter(User.email == "hard@test.local").first().plan
 
-ev = {"id": "evt_1", "type": "checkout.session.completed",
+ev = {"id": f"evt_1_{RUN}", "type": "checkout.session.completed",
       "data": {"object": {"client_reference_id": u.id, "subscription": "sub_1"}}}
 r = post(ev)
 ok("first delivery processed", r.status_code == 200 and not r.json().get("duplicate") and plan() == "pro", (r.text, plan()))
 u2 = db.query(User).get(u.id); u2.plan = "free"; db.commit()
 r = post(ev)
 ok("duplicate event id ignored", r.json().get("duplicate") is True and plan() == "free", (r.text, plan()))
-r = post({**ev, "id": "evt_2"})
+r = post({**ev, "id": f"evt_2_{RUN}"})
 ok("a different event id is processed", plan() == "pro", plan())
 r = post(ev, sig="bad")
 ok("bad signature still rejected", r.status_code == 400, r.status_code)
-big_ev = json.dumps({"id": "evt_big", "type": "x", "data": {"object": {}}, "pad": "z" * (settings.MAX_BODY_BYTES + 100)})
+big_ev = json.dumps({"id": f"evt_big_{RUN}", "type": "x", "data": {"object": {}}, "pad": "z" * (settings.MAX_BODY_BYTES + 100)})
 r = client.post("/api/billing/webhook", content=big_ev, headers={"stripe-signature": "good"})
 ok("webhook not blocked by the 1 MB API cap", r.status_code != 413, r.status_code)
 
 u2 = db.query(User).get(u.id); u2.plan = "free"; db.commit()
 sub_price["id"] = "price_unknown_xyz"
-post({"id": "evt_3", "type": "checkout.session.completed",
+post({"id": f"evt_3_{RUN}", "type": "checkout.session.completed",
       "data": {"object": {"client_reference_id": u.id, "subscription": "sub_2"}}})
 ok("unknown price on checkout does not grant Pro", plan() == "free", plan())
-post({"id": "evt_4", "type": "customer.subscription.updated",
+post({"id": f"evt_4_{RUN}", "type": "customer.subscription.updated",
       "data": {"object": {"customer": "cus_H", "status": "active",
                           "items": {"data": [{"price": {"id": "price_unknown_xyz"}}]}}}})
 ok("unknown price on update does not grant Pro", plan() == "free", plan())
-post({"id": "evt_5", "type": "customer.subscription.updated",
+post({"id": f"evt_5_{RUN}", "type": "customer.subscription.updated",
       "data": {"object": {"customer": "cus_H", "status": "incomplete",
                           "items": {"data": [{"price": {"id": "price_monthly_mock"}}]}}}})
 ok("incomplete subscription does not grant Pro", plan() == "free", plan())
-post({"id": "evt_6", "type": "customer.subscription.updated",
+post({"id": f"evt_6_{RUN}", "type": "customer.subscription.updated",
       "data": {"object": {"customer": "cus_H", "status": "active",
                           "items": {"data": [{"price": {"id": "price_recruiter_mock"}}]}}}})
 ok("known recruiter price maps to recruiter", plan() == "recruiter", plan())

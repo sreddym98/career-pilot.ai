@@ -26,7 +26,7 @@ const cards = qa('.pricegrid[data-only="seeker"] .pricecard');
 ok("two cards shown",cards.length===2,cards.length+"");
 const freeText = cards[0].textContent;
 ok("Free tier states 10 tailored resumes+covers",/10 tailored resumes/i.test(freeText));
-ok("Free tier mentions Autopilot included",/Autopilot included/i.test(freeText));
+ok("Free tier does not claim Autopilot (server: Pro only)",!/Autopilot included/i.test(freeText)&&/Autopilot[\s\S]*Pro only/i.test(freeText));
 
 const proText = cards[1].textContent;
 ok("Pro shows the list price struck through",proText.includes("$149.99"));

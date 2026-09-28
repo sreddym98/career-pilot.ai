@@ -21,11 +21,14 @@ from api.access import require_seeker
 from api.models import User, Position
 from api.routers.ai import _call, _key, _cached, _store
 from api import credits
+from api.ratelimit import ai_limit
 
 # Rehearsing for your own interview is a seeker feature end to end — it is
 # built from the signed-in person's own positions.
+# Same per-user/per-IP ceiling as /api/ai/*: Pro accounts are not charged
+# credits here, so without it a Pro account could run the model unmetered.
 router = APIRouter(prefix="/api/interview", tags=["interview"],
-                   dependencies=[Depends(require_seeker)])
+                   dependencies=[Depends(require_seeker), Depends(ai_limit)])
 
 
 class InterviewIn(BaseModel):

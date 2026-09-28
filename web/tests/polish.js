@@ -65,11 +65,10 @@ const w=mk(); await sleep(650);
 const d=w.document,$=i=>d.getElementById(i);
 w.parseResume(RESUME,"r.txt"); await sleep(50);
 w.go("resume");
-w.fetch=(u,o)=>{const c=JSON.parse(o.body).messages[0].content;
+w.fetch=(u,o)=>{const c=JSON.parse(o.body).prompt;
   const hdr=c.includes("header of a senior");
-  return Promise.resolve({ok:true,status:200,text:()=>Promise.resolve(JSON.stringify({content:[{type:"text",
-    text:hdr?'{"summary":"Original summary text.","skill_groups":[{"label":"Automation","items":["Playwright","Cypress"]},{"label":"Data","items":["PySpark"]}]}'
-      :'{"bullets":["First generated point about automation work","Second point","Third point"]}'}]}))});};
+  return Promise.resolve({ok:true,status:200,text:()=>Promise.resolve(JSON.stringify({data:JSON.parse(hdr?'{"summary":"Original summary text.","skill_groups":[{"label":"Automation","items":["Playwright","Cypress"]},{"label":"Data","items":["PySpark"]}]}'
+      :'{"bullets":["First generated point about automation work","Second point","Third point"]}')}))});};
 await w.buildResume(); await sleep(500);
 ok("resume rendered",!!$("doc"));
 ok("  it's marked editable",$("doc").classList.contains("editable"));

@@ -22,6 +22,8 @@ const detailSel = (d) => d.querySelector("#jobDetailPane .splitcard") ? "#jobDet
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const ERRS=[];w.addEventListener("error",e=>ERRS.push(e.message));
 
+// Total tenure depends on today's date (one role runs to "Present"), so derive the expectation from the clock.
+const _n=new Date(), EXPECT_TOTAL_M=(_n.getFullYear()*12+_n.getMonth())-(2024*12+4)+1+52+11;
 const RESUME=`Santosh Reddy Mamindla
 +1 919-454-6356 | mamindlasreddy@gmail.com
 
@@ -82,12 +84,12 @@ ok("roles parsed from the file",CP.EXP.length===3,CP.EXP.length+" roles");
 ok("  company read",CP.EXP[0].co==="Mastercard",CP.EXP[0].co);
 ok("  title read",CP.EXP[0].role.includes("SDET"),CP.EXP[0].role);
 ok("  bullets read",CP.EXP[0].b.length===5,CP.EXP[0].b.length+" bullets");
-ok("  dates read → 7 yrs 7 mos",CP.fmtD(CP.totalM())==="7 yrs 7 mos",CP.fmtD(CP.totalM()));
+ok("  dates read → total tenure",CP.totalM()===EXPECT_TOTAL_M&&CP.fmtD(CP.totalM())===CP.fmtD(EXPECT_TOTAL_M),CP.fmtD(CP.totalM())+" vs expected months "+EXPECT_TOTAL_M);
 ok("  per-role duration",CP.fmtD(CP.durM(CP.EXP[1].from,CP.EXP[1].to))==="4 yrs 4 mos");
 ok("skills extracted",CP.SKILLS.length>=15,CP.SKILLS.length+" skills");
 ok("specializations detected",CP.UF&&CP.UF.length>=4,CP.UF?CP.UF.length:"none");
 ok("  top is a QA family",["ui","etl","api","aiq","pega","hcit","perf"].includes(CP.UF[0].id),CP.UF[0].n);
-ok("confirmation shows what it found",$("drop").innerHTML.includes("3 roles")&&$("drop").innerHTML.includes("7 yrs 7 mos"));
+ok("confirmation shows what it found",$("drop").innerHTML.includes("3 roles")&&$("drop").innerHTML.includes(CP.fmtD(EXPECT_TOTAL_M)));
 ok("  profile section appears",$("afterUpload").style.display==="");
 ok("  experience rendered",$("expList").innerHTML.includes("Mastercard"));
 ok("  gap flagged",$("gapNote").innerHTML.includes("4 mos"));
@@ -176,7 +178,7 @@ ok("draft opens",!!$("r-body"));
 ok("  ADDRESS PREFILLED",$("r-to").value===ag.rec.e,$("r-to").value);
 ok("  explains the relationship",/wrote to you|found it on a job board/.test($("md").innerHTML),$("md").innerHTML.match(/(wrote to you|found it on a job board)[^<]*/)?.[0]||"neither");
 ok("  greets by name",$("r-body").value.startsWith("Hi "+ag.rec.n.split(" ")[0]));
-ok("  includes your real total",$("r-body").value.includes("7 yrs 7 mos"));
+ok("  includes your real total",$("r-body").value.includes(CP.fmtD(EXPECT_TOTAL_M)));
 ok("  includes work auth",$("r-body").value.includes("H1B"));
 opened=[];
 CP.preloadLib("jszip");
@@ -260,11 +262,10 @@ ok("credits computed",$("crTxt").textContent==="47 of 210",$("crTxt").textConten
 console.log("── Resume builder ──");
 w.go("resume");
 let calls=[];
-w.fetch=(u,o)=>{const c=JSON.parse(o.body).messages[0].content;calls.push(c);
+w.fetch=(u,o)=>{const c=JSON.parse(o.body).prompt;calls.push(c);
   const hdr=c.includes("header of a senior");
-  return Promise.resolve({ok:true,status:200,text:()=>Promise.resolve(JSON.stringify({content:[{type:"text",
-    text:hdr?'{"summary":"Seven years seven months in test automation.","skill_groups":[{"label":"Automation","items":["Playwright","Cypress"]}]}'
-      :'{"bullets":['+Array.from({length:11},(_,i)=>`"Architected point ${i+1} covering concrete automation work with named tools"`).join(",")+']}'}]}))});};
+  return Promise.resolve({ok:true,status:200,text:()=>Promise.resolve(JSON.stringify({data:JSON.parse(hdr?'{"summary":"Seven years seven months in test automation.","skill_groups":[{"label":"Automation","items":["Playwright","Cypress"]}]}'
+      :'{"bullets":['+Array.from({length:11},(_,i)=>`"Architected point ${i+1} covering concrete automation work with named tools"`).join(",")+']}')}))});};
 await w.buildResume(); await sleep(600);
 ok("one call per role plus header",calls.length===4,calls.length+" calls");
 ok("resume rendered",!!$("doc"));

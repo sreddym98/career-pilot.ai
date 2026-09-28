@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     RATE_AUTH_GLOBAL: int = 600          # ... whole server (ceiling if XFF is spoofed)
     RATE_AUTH_WINDOW_S: int = 900
     RATE_PHONE_START: int = 3            # Twilio SMS sends per user
+    RATE_PHONE_START_PER_IP: int = 10    # ... per source IP (all accounts)
     RATE_PHONE_WINDOW_S: int = 3600
     RATE_GMAIL_START: int = 10
     RATE_GMAIL_WINDOW_S: int = 3600
@@ -82,6 +83,14 @@ class Settings(BaseSettings):
     # Comma-separated. Only these accounts may read/resolve the support queue.
     ADMIN_EMAILS: str = ""
     SUPPORT_EMAIL: str = ""              # empty = don't email new tickets
+    @field_validator("FRONTEND_URL")
+    @classmethod
+    def _no_trailing_slash(cls, v: str) -> str:
+        """CORS compares origins exactly, and every redirect appends "/..." to
+        this value, so a stray trailing slash silently breaks the browser (CORS
+        errors, "//?upgraded=1"). Normalise once here."""
+        return v.strip().rstrip("/")
+
     @field_validator("DATABASE_URL")
     @classmethod
     def _driver(cls, v: str) -> str:

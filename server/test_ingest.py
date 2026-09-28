@@ -84,16 +84,23 @@ def gh(*jobs):
                                 "absolute_url": f"https://x/{i}"} for i, t, c in jobs]})
 
 
+_OPEN = None
+
+
 def reset_db():
     # Drop the tables of whatever DATABASE_URL points at, rather than deleting a
     # hard-coded file that only matches the URL in this file's own docstring.
     from api.models import Base
+    global _OPEN
+    if _OPEN is not None:
+        _OPEN.close()          # an idle-in-transaction session blocks DROP TABLE on Postgres
     Base.metadata.drop_all(engine)
     engine.dispose()
     init_db()
     ROUTES.clear(); CALLS.clear(); SLEEPS.clear()
     sources.set_deadline(None)
-    return SessionLocal()
+    _OPEN = SessionLocal()
+    return _OPEN
 
 
 def now():

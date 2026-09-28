@@ -59,7 +59,11 @@ def _default_sql(col):
     d = getattr(col.default, "arg", None) if col.default is not None else None
     if callable(d) or d is None:
         return None
-    if isinstance(d, bool):  return "1" if d else "0"
+    if isinstance(d, bool):
+        # Postgres rejects BOOLEAN DEFAULT 1; SQLite (older builds) rejects TRUE.
+        if engine.dialect.name == "postgresql":
+            return "TRUE" if d else "FALSE"
+        return "1" if d else "0"
     if isinstance(d, (int, float)): return str(d)
     if isinstance(d, str):   return "'" + d.replace("'", "''") + "'"
     return None

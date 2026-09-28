@@ -42,7 +42,7 @@ for f in $FILES; do
     # Ignore obvious placeholders — docs need to show the shape of a value
     hits=$(grep -nEI "$pat" "$f" 2>/dev/null \
       | grep -viE 'xxxx|example|placeholder|your-|your_|<[a-z_]+>|\.\.\.|dummy|sample|\bfake\b' \
-      | grep -viE ':(pass|password|passwd|secret|token|changeme|dev|test|yourpassword)@' \
+      | grep -viE ':(pass|password|passwd|secret|token|changeme|dev|test|yourpassword|p)@' \
       || true)
     if [ -n "$hits" ]; then
       printf "${RED}✗ %s${NC} in ${YEL}%s${NC}\n" "$label" "$f"

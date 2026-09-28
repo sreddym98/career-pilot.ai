@@ -35,7 +35,8 @@ def current_user(authorization: str = Header(None),
             return _dev_user(db)
         raise HTTPException(401, "Not signed in")
 
-    claims = _supabase_claims(token) or tokens.verify(token)
+    hosted = _supabase_claims(token)
+    claims = hosted or tokens.verify(token)
     if not claims:
         raise HTTPException(401, "Invalid or expired session")
 
@@ -44,6 +45,11 @@ def current_user(authorization: str = Header(None),
         raise HTTPException(401, "Token has no email claim")
 
     user = db.query(User).filter(User.email == email).first()
+    if not user and not hosted:
+        # A token WE issued for an account that no longer exists (deleted, or a
+        # wiped database). It must not quietly mint a fresh account: after an
+        # account deletion the old 7-day token would resurrect the user.
+        raise HTTPException(401, "Invalid or expired session")
     if not user:
         # First sight of a hosted-provider account. Our own signup path always
         # creates the row itself, so it never lands here.

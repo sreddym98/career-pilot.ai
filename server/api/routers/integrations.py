@@ -6,11 +6,12 @@ import hashlib
 import hmac
 import secrets
 import time
-from urllib.parse import urlencode
+from html import escape
+from urllib.parse import urlencode, urlparse
 
 import requests
 from cryptography.fernet import Fernet, InvalidToken
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -19,7 +20,7 @@ from api.auth import current_user
 from api.access import require_seeker
 from api.db import get_db
 from api.models import Integration, User
-from api.ratelimit import per_user
+from api.ratelimit import per_user, client_ip, _enforce
 from api.settings import settings
 
 # These connect a mailbox and phone to Autopilot, which is a seeker feature.
@@ -39,8 +40,27 @@ class PhoneConfirmIn(PhoneStartIn):
     code: str = Field(pattern=r"^\d{4,10}$")
 
 
+def _gmail_missing() -> list[str]:
+    """Names of the settings that stop the Google flow from being started.
+
+    Empty means safe to send the user to Google. Anything else must NOT reach
+    Google: an empty client_id or a localhost redirect_uri produces Google's
+    "Access blocked: this app's request is invalid" page, which the user can
+    do nothing about. Better a plain "not configured" from us."""
+    missing = [k for k in ("GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "INTEGRATION_ENCRYPTION_KEY")
+               if not getattr(settings, k)]
+    uri = (settings.GMAIL_REDIRECT_URI or "").strip()
+    parsed = urlparse(uri)
+    if not uri or parsed.scheme not in ("http", "https") or not parsed.netloc:
+        missing.append("GMAIL_REDIRECT_URI")
+    elif settings.ENV != "dev" and (parsed.scheme != "https" or parsed.hostname in ("localhost", "127.0.0.1")):
+        # The default is a localhost URL; in production it means nobody set it.
+        missing.append("GMAIL_REDIRECT_URI (must be the public https API callback URL)")
+    return missing
+
+
 def _configured_gmail():
-    return bool(settings.GMAIL_CLIENT_ID and settings.GMAIL_CLIENT_SECRET and settings.INTEGRATION_ENCRYPTION_KEY)
+    return not _gmail_missing()
 
 
 def _configured_phone():
@@ -79,10 +99,11 @@ def _user_from_state(state: str, db: Session):
         raw = base64.urlsafe_b64decode(state.encode()).decode()
         user_id, issued, nonce, signature = raw.rsplit(":", 3)
         payload = f"{user_id}:{issued}:{nonce}"
+        issued_at = int(issued)
     except Exception:
         raise HTTPException(400, "Invalid OAuth state")
     expected = hmac.new(settings.INTEGRATION_ENCRYPTION_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(signature, expected) or time.time() - int(issued) > 600:
+    if not hmac.compare_digest(signature.encode(), expected.encode()) or time.time() - issued_at > 600:
         raise HTTPException(400, "OAuth state expired. Start Gmail connection again.")
     user = db.get(User, user_id)
     if not user:
@@ -120,8 +141,11 @@ def status(user: User = Depends(require_seeker), db: Session = Depends(get_db)):
 
 @router.get("/gmail/start", dependencies=[Depends(per_user("gmail_start", "RATE_GMAIL_START", "RATE_GMAIL_WINDOW_S"))])
 def gmail_start(user: User = Depends(require_seeker)):
-    if not _configured_gmail():
-        raise HTTPException(503, "Gmail OAuth is not configured. Add GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and INTEGRATION_ENCRYPTION_KEY.")
+    missing = _gmail_missing()
+    if missing:
+        print(f"[gmail] not configured, refusing to start OAuth. Missing: {', '.join(missing)}")
+        raise HTTPException(503, "Gmail connection isn't set up on this server yet. "
+                                 "Nothing was sent to Google. The site owner needs to finish the Gmail configuration.")
     params = {
         "client_id": settings.GMAIL_CLIENT_ID,
         "redirect_uri": settings.GMAIL_REDIRECT_URI,
@@ -134,30 +158,55 @@ def gmail_start(user: User = Depends(require_seeker)):
     return {"authorization_url": f"{GOOGLE_AUTHORIZE_URL}?{urlencode(params)}"}
 
 
+def _popup(message: str, connected: bool, status: int = 200) -> HTMLResponse:
+    """The callback runs in the popup, so failures are shown there as a page,
+    not as raw JSON. Only ever a fixed message, escaped."""
+    origin = settings.FRONTEND_URL
+    payload = "careerpilot:gmail-connected" if connected else "careerpilot:gmail-failed"
+    return HTMLResponse(
+        f"""<!doctype html><meta charset="utf-8"><title>Gmail</title>
+<script>window.opener&&window.opener.postMessage({{type:{payload!r}}},{origin!r});{'window.close()' if connected else ''}</script>
+<p style="font:16px system-ui;margin:32px">{escape(message)}</p>""", status_code=status)
+
+
 @router.get("/gmail/callback", response_class=HTMLResponse)
-def gmail_callback(code: str = Query(...), state: str = Query(...), db: Session = Depends(get_db)):
+def gmail_callback(code: str | None = Query(None), state: str | None = Query(None),
+                   error: str | None = Query(None), db: Session = Depends(get_db)):
     if not _configured_gmail():
-        raise HTTPException(503, "Gmail OAuth is not configured")
-    user = _user_from_state(state, db)
-    response = requests.post(GOOGLE_TOKEN_URL, data={
-        "code": code,
-        "client_id": settings.GMAIL_CLIENT_ID,
-        "client_secret": settings.GMAIL_CLIENT_SECRET,
-        "redirect_uri": settings.GMAIL_REDIRECT_URI,
-        "grant_type": "authorization_code",
-    }, timeout=15)
+        return _popup("Gmail connection isn't set up on this server.", False, 503)
+    if error or not code or not state:
+        # Google sends ?error=access_denied when the user clicks Cancel/Deny.
+        return _popup("Gmail was not connected. You can close this window and try again.", False, 400)
+    try:
+        user = _user_from_state(state, db)
+    except HTTPException as e:
+        return _popup(str(e.detail), False, e.status_code)
+    try:
+        response = requests.post(GOOGLE_TOKEN_URL, data={
+            "code": code,
+            "client_id": settings.GMAIL_CLIENT_ID,
+            "client_secret": settings.GMAIL_CLIENT_SECRET,
+            "redirect_uri": settings.GMAIL_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }, timeout=15)
+    except requests.RequestException:
+        return _popup("Couldn't reach Google. Close this window and try again.", False, 502)
     if response.status_code != 200:
-        raise HTTPException(400, "Google did not accept the authorization code")
-    token = response.json()
-    refresh = token.get("refresh_token")
+        print(f"[gmail] token exchange failed: {response.status_code} {response.text[:200]}")
+        return _popup("Google did not accept the authorization. Close this window and try again.", False, 400)
+    refresh = response.json().get("refresh_token")
     if not refresh:
-        raise HTTPException(400, "Google did not return a refresh token. Remove CareerPilot from Google account permissions and connect again.")
+        return _popup("Google did not return a refresh token. Remove CareerPilot from your Google account "
+                      "permissions (myaccount.google.com/permissions) and connect again.", False, 400)
     _upsert(db, user.id, "gmail", status="connected", credential=_fernet().encrypt(refresh.encode()).decode(), metadata_json={})
-    return HTMLResponse(f"""<!doctype html><title>Gmail connected</title><script>window.opener&&window.opener.postMessage({{type:'careerpilot:gmail-connected'}},{settings.FRONTEND_URL!r});window.close()</script><p>Gmail connected. You may close this window.</p>""")
+    return _popup("Gmail connected. You may close this window.", True)
 
 
 @router.post("/phone/start", dependencies=[Depends(per_user("phone_start", "RATE_PHONE_START", "RATE_PHONE_WINDOW_S"))])
-def phone_start(body: PhoneStartIn, user: User = Depends(require_seeker), db: Session = Depends(get_db)):
+def phone_start(body: PhoneStartIn, request: Request, user: User = Depends(require_seeker), db: Session = Depends(get_db)):
+    # Sign-up is open and unverified, so per-user limits alone let one person
+    # mint accounts and pump SMS to premium numbers. Cap the source address too.
+    _enforce([(f"phone_start_ip:{client_ip(request)}", settings.RATE_PHONE_START_PER_IP, settings.RATE_PHONE_WINDOW_S)])
     if not _configured_phone():
         raise HTTPException(503, "SMS verification is not configured. Add Twilio Verify credentials first.")
     response = requests.post(

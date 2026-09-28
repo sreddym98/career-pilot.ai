@@ -377,7 +377,7 @@ def tick(background: BackgroundTasks, wait: bool = False,
     CRON_SECRET is set, and compared in constant time."""
     if not settings.CRON_SECRET:
         raise HTTPException(503, "Scheduler is not configured (CRON_SECRET)")
-    if not x_cron_secret or not hmac.compare_digest(x_cron_secret, settings.CRON_SECRET):
+    if not x_cron_secret or not hmac.compare_digest(x_cron_secret.encode(), settings.CRON_SECRET.encode()):
         raise HTTPException(401, "Bad scheduler secret")
     if wait:
         return run_due()

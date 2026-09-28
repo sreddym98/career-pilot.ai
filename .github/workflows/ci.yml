@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feat/prod-ready-autopilot]   # the branch Render deploys for QA
   pull_request:
     branches: [main]
 
@@ -67,6 +67,10 @@ jobs:
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci_hardening.db", ENV: dev }
         run: python test_hardening.py
+      - name: Authorization sweep, Gmail config, account export/delete
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_authz.db", ENV: dev }
+        run: python test_authz.py
       - name: Job ingest (mocked network)
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci_ingest.db", ENV: dev }

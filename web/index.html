@@ -1,5 +1,3 @@
-
-still faling
 <!DOCTYPE html>
 <!--
   careerpilot.ai
@@ -339,6 +337,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .doc.editable [contenteditable]{outline:none;border-radius:4px;padding:1px 3px;margin:-1px -3px;
   transition:background .12s,box-shadow .12s;cursor:text}
 .doc.editable [contenteditable]:hover{background:var(--sunk)}
+.doc.editable [contenteditable][data-ph]:empty::before{content:attr(data-ph);color:var(--ink3)}
 .doc.editable [contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px var(--moss-l)}
 .doc.editable li{position:relative;padding-right:22px}
 .doc.editable .skg{position:relative;padding-right:22px;margin-bottom:6px}
@@ -1124,8 +1123,8 @@ select.sel:focus{border-color:var(--moss);outline:none}
 
   <div class="card">
     <h2>Auto Reply</h2>
-    <p>Set the details vendors always ask for — work authorization, rate, visa documents — so replies to Autopilot's applications are drafted for you automatically.</p>
-    <button class="btn btn-g btn-s" onclick="go('me')">Set up</button>
+    <p>Automatic reply drafting isn't available yet. Until it is, keep your work authorization and contact details current in your profile so you can answer vendors quickly.</p>
+    <button class="btn btn-g btn-s" onclick="go('me')">Open profile</button>
   </div>
 
   <div class="card" id="ap-flightplan">
@@ -1251,9 +1250,9 @@ select.sel:focus{border-color:var(--moss);outline:none}
       <div class="row"><b>Everything on the job board</b></div>
       <div class="row"><b>Visa filtering</b></div>
       <div class="row"><b>10 tailored resumes &amp; cover letters / month</b></div>
-      <div class="row"><b>Autopilot included</b><span class="rowsub">— finds and prepares matches, you approve</span></div>
+      <div class="row"><b>Autopilot</b><span class="rowsub">— Pro only</span></div>
       <div class="row"><b>Application tracking</b></div>
-      <button class="btn btn-g" style="width:100%;margin-top:14px" disabled>Your current plan</button>
+      <button class="btn btn-g" id="free-cta" style="width:100%;margin-top:14px" disabled>Your current plan</button>
     </div>
 
     <div class="card pricecard featured">
@@ -1979,6 +1978,10 @@ const PEOPLE=[
 {n:"Sarah Lindqvist",r:"QA Manager",co:"Mastercard",deg:1,how:"Current colleague"},
 {n:"Chen Wu",r:"Staff Data Engineer",co:"Databricks",deg:2,how:"Through Deepa — PySpark meetup"}];
 
+/* Signed in, the sample contacts and invites above belong to the demo, not to
+   the account. They're swapped for what the server holds (usually nothing yet). */
+let LIVE_PEOPLE=null;
+const peopleNow=()=>SESSION?(LIVE_PEOPLE||[]):PEOPLE;
 let APPS=[
 {co:"Vaspire Technologies",ti:"Senior SDET — GenAI",lo:"Minneapolis, MN",st:"offer",when:"Offer discussion today"},
 {co:"STG Consulting",ti:"QA Automation Engineer",lo:"Salt Lake City, UT",st:"intv",when:"Call scheduled"},
@@ -1987,6 +1990,7 @@ let APPS=[
 {co:"Techrakers",ti:"SDET — Cypress & Load",lo:"Morrisville, NC",st:"sent",when:"2 days ago"},
 {co:"Bank of America",ti:"Quality Engineer — Payments API",lo:"Charlotte, NC",st:"closed",when:"They don't sponsor H1B"}];
 
+const SEED_APPS=JSON.stringify(APPS);
 const REFS=[{n:"Anil Kumar",e:"a•••@gmail.com",st:"active",when:"12 days ago"},
 {n:"Deepa Nair",e:"d•••@outlook.com",st:"active",when:"9 days ago"},
 {n:"James Okoro",e:"j•••@gmail.com",st:"pending",when:"3 days ago"},
@@ -2127,6 +2131,7 @@ function go(p){
   window.scrollTo(0,0);
   if(p==="learn")renderLearn();
   if(typeof renderPlanContext==="function"&&p==="plan")renderPlanContext();
+  if(p==="plan")renderPlanState();
   if(p==="bench")renderBench();
   if(p==="subs")renderSubs();
   if(p==="people")renderPeople();
@@ -2695,7 +2700,7 @@ function buildJobDetailHTML(j, closeFn){
   const s = scoreFor(j);
   const auth = $("f-auth").value;
   const blocked = auth!=="any" && j.au[auth]==="n";
-  const refs = PEOPLE.filter(p=>p.co===j.co);
+  const refs = peopleNow().filter(p=>p.co===j.co);
   const fromEmail = j.src==="email";
 
   return {
@@ -3312,19 +3317,45 @@ function renderLearn(){
 /* ═══ PEOPLE ═══ */
 function renderPeople(){
   const targets=[...new Set(J.map(j=>j.co))];
-  const useful=PEOPLE.filter(p=>targets.includes(p.co));
-  const rest=PEOPLE.filter(p=>!targets.includes(p.co));
+  const ALL=peopleNow();
+  const useful=ALL.filter(p=>targets.includes(p.co));
+  const rest=ALL.filter(p=>!targets.includes(p.co));
   const card=p=>`<div class="row"><div class="lg2">${p.n[0]}</div>
     <div style="flex:1"><b>${p.n}</b><div class="sub">${p.r} · ${p.co}</div><div class="dt">${p.how}</div></div>
     <div class="rt"><button class="btn btn-g btn-s" onclick="toast('Intro drafted to ${p.n}')">Ask for an intro</button></div></div>`;
   $("peopleList").innerHTML =
     (useful.length?`<div class="card"><h2>At companies you're looking at</h2>
       <p>These are the ones worth a message.</p>${useful.map(card).join("")}</div>`:"") +
-    (rest.length?`<div class="card"><h2>Everyone else</h2>${rest.map(card).join("")}</div>`:"");
+    (rest.length?`<div class="card"><h2>Everyone else</h2>${rest.map(card).join("")}</div>`:"") +
+    (!ALL.length?`<div class="card"><h2>Nobody added yet</h2>
+      <p>People you know at companies you're targeting will show up here, next to the roles they're hiring for.</p></div>`:"");
 }
 
 /* ═══ REFER ═══ */
+async function renderReferLive(){
+  let r=null, c=null;
+  try{ [r,c]=await Promise.all([CP_API_call("/api/referrals"), CP_API_call("/api/ai/credits")]); }catch(_){}
+  const link=(r&&r.link)||(SESSION.referral_code?`https://careerpilot.ai/join/${SESSION.referral_code}`:"");
+  REF_LINK=link;
+  const li=$("refLink"); if(li) li.value=link.replace(/^https?:\/\//,"");
+  if(!r&&!c){ $("crTxt").textContent="—"; $("crBar").style.width="0%";
+    $("crNote").textContent="Couldn't load your credits just now."; $("refList").innerHTML=""; return; }
+  const allowance=(c&&c.allowance)||(r&&r.allowance)||SESSION.credits_allowance||0;
+  const used=c?c.used:Math.max(0,allowance-(SESSION.credits_remaining||0));
+  $("crTxt").textContent=`${used} of ${allowance}`;
+  $("crBar").style.width=(allowance?Math.min(100,Math.round(used/allowance*100)):0)+"%";
+  const active=r?r.active:0, base=r?r.base:10;
+  $("crNote").innerHTML=`${base} on the ${esc(SESSION.plan||"free")} plan${active?` plus <b style="color:var(--moss2)">${active*100} from ${active} friend${active>1?"s":""} who stuck around</b>`:""}. Resets on the 1st.`;
+  const L={active:"Earning you 100/mo",pending:"Unlocks in a few days",invited:"Hasn't joined yet"};
+  const list=(r&&r.referrals)||[];
+  $("refList").innerHTML=list.length?list.map(x=>`<div class="row"><div class="lg2">${esc((x.name||"?")[0])}</div>
+    <div style="flex:1"><b>${esc(x.name||"")}</b><div class="sub">${esc(x.email_masked||"")}</div></div>
+    <div class="rt"><span class="st ${x.status==="active"?"reply":"sent"}">${L[x.status]||esc(x.status)}</span></div></div>`).join("")
+    :`<p style="font-size:13.5px;color:var(--ink3)">Nobody yet. Share your link and they'll show up here.</p>`;
+}
+let REF_LINK="https://careerpilot.ai/join/santoshreddy";
 function renderRefer(){
+  if(SESSION && CP_API){ renderReferLive(); return; }
   const active=REFS.filter(r=>r.st==="active").length;
   const base=10, total=Math.min(500,base+active*100), used=47;
   $("crTxt").textContent=`${used} of ${total}`;
@@ -3338,12 +3369,12 @@ function renderRefer(){
   setTxt("m-plan", total>150 ? "Free+" : "Free");
 }
  function copyRef(){
-   const url="https://careerpilot.ai/join/santoshreddy";
+   const url=REF_LINK;
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(url).catch(()=>{});
    toast("Link copied");
  }
 function shareRef(where){
-  const url=encodeURIComponent("https://careerpilot.ai/join/santoshreddy");
+  const url=encodeURIComponent(REF_LINK);
   const txt=encodeURIComponent("Been using CareerPilot for my job search — it filters by visa status and matches on what your resume actually shows. Free to start:");
   const m={linkedin:`https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
            email:`mailto:?subject=${encodeURIComponent("Job search tool worth a look")}&body=${txt}%20${url}`};
@@ -3374,7 +3405,8 @@ async function subscribe(plan){
   try{
     const termParam = plan==="pro" ? `&term=${SELECTED_TERM}` : "";
     const r=await fetch(`${API_BASE}/api/billing/checkout?plan=${plan}${termParam}`,{method:"POST",headers:authHeaders()});
-    if(r.status===503){toast((await r.json()).detail||"Billing isn't set up yet");return;}
+    if(r.status===503){toast("Payments aren't switched on yet — you haven't been charged.");return;}
+    if(r.status===401){openAuth("up");toast("Create an account or sign in to upgrade");return;}
     if(!r.ok)throw new Error("Couldn't start checkout");
     window.location=(await r.json()).url;
   }catch(e){toast(e.message);}
@@ -3637,16 +3669,28 @@ async function pullSeekerData(adoptLocal){
       EXP = []; SKILLS = []; SERVER_POSITIONS = []; PROFILE_READY = false;
     }
 
-    const set = (id,v)=>{const el=$(id); if(el && v!=null) el.value = v;};
+    // null clears the field: an account with no phone/location yet must not
+    // inherit the sample values baked into the page (the owner's own contact
+    // details), which would otherwise flow into generated resumes and emails.
+    const set = (id,v)=>{const el=$(id); if(el) el.value = v==null ? "" : v;};
     set("p-name", p.name); set("p-email", p.email); set("p-phone", p.phone);
     set("p-loc", p.location); set("p-li", p.linkedin);
     if((p.work_auth||[]).length){ set("p-auth", p.work_auth[0]); WORK_AUTH_KNOWN = true; }
+
+    try{
+      const c = await CP_API_call("/api/connections");
+      LIVE_PEOPLE = (c.companies||[]).flatMap(g=>g.people.map(x=>
+        ({n:x.name, r:x.role||"", co:x.company, deg:x.degree, how:x.how_known||""})));
+    }catch(_){ LIVE_PEOPLE = []; }
+    setTxt("m-net", LIVE_PEOPLE.length+" people");
 
     const a = await CP_API_call("/api/applications");
     if(a.applications.length){
       APPS = a.applications.map(x=>({id:x.id, co:x.company, ti:x.title,
         lo:x.location||"—", st:x.short, when:x.note||""}));
-    }else if(!adoptLocal){
+    }else if(!adoptLocal || JSON.stringify(APPS)===SEED_APPS){
+      // Not adopted on signup either when they're still the untouched sample
+      // rows — those were never this person's applications.
       APPS = [];
     }
 
@@ -4519,6 +4563,15 @@ function evalPromptHtml(){
 
 /* Called whenever the Plan page renders — shows evaluation context instead
    of a cold subscription pitch, if an evaluation exists. */
+/* The plan cards were static: a Pro subscriber still saw "Free — your current
+   plan" and a Go Pro button. Reflect the real plan once we know it. */
+function renderPlanState(){
+  const pro = SESSION && SESSION.plan==="pro";
+  const f=$("free-cta"), c=$("pro-cta");
+  if(f) f.textContent = pro ? "Included in Pro" : "Your current plan";
+  if(c && pro){ c.disabled=true; c.textContent="Your current plan"; }
+  else if(c && c.disabled){ c.disabled=false; selectTerm(document.querySelector(".termbtn.on")||document.querySelector(".termbtn")); }
+}
 function renderPlanContext(){
   const note = document.getElementById("planEvalNote");
   const sub = document.getElementById("planSub");
@@ -4643,7 +4696,8 @@ function renderAutopilot(){
       <button class="mini danger" onclick="removeSlot(${h})" title="Remove slot">✕</button>
     </div>`).join("") || `<p class="apsmall">No slots yet — add one below.</p>`);
   const perSlotCap = AP.slots.length ? Math.floor(AP.dailyCap / AP.slots.length) : 0;
-  setHtml("ap-cap", `Total up to <b>${AP.slots.length*perSlotCap}/day</b> — your plan allows <b>${AP.dailyCap}/day</b>.`);
+  if(!AP.dailyCap && apLive()) setHtml("ap-cap", `Autopilot isn't part of the Free plan. <a onclick="go('plan')" style="color:var(--moss2);font-weight:600">See Pro →</a>`);
+  else setHtml("ap-cap", `Total up to <b>${AP.slots.length*perSlotCap}/day</b> — your plan allows <b>${AP.dailyCap}/day</b>.`);
   const addBtn=$("ap-addslot"); if(addBtn) addBtn.disabled = AP.slots.length>=8;
 
   setHtml("ap-titles", (AP.titles.length?AP.titles:[]).map((t,i)=>
@@ -4682,9 +4736,21 @@ function renderAutopilot(){
 
 async function connectGmail(){
   try{
-    const r=await CP_API_call("/api/integrations/gmail/start");
-    const popup=window.open(r.authorization_url,"careerpilot_gmail","width=520,height=700");
+    // Open the window inside the click, before any await: browsers block
+    // pop-ups opened after an async gap. Ask the server if Gmail is set up
+    // BEFORE sending anyone to Google, so a missing config reads as
+    // "not set up yet" here instead of Google's "Access blocked" page.
+    const popup=window.open("about:blank","careerpilot_gmail","width=520,height=700");
     if(!popup){toast("Allow pop-ups to connect Gmail");return;}
+    let r;
+    try{
+      const st=await CP_API_call("/api/integrations/status");
+      if(st.gmail && st.gmail.configured===false){
+        popup.close(); toast("Gmail connection isn't set up on this server yet. Nothing was sent to Google."); return;
+      }
+      r=await CP_API_call("/api/integrations/gmail/start");
+    }catch(e){ popup.close(); throw e; }
+    popup.location.href=r.authorization_url;
     const timer=setInterval(async()=>{
       const status=await refreshAutopilotIntegrations();
       if(status?.gmail.connected||popup.closed){clearInterval(timer);}
@@ -5351,7 +5417,7 @@ async function buildResume(){
         const unavailable=err.status===503||err.name==="AbortError"||err.name==="TypeError";
         if(unavailable){
            localAiUnavailable=true;
-          prog(`${label} — using your profile details while local AI is unavailable…`);
+          prog(`${label} — the AI writer is unavailable — using your profile as written…`);
           return{data:fallbackFor(label),partial:true};
         }
         const ab=err.name==="AbortError", net=err.name==="TypeError";
@@ -5429,13 +5495,14 @@ RULES
 
     LAST={name:$("p-name").value, contact:`${$("p-phone").value} · ${$("p-email").value} · ${$("p-loc").value}${$("p-li").value?" · "+$("p-li").value:""}`,
           summary:h.data.summary||"", skills:h.data.skill_groups||[], roles,
-          education:"Webster University — M.S. Cybersecurity with Professional Practice",
-          builtFor:{title, jobId: CURRENT_TAILOR_JOB_ID||null}};   // which role this was actually written for
+          education:"",   // never assume one — this used to be a hardcoded credential on every resume
+          builtFor:{title, jobId: localAiUnavailable ? null : (CURRENT_TAILOR_JOB_ID||null)}};   // profile-as-written is not "tailored" for the job   // which role this was actually written for
     const total=roles.reduce((s,r)=>s+r.bullets.length,0);
     const words=(h.data.summary||"").split(/\s+/).length+roles.reduce((s,r)=>s+r.bullets.join(" ").split(/\s+/).length,0);
     const pages=Math.max(1,Math.round(words/430*10)/10);
     o.innerHTML=`
-      ${partialAny?`<div class="note">One section came back short. Everything below works — regenerate if a role looks thin.</div>`:""}
+      ${localAiUnavailable?`<div class="note">The AI writer isn't available right now, so this resume is built from your profile exactly as written — it is not tailored to the role. Try Redo later to have it rewritten for this job.</div>`
+        :partialAny?`<div class="note">One section came back short. Everything below works — regenerate if a role looks thin.</div>`:""}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:9px">
         <span style="font-size:13.5px;color:var(--ink2)"><span id="bulletCount">${total} points</span> · about ${pages} page${pages>1?"s":""} <span id="editState" style="color:var(--moss2)"></span><br>
           <span style="font-size:12.5px;color:var(--ink3)">Most recruiters ask for Word</span></span>
@@ -5466,7 +5533,7 @@ RULES
             <button class="addln" onclick="addBulletTo(${ri})">+ Add a line</button>
           </div>`).join("")}</div>
         <h2>Education</h2>
-        <ul><li><span contenteditable data-k="education">${esc(LAST.education)}</span></li></ul>
+        <ul><li><span contenteditable data-k="education" data-ph="Add your degree, school and year">${esc(LAST.education)}</span></li></ul>
       </div>`;
     wireEdits();
     toast(`Done — ${total} points across ${N} roles`);
@@ -5504,7 +5571,7 @@ function printResumePdf(){
     <style>@page{size:letter;margin:.55in}body{font:10.5pt Georgia,serif;color:#172018;line-height:1.35;margin:0}h1{font:22pt Arial,sans-serif;margin:0 0 3px}h2{font:11pt Arial,sans-serif;color:#345239;border-bottom:1px solid #78947b;margin:16px 0 6px;padding-bottom:3px;letter-spacing:.04em}h3{font:10.5pt Arial,sans-serif;margin:11px 0 1px}.contact,.meta{color:#526257;margin:0;font:9.5pt Arial,sans-serif}.meta{font-size:9pt}p{margin:5px 0}ul{margin:4px 0 8px;padding-left:18px}li{margin:2px 0}section{break-inside:avoid}</style>
     </head><body><h1>${esc(LAST.name)}</h1><p class="contact">${esc(LAST.contact)}</p>
     <h2>SUMMARY</h2><p>${esc(LAST.summary)}</p><h2>TECHNICAL SKILLS</h2>${skills}
-    <h2>PROFESSIONAL EXPERIENCE</h2>${roleHtml}<h2>EDUCATION</h2><p>${esc(LAST.education||"")}</p>
+    <h2>PROFESSIONAL EXPERIENCE</h2>${roleHtml}${LAST.education?`<h2>EDUCATION</h2><p>${esc(LAST.education)}</p>`:""}
     </body></html>`;
   const url=URL.createObjectURL(new Blob([html],{type:"text/html"}));
   popup.onload=()=>{
@@ -5576,8 +5643,10 @@ async function downloadDocx(btn, docOverride, filenameHint){
       body+=para(`${r.from} – ${r.to}  ·  ${r.dur}  ·  ${r.loc}`,{size:17,color:"666666"});
       r.bullets.forEach(b=>body+=bullet(b));
     });
-    body+=para("EDUCATION",{bold:true,size:19,color:"4C6B4F",space:160,caps:true});
-    body+=para(d.education,{size:20});
+    if(d.education){
+      body+=para("EDUCATION",{bold:true,size:19,color:"4C6B4F",space:160,caps:true});
+      body+=para(d.education,{size:20});
+    }
 
     const zip=new window.JSZip();
     zip.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -5718,7 +5787,7 @@ function tailorFor(id){
 $("f-fam").innerHTML=`<option value="">Any specialization</option>`+
   TAX.map(c=>`<optgroup label="${c.cat}">${c.fams.map(f=>`<option value="${f.id}">${f.n}</option>`).join("")}</optgroup>`).join("");
 $("b-spec").innerHTML=TAX.map(c=>`<optgroup label="${c.cat}">${c.fams.map(f=>`<option${f.id==="ui"?" selected":""}>${f.n}</option>`).join("")}</optgroup>`).join("");
-setTxt("m-net", PEOPLE.length+" people");
+setTxt("m-net", peopleNow().length+" people");
 // restore whatever you were doing last time
 if(loadState()){
   $("drop").classList.add("done");

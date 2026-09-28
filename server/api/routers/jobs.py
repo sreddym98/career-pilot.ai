@@ -17,7 +17,7 @@ def list_jobs(
     fields: str = "", families: str = "", employment: str = "",
     modes: str = "", company: str = "",
     fresh_days: int = 0, hide_reposts: bool = False,
-    limit: int = Query(25, le=100), offset: int = 0,
+    limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0),
     sort: str = "match",
     db: Session = Depends(get_db), user=Depends(optional_user),
 ):

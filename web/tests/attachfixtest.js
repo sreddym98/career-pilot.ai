@@ -82,11 +82,10 @@ console.log("── Quick-tailor flow reaches the resume builder correctly ─�
 w.writeRecruiter(ag);
 await sleep(60);
 let calls=[];
-w.fetch=(u,o)=>{const c=JSON.parse(o.body).messages[0].content;calls.push(c);
+w.fetch=(u,o)=>{const c=JSON.parse(o.body).prompt;calls.push(c);
   const hdr=c.includes("header of a senior");
-  return Promise.resolve({ok:true,status:200,text:()=>Promise.resolve(JSON.stringify({content:[{type:"text",
-    text:hdr?'{"summary":"Tailored for this exact role.","skill_groups":[{"label":"Automation","items":["Playwright"]}]}'
-      :'{"bullets":["A bullet tailored specifically for '+ag.ti.replace(/'/g,"")+'"]}'}]}))});};
+  return Promise.resolve({ok:true,status:200,text:()=>Promise.resolve(JSON.stringify({data:JSON.parse(hdr?'{"summary":"Tailored for this exact role.","skill_groups":[{"label":"Automation","items":["Playwright"]}]}'
+      :'{"bullets":["A bullet tailored specifically for '+ag.ti.replace(/'/g,"")+'"]}')}))});};
 await w.quickTailorForEmail(ag.id);
 await sleep(1100);
 ok("AI was actually called",calls.length>0);

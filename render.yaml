@@ -18,8 +18,10 @@ services:
       # required
       - { key: DATABASE_URL, sync: false }          # Neon pooled Postgres URL
       - { key: AUTH_SECRET, sync: false }
-      - { key: FRONTEND_URL, sync: false }          # https://your-site.pages.dev (no trailing slash)
+      - { key: FRONTEND_URL, value: "https://career-pilot-ai.mamindlasreddy.workers.dev" }   # exact origin, no trailing slash: CORS + Stripe/OAuth redirects
       - { key: CRON_SECRET, sync: false }
+      - { key: ADMIN_EMAILS, sync: false }          # comma-separated; only these may read the support queue
+      - { key: SUPPORT_EMAIL, sync: false }         # where new tickets are emailed
       # AI
       - { key: AI_BASE_URL, value: "https://api.ashna.ai/v1/api" }
       - { key: AI_API_KEY, sync: false }
@@ -42,7 +44,8 @@ services:
       # Gmail + Twilio
       - { key: GMAIL_CLIENT_ID, sync: false }
       - { key: GMAIL_CLIENT_SECRET, sync: false }
-      - { key: GMAIL_REDIRECT_URI, sync: false }    # https://<api>.onrender.com/api/integrations/gmail/callback
+      # Must match, character for character, an "Authorized redirect URI" on the Google OAuth client.
+      - { key: GMAIL_REDIRECT_URI, value: "https://careerpilot-api-rri9.onrender.com/api/integrations/gmail/callback" }
       - { key: INTEGRATION_ENCRYPTION_KEY, sync: false }
       - { key: TWILIO_ACCOUNT_SID, sync: false }
       - { key: TWILIO_AUTH_TOKEN, sync: false }

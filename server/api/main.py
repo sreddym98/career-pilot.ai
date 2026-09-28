@@ -18,6 +18,7 @@ log = logging.getLogger("careerpilot")
 
 app = FastAPI(title="careerpilot.ai", version="1.0",
               docs_url="/docs" if settings.ENV == "dev" else None,
+              openapi_url="/openapi.json" if settings.ENV == "dev" else None,
               redoc_url=None)
 
 

@@ -13,6 +13,18 @@ class UUIDStr(TypeDecorator):
     impl = String; cache_ok = True
     def load_dialect_impl(self, d):
         return d.type_descriptor(PG_UUID(as_uuid=False)) if d.name == "postgresql" else d.type_descriptor(String(36))
+    def process_bind_param(self, v, d):
+        # Postgres raises DataError (-> HTTP 500) when a client-supplied path id
+        # like /applications/abc is compared to a uuid column; SQLite just finds
+        # no row (-> 404). Map anything that isn't a UUID to the nil UUID, which
+        # no row can have, so both backends answer 404. Ids we generate are
+        # always valid uuid4 strings, so inserts are unaffected.
+        if v is None or d.name != "postgresql":
+            return v
+        try:
+            return str(uuid.UUID(str(v)))
+        except ValueError:
+            return "00000000-0000-0000-0000-000000000000"
 
 class StrArray(TypeDecorator):
     impl = TEXT; cache_ok = True
