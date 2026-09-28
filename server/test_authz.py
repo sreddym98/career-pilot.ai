@@ -57,6 +57,7 @@ PUBLIC = {("GET", "/health"), ("GET", "/ready"), ("GET", "/api/jobs"), ("GET", "
           ("GET", "/api/u/{slug}"), ("POST", "/api/auth/signup"), ("POST", "/api/auth/login"),
           ("GET", "/api/billing/config"), ("POST", "/api/billing/webhook"),        # Stripe signature
           ("POST", "/api/autopilot/tick"),                                          # X-Cron-Secret
+          ("POST", "/api/autopilot/diag"),                                          # X-Cron-Secret
           ("GET", "/api/integrations/gmail/callback"),                              # Google redirect; signed state
           ("GET", "/docs"), ("GET", "/docs/oauth2-redirect"), ("GET", "/openapi.json")}
 BAD = {"Authorization": "Bearer not.a.token"}
