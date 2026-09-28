@@ -8,9 +8,8 @@ services:
     region: ohio                      # next to Neon us-east-2
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server
-    # QA branch. After the merge to main, change this to `main` (and in the Render
-    # dashboard: Settings > Build & Deploy > Branch).
-    branch: feat/prod-ready-autopilot
+    # Production branch. Scheduled GitHub Actions only run from the default branch too.
+    branch: main
     autoDeploy: true
     healthCheckPath: /health
     envVars:
