@@ -138,10 +138,25 @@ try:
     AP.save(AP.ConfigIn(on=True), free, db); ok("free plan can't switch on", False)
 except HTTPException as e:
     ok("free plan can't switch on", e.status_code == 402, e.status_code)
+settings.TWILIO_ACCOUNT_SID = settings.TWILIO_AUTH_TOKEN = settings.TWILIO_VERIFY_SERVICE_SID = "x"
 try:
     AP.save(AP.ConfigIn(on=True), u, db); ok("gates enforced server-side", False)
 except HTTPException as e:
     ok("gates enforced server-side", e.status_code == 400 and "phone" in e.detail, e.detail)
+settings.TWILIO_ACCOUNT_SID = settings.TWILIO_AUTH_TOKEN = settings.TWILIO_VERIFY_SERVICE_SID = ""
+ok("phone gate is off when Twilio is not configured", AP._gates(db, u, cfg)["phoneRequired"] is False)
+ok("Autopilot can be switched on without Twilio once the resume is confirmed",
+   AP.save(AP.ConfigIn(on=True), u, db) is not None and AP._config(db, u).on is True)
+AP.save(AP.ConfigIn(on=False), u, db)
+settings.CRON_SECRET = "s3cret"
+try:
+    AP.diag("wrong"); ok("diag rejects a bad secret", False)
+except HTTPException as e:
+    ok("diag rejects a bad secret", e.status_code == 401)
+AI._call = down
+d = AP.diag("s3cret")
+ok("diag reports AI failure without raising", str(d["ai_live_call"]).startswith("FAILED"), d)
+ok("diag never leaks secret values", "sk_" not in str(d) and "s3cret" not in str(d))
 for bad in (AP.ConfigIn(slots=[]), AP.ConfigIn(slots=[25]), AP.ConfigIn(tz="Mars/Base"), AP.ConfigIn(workStyle="moon")):
     try:
         AP.save(bad, u, db); ok(f"rejects {bad.model_dump(exclude_none=True)}", False)

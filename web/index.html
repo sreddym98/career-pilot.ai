@@ -4841,6 +4841,7 @@ function renderAutopilot(){
     {k:"resumeConfirmed", label:"Confirm your resume", sub:"Autopilot uses the roles and bullets in your profile.", cta:"Confirm resume", fn:"confirmAutopilotResume"},
     {k:"phoneVerified", label:"Verify phone", sub:"A Twilio SMS code confirms this account before preparation begins.", cta:"Verify phone", fn:"openPhoneVerification"},
   ];
+  if(AP.phoneRequired===false) steps.splice(steps.findIndex(s=>s.k==="phoneVerified"),1);
   const done = steps.filter(s=>AP[s.k]).length;
   setTxt("ap-setup-count", `${done}/${steps.length} complete`);
   setHtml("ap-checklist", steps.map((s,i)=>`
@@ -4968,7 +4969,7 @@ function adoptAP(s){
   AP.on=!!s.on; AP.slots=(s.slots||[]).map(Number).filter(h=>Number.isInteger(h)&&h>=0&&h<=23);
   AP.titles=(s.titles||[]).map(String); AP.skills=(s.skills||[]).map(String);
   AP.workStyle=["remote","hybrid","onsite"].includes(s.workStyle)?s.workStyle:""; AP.dailyCap=+s.dailyCap||0;
-  AP.gmailConnected=!!s.gmailConnected; AP.resumeConfirmed=!!s.resumeConfirmed; AP.phoneVerified=!!s.phoneVerified;
+  AP.gmailConnected=!!s.gmailConnected; AP.resumeConfirmed=!!s.resumeConfirmed; AP.phoneVerified=!!s.phoneVerified; AP.phoneRequired=s.phoneRequired!==false;
   AP.queue=(s.queue||[]).map(q=>{
     let host="the employer's application form";
     try{ if(q.apply_url) host=new URL(q.apply_url).hostname.replace(/^www\./,""); }catch(_){}
@@ -5044,7 +5045,7 @@ function rmApTitle(i){
 async function toggleAutopilot(){
   initAP();
   const wantOn = $("ap-on").checked;
-  const steps = ["resumeConfirmed","phoneVerified"];
+  const steps = ["resumeConfirmed",...(AP.phoneRequired===false?[]:["phoneVerified"])];
   if(wantOn && steps.some(k=>!AP[k])){
     $("ap-on").checked=false;
     toast("Finish setup first — resume and phone verification");

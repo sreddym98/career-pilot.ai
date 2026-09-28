@@ -1,0 +1,16 @@
+name: Diagnose deployment
+
+# Manual: Actions > Diagnose deployment > Run workflow. Prints which integrations
+# are configured on the server and does one live AI call. No secret values shown.
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          curl -sS --retry 5 --retry-delay 15 --retry-all-errors --max-time 90 "${{ secrets.API_URL }}/health" >/dev/null || true
+          curl -fsS -X POST -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" --max-time 120 \
+            "${{ secrets.API_URL }}/api/autopilot/diag" | python3 -m json.tool

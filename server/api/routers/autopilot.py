@@ -52,12 +52,20 @@ def _config(db: Session, user: User) -> AutopilotConfig:
     return cfg
 
 
+def phone_required() -> bool:
+    """SMS verification only gates Autopilot when Twilio Verify is actually set
+    up. Without it the step could never be completed and would lock every user out."""
+    return bool(settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN
+                and settings.TWILIO_VERIFY_SERVICE_SID)
+
+
 def _gates(db: Session, user: User, cfg: AutopilotConfig) -> dict:
     rows = {r.provider: r for r in db.query(Integration).filter(Integration.user_id == user.id)}
     return {
         "gmailConnected": bool(rows.get("gmail") and rows["gmail"].status == "connected"),
         "phoneVerified": bool(rows.get("phone") and rows["phone"].status == "verified"),
         "resumeConfirmed": bool(cfg.resume_confirmed),
+        "phoneRequired": phone_required(),
     }
 
 
@@ -141,7 +149,7 @@ def save(body: ConfigIn, user: User = Depends(require_seeker), db: Session = Dep
             raise HTTPException(402, "Autopilot is part of Pro. Upgrade to turn it on.")
         missing = [label for ok, label in (
             (_gates(db, user, cfg)["resumeConfirmed"], "confirm your resume"),
-            (_gates(db, user, cfg)["phoneVerified"], "verify your phone")) if not ok]
+            (_gates(db, user, cfg)["phoneVerified"] or not phone_required(), "verify your phone")) if not ok]
         if missing:
             raise HTTPException(400, "Finish setup first: " + ", ".join(missing))
         cfg.on = True
@@ -382,6 +390,45 @@ def tick(background: BackgroundTasks, wait: bool = False,
         return run_due()
     background.add_task(run_due)
     return {"scheduled": True}
+
+
+@router.post("/diag")
+def diag(x_cron_secret: str = Header(None)):
+    """Deployment self-check for the operator (run from GitHub Actions). Says
+    which integrations are configured and makes one tiny live AI call. Never
+    returns a secret value."""
+    if not settings.CRON_SECRET:
+        raise HTTPException(503, "Scheduler is not configured (CRON_SECRET)")
+    if not x_cron_secret or not hmac.compare_digest(x_cron_secret.encode(), settings.CRON_SECRET.encode()):
+        raise HTTPException(401, "Bad scheduler secret")
+    from sqlalchemy import text as _t
+    from api.db import engine
+    out = {"env": settings.ENV, "frontend_url": settings.FRONTEND_URL}
+    try:
+        with engine.connect() as c: c.execute(_t("SELECT 1"))
+        out["database"] = "ok"
+    except Exception as e:
+        out["database"] = f"FAILED: {type(e).__name__}"
+    out["ai_provider"] = ai.provider()
+    try:
+        r = ai._call('Reply with the JSON {"ok": true}', 40, "diag", fast=True)
+        out["ai_live_call"] = "ok" if r else "empty reply"
+    except HTTPException as e:
+        out["ai_live_call"] = f"FAILED: {e.detail}"
+    except Exception as e:
+        out["ai_live_call"] = f"FAILED: {type(e).__name__}"
+    out["configured"] = {
+        "stripe_secret": bool(settings.STRIPE_SECRET_KEY),
+        "stripe_webhook": bool(settings.STRIPE_WEBHOOK_SECRET),
+        "stripe_prices": all([settings.STRIPE_PRICE_PRO_MONTHLY, settings.STRIPE_PRICE_PRO_3MO,
+                              settings.STRIPE_PRICE_PRO_6MO, settings.STRIPE_PRICE_RECRUITER,
+                              settings.STRIPE_PRICE_EVAL]),
+        "resend_email": bool(settings.RESEND_API_KEY),
+        "twilio_verify": phone_required(),
+        "gmail_oauth": bool(settings.GMAIL_CLIENT_ID and settings.GMAIL_CLIENT_SECRET),
+        "admin_emails": bool(settings.ADMIN_EMAILS),
+    }
+    return out
 
 
 # ── the approval queue ───────────────────────────────────────────────────
