@@ -10,6 +10,19 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./dev.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     ANTHROPIC_API_KEY: str = ""
+    # Sonnet writes the resumes and cover letters; Haiku does the high-volume
+    # autopilot matching where cost per call matters more than prose quality.
+    ANTHROPIC_MODEL: str = "claude-sonnet-5-5"
+    ANTHROPIC_FAST_MODEL: str = "claude-haiku-4-5-20251001"
+    # "auto" = Anthropic when a key is set, otherwise local Ollama (dev only).
+    AI_PROVIDER: str = "auto"
+    OLLAMA_URL: str = "http://localhost:11434"
+    # Shared secret for the scheduled autopilot trigger (GitHub Actions cron).
+    # Unset = the trigger endpoint stays closed.
+    CRON_SECRET: str = ""
+    # Outbound mail for support tickets and autopilot digests (Resend).
+    RESEND_API_KEY: str = ""
+    MAIL_FROM: str = "CareerPilot <noreply@careerpilot.ai>"
     SUPABASE_URL: str = ""
     SUPABASE_JWT_SECRET: str = ""
     STRIPE_SECRET_KEY: str = ""
@@ -39,6 +52,33 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
+
+
+def production_problems() -> list[str]:
+    """Everything that must be true before this process may serve real users.
+
+    Called at startup. ENV defaults to "dev", and dev means: anyone with no
+    credential is silently signed in as a Pro account and CORS is wide open.
+    That is right on a laptop and catastrophic on the internet, so a process
+    that looks deployed (public FRONTEND_URL) but still says dev refuses to
+    start rather than serving that.
+    """
+    problems = []
+    looks_public = not settings.FRONTEND_URL.startswith(("http://localhost", "http://127.0.0.1"))
+    if settings.ENV == "dev":
+        if looks_public:
+            problems.append("ENV=dev with a public FRONTEND_URL. Set ENV=prod — dev mode "
+                            "signs every anonymous visitor in as a Pro user.")
+        return problems
+    if not settings.AUTH_SECRET:
+        problems.append("AUTH_SECRET is not set")
+    if settings.DATABASE_URL.startswith("sqlite"):
+        problems.append("DATABASE_URL is SQLite; use Postgres")
+    if not settings.ANTHROPIC_API_KEY and settings.AI_PROVIDER in ("auto", "anthropic"):
+        problems.append("ANTHROPIC_API_KEY is not set (AI features would 503)")
+    if settings.FRONTEND_URL.startswith("http://localhost"):
+        problems.append("FRONTEND_URL still points at localhost (CORS, Stripe and OAuth redirects)")
+    return problems
 
 
 def auth_secret() -> str:

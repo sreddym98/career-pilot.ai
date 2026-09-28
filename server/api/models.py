@@ -169,6 +169,10 @@ class Application(Base):
     tailored_resume = Column(JSONish())
     cover_letter = Column(Text)
     form_fields = Column(JSONish())
+    # 'manual' = the user tracked it; 'autopilot' = prepared by a scheduled run
+    # and waiting for approval. Kept apart so approving a batch never touches
+    # anything the user added by hand.
+    origin = Column(String, default="manual")
     applied_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -233,6 +237,36 @@ class Integration(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (UniqueConstraint("user_id", "provider", name="uq_integrations_user_provider"),)
+
+
+class AutopilotConfig(Base):
+    """One row per seeker. This is the source of truth for Autopilot: the
+    browser only renders it. Runs happen on the server on a schedule, so they
+    happen with the tab closed — the whole point of the feature."""
+    __tablename__ = "autopilot_configs"
+    user_id = Column(UUIDStr(), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    on = Column(Boolean, default=False, index=True)
+    resume_confirmed = Column(Boolean, default=False)
+    slots = Column(JSONish(), default=lambda: [9, 13, 17])     # local hours, 0-23
+    tz = Column(String, default="America/Chicago")
+    titles = Column(JSONish(), default=list)
+    skills = Column(JSONish(), default=list)
+    work_style = Column(String, default="")                     # '' | remote | hybrid | onsite
+    daily_cap = Column(Integer, default=60)
+    last_run_key = Column(String)          # "YYYY-MM-DDTHH" of the last slot served
+    last_run_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AutopilotRun(Base):
+    __tablename__ = "autopilot_runs"
+    id = Column(UUIDStr(), primary_key=True, default=_id)
+    user_id = Column(UUIDStr(), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    ran_at = Column(DateTime(timezone=True), server_default=func.now())
+    found = Column(Integer, default=0)
+    prepared = Column(Integer, default=0)
+    skipped = Column(Integer, default=0)
+    note = Column(String)                  # why a run prepared nothing
 
 
 class Course(Base):

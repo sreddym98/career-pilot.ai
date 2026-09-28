@@ -1,11 +1,12 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
-"""AI proxy using Ollama (local, free, no API key needed).
+"""AI proxy. Claude (Anthropic) in production, local Ollama for offline dev.
 
-Ollama runs locally on http://localhost:11434 and provides fast inference
-without any cloud dependencies, API keys, or cost.
+Provider choice (AI_PROVIDER): "auto" uses Anthropic whenever ANTHROPIC_API_KEY
+is set and falls back to a local Ollama otherwise. In production there is no
+Ollama to fall back to, so a missing key is a clear 503, not a mystery timeout.
 """
-import hashlib, json, requests
+import hashlib, json, re, requests
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -16,18 +17,30 @@ from api.settings import settings
 from api import credits
 
 class _Transient(Exception):
-    """Retryable condition that isn't one of ollama's typed errors."""
+    """Retryable condition that isn't one of the provider's typed errors."""
 
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-OLLAMA_URL = "http://localhost:11434"
-MODEL = "neural-chat"  # Faster and more efficient than mistral
+OLLAMA_URL = settings.OLLAMA_URL
+OLLAMA_MODEL = "neural-chat"
+
+
+def provider() -> str:
+    p = (settings.AI_PROVIDER or "auto").lower()
+    if p == "auto":
+        return "anthropic" if settings.ANTHROPIC_API_KEY else "ollama"
+    return p
+
+
+# Part of every cache key, so switching model or provider never serves an
+# answer that a different model wrote.
+MODEL = settings.ANTHROPIC_MODEL if provider() == "anthropic" else OLLAMA_MODEL
 
 # Ceiling on a single generation. High enough for the 12-15 bullet resume
 # prompts, low enough that one request can't tie the model up indefinitely.
 TOKEN_CEILING = 4096
-# A local model emits maybe 20-40 tokens/sec, so a fixed 20s budget failed
-# every long generation on time rather than on quality. Scale with the ask.
+# Local models emit ~20-40 tokens/sec so the budget scales with the ask. Hosted
+# Claude is far faster; the same formula is a generous ceiling for it.
 TIMEOUT_BASE, TIMEOUT_PER_100_TOKENS = 20, 6
 
 
@@ -49,55 +62,83 @@ def _store(db, key, result):
     db.commit()
 
 
-def _call(prompt: str, max_tokens: int = 1400, label: str = "") -> dict:
-    """Call Ollama locally and fail quickly so the UI can use its fallback.
+def _extract_json(text: str) -> dict:
+    """Pull one JSON object out of model output, tolerating code fences and
+    a sentence of preamble. Raises _Transient when there is nothing usable."""
+    text = (text or "").strip()
+    if not text:
+        raise _Transient("empty response from model")
+    text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    if not text.startswith("{"):
+        match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text)
+        if match:
+            text = match.group(0)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        raise _Transient("response was not valid JSON")
 
-    One attempt, deliberately. The frontend renders a template fallback the
-    moment this 503s, so making someone sit through a retry ladder for a local
-    model that is down or confused is worse than handing them the fallback
-    straight away. test_ai_resilience.py pins the single-request behaviour.
-    """
-    import re
+
+def _call_anthropic(prompt: str, budget: int, timeout: int, fast: bool) -> dict:
+    """One Claude request. The SDK's own retry is left at 2 (it only retries
+    connection errors, 429 and 5xx, with backoff) — enough to ride out a blip
+    without making someone wait through a ladder."""
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(503, "AI is not configured on this server (ANTHROPIC_API_KEY).")
+    import anthropic
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY,
+                                 timeout=float(timeout), max_retries=2)
+    model = settings.ANTHROPIC_FAST_MODEL if fast else settings.ANTHROPIC_MODEL
+    try:
+        msg = client.messages.create(
+            model=model, max_tokens=budget, temperature=0.3,
+            system="You are a precise writing assistant. Reply with a single JSON "
+                   "object and nothing else — no commentary, no code fences.",
+            messages=[{"role": "user", "content": prompt}])
+    except anthropic.RateLimitError:
+        raise HTTPException(503, "AI is busy right now. Retry in a moment.")
+    except anthropic.APITimeoutError:
+        raise HTTPException(503, "AI is taking too long to respond. Try again in a moment.")
+    except anthropic.APIConnectionError:
+        raise HTTPException(503, "Couldn't reach the AI service. Try again in a moment.")
+    except anthropic.APIStatusError as e:
+        if e.status_code in (400, 401, 403, 404):
+            # 401/403 is our key, not the user's problem — log it, say less.
+            print(f"[ai] anthropic rejected request: {e.status_code} {str(e)[:200]}")
+            raise HTTPException(503 if e.status_code in (401, 403) else 400,
+                                "AI request could not be completed.")
+        raise HTTPException(503, "AI service temporarily unavailable. Retry in a moment.")
+    text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+    try:
+        return _extract_json(text)
+    except _Transient:
+        raise HTTPException(503, "AI returned an unreadable answer. Retry in a moment.")
+
+
+def _call(prompt: str, max_tokens: int = 1400, label: str = "", fast: bool = False) -> dict:
+    """One generation, one attempt from our side, fail fast so the UI can use
+    its fallback. test_ai_resilience.py pins the single-request behaviour for
+    the Ollama path."""
     budget = max(256, min(max_tokens, TOKEN_CEILING))
     timeout = TIMEOUT_BASE + (budget // 100) * TIMEOUT_PER_100_TOKENS
+
+    if provider() == "anthropic":
+        return _call_anthropic(prompt, budget, timeout, fast)
 
     try:
         response = requests.post(
             f"{OLLAMA_URL}/api/generate",
             json={
-                "model": MODEL,
+                "model": OLLAMA_MODEL,
                 "prompt": prompt,
                 "stream": False,
                 "format": "json",
-                "options": {
-                    # Was hard-capped at 420, which truncated the 10-15 bullet
-                    # JSON the resume prompts ask for. The cut-off output then
-                    # failed to parse, surfacing as a 503 that looked like the
-                    # model being unavailable rather than the budget being too
-                    # small.
-                    "num_predict": budget,
-                    "temperature": 0.3,
-                    "top_p": 0.9,
-                },
+                "options": {"num_predict": budget, "temperature": 0.3, "top_p": 0.9},
             },
             timeout=timeout,
         )
         response.raise_for_status()
-
-        text = (response.json().get("response") or "").strip()
-        if not text:
-            raise _Transient("empty response from model")
-
-        text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        if not text.startswith("{"):
-            match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text)
-            if match:
-                text = match.group(0)
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            raise _Transient("response was not valid JSON")
+        return _extract_json(response.json().get("response"))
 
     except requests.HTTPError as e:
         # A 4xx is the model refusing the request itself, which is a caller
