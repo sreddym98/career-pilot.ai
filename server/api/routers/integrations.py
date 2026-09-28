@@ -47,11 +47,23 @@ def _configured_phone():
     return bool(settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_VERIFY_SERVICE_SID)
 
 
+def _fernet_key(raw: str) -> bytes:
+    """A real Fernet key is used as-is. Anything else (a long random string from
+    a password manager, say) is stretched into one with SHA-256, so the owner
+    doesn't need Python just to mint a valid key. Same input, same key, so
+    tokens stay decryptable across restarts."""
+    try:
+        Fernet(raw.encode())
+        return raw.encode()
+    except (TypeError, ValueError):
+        return base64.urlsafe_b64encode(hashlib.sha256(raw.encode()).digest())
+
+
 def _fernet():
     if not settings.INTEGRATION_ENCRYPTION_KEY:
         raise HTTPException(503, "Integration encryption is not configured")
     try:
-        return Fernet(settings.INTEGRATION_ENCRYPTION_KEY.encode())
+        return Fernet(_fernet_key(settings.INTEGRATION_ENCRYPTION_KEY))
     except (TypeError, ValueError):
         raise HTTPException(503, "INTEGRATION_ENCRYPTION_KEY is invalid")
 

@@ -5,9 +5,12 @@ services:
     name: careerpilot-api
     runtime: docker
     plan: free
+    region: ohio                      # next to Neon us-east-2
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server
-    branch: main
+    # QA branch. After the merge to main, change this to `main` (and in the Render
+    # dashboard: Settings > Build & Deploy > Branch).
+    branch: feat/prod-ready-autopilot
     autoDeploy: true
     healthCheckPath: /health
     envVars:
