@@ -161,6 +161,21 @@ class Job(Base):
     )
 
 
+class BenchDoc(Base):
+    """A recruiter's bench and submissions, kept as one document per account.
+
+    Candidates are edited as a whole list in the UI and never queried across
+    accounts, so a single JSON row keeps this simple. Before this existed the
+    bench lived only in one browser's localStorage, which meant signing out (or
+    opening a second device) lost it."""
+    __tablename__ = "bench_docs"
+    user_id = Column(UUIDStr(), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    candidates = Column(JSONish(), default=list)
+    submissions = Column(JSONish(), default=list)
+    updated_at = Column(DateTime(timezone=True), default=lambda: dt.datetime.now(dt.timezone.utc),
+                        onupdate=lambda: dt.datetime.now(dt.timezone.utc))
+
+
 class Application(Base):
     __tablename__ = "applications"
     id = Column(UUIDStr(), primary_key=True, default=_id)

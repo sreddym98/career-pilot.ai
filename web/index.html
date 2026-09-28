@@ -418,6 +418,9 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .mainarea{flex:1;min-width:0;max-width:1320px;margin:0 auto;padding:26px 24px 70px;width:100%}
 
 @media(max-width:900px){
+  /* mobtop and mainarea are siblings; in a row the full-width top bar left the
+     page content about 30px wide. Stack them. */
+  .appshell{flex-direction:column}
   .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:90;transform:translateX(-100%);width:270px}
   .sidebar.open{transform:translateX(0);box-shadow:var(--e4)}
   .mobtop{display:flex}
@@ -3273,9 +3276,12 @@ function renderApps(){
     const g=APPS.filter(a=>a.st===k); if(!g.length)return "";
     return `<div class="card"><h2 style="display:flex;align-items:center;gap:9px">${ST[k]}
       <span style="font:12px var(--m);color:var(--ink3);font-weight:400">${g.length}</span></h2>
-      ${g.map(a=>`<div class="row"><div class="lg2">${a.co[0]}</div>
+      ${g.map(a=>`<div class="row"><div class="lg2">${esc(a.co[0]||"")}</div>
         <div style="flex:1"><b>${esc(a.ti)}</b><div class="sub">${esc(a.co)} · ${esc(a.lo)}</div></div>
-        <div class="rt"><span class="st ${a.st}">${ST[a.st]}</span><div class="dt">${esc(a.when)}</div></div></div>`).join("")}
+        <div class="rt"><select class="ministat appst" aria-label="Status of ${esc(a.ti)}" onchange="setAppStatus(${APPS.indexOf(a)},this.value)">${
+            Object.entries(ST).map(([v,l])=>`<option value="${v}"${v===a.st?" selected":""}>${l}</option>`).join("")}</select>
+          <div class="dt">${esc(a.when)}</div>
+          <a class="dt appdel" role="button" tabindex="0" onclick="removeApp(${APPS.indexOf(a)})" style="cursor:pointer;text-decoration:underline">Remove</a></div></div>`).join("")}
     </div>`;}).join("")
     : `<div class="empty"><h3>No applications yet</h3><p>They'll appear here automatically once you apply.</p></div>`;
 }
@@ -3522,10 +3528,11 @@ async function authSubmit(){
    positions, skills, applications AND the name/email/phone fields, so leaving
    it behind hands the next person at this browser the last user's profile.
    Separate from signOut() so it can be tested without navigating. */
-const ACCOUNT_KEYS = ["cp_token","cp_role","cp_bench","cp_subs","cp_autopilot",SKEY];
+const ACCOUNT_KEYS = ["cp_token","cp_role","cp_mode","cp_bench","cp_subs","cp_autopilot",
+  "cp_eval_id","cp_eval_goals","cp_eval_report","cp_interview_last","cp_support_tickets",SKEY];
 function clearAccountData(){
   ACCOUNT_KEYS.forEach(k=>store.del(k));
-  SESSION = null; SYNC_ARMED = false; SERVER_POSITIONS = [];
+  SESSION = null; SYNC_ARMED = false; SERVER_POSITIONS = []; BENCH_ARMED = false;
 }
 
 function signOut(){
@@ -3533,10 +3540,29 @@ function signOut(){
   location.reload();
 }
 
+/* The server no longer accepts our session. Treated like a sign-out — the
+   previous account's data must not be left behind for whoever signs in next —
+   with a note on the other side of the reload saying why. */
+let EXPIRING = false;
+function expireSession(){
+  if(EXPIRING) return;
+  EXPIRING = true;
+  try{ sessionStorage.setItem("cp_expired","1"); }catch(_){}
+  clearAccountData();
+  location.reload();
+}
+function noteExpiredSession(){
+  let hit = false;
+  try{ hit = sessionStorage.getItem("cp_expired")==="1"; sessionStorage.removeItem("cp_expired"); }catch(_){}
+  if(!hit) return;
+  toast("Your session expired. Sign in again to pick up where you left off.");
+  openAuth("in");
+}
+
 /* ═══ APPLYING A SESSION ═══ */
 async function bootSession(){
   const tok = store.get("cp_token","");
-  if(!tok || !CP_API) return renderAccountBox();
+  if(!tok || !CP_API){ renderAccountBox(); noteExpiredSession(); return; }
   // Paint the side we saw last time so a recruiter doesn't watch the seeker
   // sidebar flash past on every reload. Corrected below if it's wrong.
   const remembered = store.get("cp_role","");
@@ -3549,10 +3575,17 @@ async function bootSession(){
     const r = await CP_API_call("/api/auth/session");
     applySession(r.user);
   }catch(e){
-    // Expired or revoked. Drop it and fall back to demo rather than
-    // trapping someone behind a wall they can't argue with.
-    store.del("cp_token");
+    if(e.status === 401){
+      // Expired or revoked. Back to signed-out demo — including the remembered
+      // role, which otherwise leaves a signed-out visitor on the recruiter
+      // sidebar with the mode switch hidden.
+      expireSession();
+      return;
+    }
+    // Server asleep or unreachable: that is not the same as a bad token, and
+    // dropping it would sign everyone out whenever the API cold-starts.
     renderAccountBox();
+    toast("Couldn't reach the server. Refresh to try again.");
   }
 }
 
@@ -3573,6 +3606,7 @@ function applySession(user, isNewAccount){
   // demo data can't overwrite a real profile. On a fresh signup the local
   // work IS theirs, so it's carried up instead of discarded.
   if(user.account_type === "seeker") pullSeekerData(isNewAccount);
+  else if(user.account_type === "recruiter") pullBench(isNewAccount);
 }
 
 function renderAccountBox(){
@@ -3687,11 +3721,14 @@ async function pullSeekerData(adoptLocal){
     const a = await CP_API_call("/api/applications");
     if(a.applications.length){
       APPS = a.applications.map(x=>({id:x.id, co:x.company, ti:x.title,
-        lo:x.location||"—", st:x.short, when:x.note||""}));
-    }else if(!adoptLocal || JSON.stringify(APPS)===SEED_APPS){
-      // Not adopted on signup either when they're still the untouched sample
-      // rows — those were never this person's applications.
-      APPS = [];
+        lo:x.location||"—", st:x.short, when:appWhen(x)}));
+    }else{
+      // The sample rows were never this person's applications, so they are
+      // dropped either way. On a fresh signup whatever real ones they marked
+      // before making an account is theirs and gets carried up.
+      const seed = new Set(JSON.parse(SEED_APPS).map(x=>x.co+"|"+x.ti));
+      APPS = adoptLocal ? APPS.filter(x=>!seed.has(x.co+"|"+x.ti)) : [];
+      for(const x of APPS) await postApplication(x);
     }
 
     renderProfile(); renderApps(); rn();
@@ -3770,13 +3807,51 @@ let SERVER_POSITIONS = [];
    debounce — you mark one and close the tab. */
 async function syncApplication(app){
   if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
+  await postApplication(app);
+}
+/* `when` is display text ("Applied just now") that goes stale the moment it is
+   stored, so only a note the person actually wrote is sent; the server's own
+   timestamps say when. */
+async function postApplication(app){
   try{
-    await apiTry("/api/applications", {method:"POST", body:JSON.stringify({
+    const r = await apiTry("/api/applications", {method:"POST", body:JSON.stringify({
       company:app.co, title:app.ti, location:app.lo==="—"?null:app.lo,
-      status:app.st, note:app.when||null,
+      status:app.st, note:app.note||null,
       fingerprint: typeof app._id === "string" ? app._id : null,
     })});
+    // Adopt the server's id so a later status change or removal can address it.
+    const mine = r && APPS.find(x=>x.co===app.co && x.ti===app.ti);
+    if(mine && !mine.id){ mine.id = r.id; saveState(); }
   }catch(e){ /* stays in localStorage; the next full sync is not blocked */ }
+}
+
+const AUTO_WHEN = /^(just now|applied just now|opened, not applied yet|not a fit|updated just now)$/i;
+function appWhen(x){
+  if(x.note && !AUTO_WHEN.test(x.note.trim())) return x.note;
+  const t = Date.parse(x.updated_at || x.applied_at || "");
+  if(!t) return "";
+  const days = Math.floor((Date.now()-t)/864e5);
+  return days<=0 ? "Today" : days===1 ? "Yesterday" : days<30 ? `${days} days ago`
+       : new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+
+/* The tracker's own controls: correct a status, or drop a row entirely. */
+async function setAppStatus(i, st){
+  const a = APPS[i]; if(!a || !ST[st]) return;
+  a.st = st; a.when = "Updated just now";
+  renderApps(); saveState();
+  if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
+  if(isServerId(a.id)) apiTry(`/api/applications/${a.id}`, {method:"PATCH", body:JSON.stringify({status:st})}).catch(()=>{});
+  else postApplication(a);
+}
+async function removeApp(i){
+  const a = APPS[i]; if(!a) return;
+  if(!confirm(`Remove ${a.ti} at ${a.co} from your tracker?`)) return;
+  APPS.splice(i,1);
+  renderApps(); rn(); saveState();
+  if(SYNC_ARMED && SESSION && SESSION.account_type === "seeker" && isServerId(a.id))
+    apiTry(`/api/applications/${a.id}`, {method:"DELETE"}).catch(()=>{});
+  toast("Removed");
 }
 
 /* The name/phone/location fields had no change handler at all — they were only
@@ -3860,8 +3935,84 @@ const SEED_BENCH = [
 const visaName = v => (VISA_TYPES.find(x=>x.v===v)||{}).n || v;
 const availOf  = v => AVAIL.find(x=>x.v===v) || AVAIL[0];
 
-function initBench(){ if(!BENCH) BENCH = SEED_BENCH.map(c=>({...c})); }
-function saveBench(){ store.set("cp_bench",BENCH); store.set("cp_subs",SUBS); }
+/* The six sample people are a demo of the product. A signed-in recruiter's
+   bench is theirs alone: it starts empty, and any sample rows carried over from
+   browsing the demo are dropped (they would also blow the free plan's cap). */
+const isSeedCand = c => SEED_BENCH.some(x=>x.email===c.email && x.name===c.name);
+function initBench(){
+  if(SESSION){
+    BENCH = (BENCH||[]).filter(c=>!isSeedCand(c));
+    const ids = new Set(BENCH.map(c=>c.id));
+    SUBS = SUBS.filter(s=>ids.has(s.candId));
+  }
+  else if(!BENCH) BENCH = SEED_BENCH.map(c=>({...c}));
+}
+/* null = no ceiling (Enterprise, or signed out where it is only a demo). */
+const benchCap = () => (SESSION && SESSION.account_type==="recruiter" && SESSION.bench_limit!=null)
+  ? SESSION.bench_limit : null;
+const benchFull = () => { const cap = benchCap(); return cap!==null && BENCH.length >= cap; };
+
+function benchUpgrade(){
+  const cap = benchCap();
+  const top = SESSION && SESSION.plan === "recruiter";
+  setHtml("md",`
+  <div class="mh"><div style="flex:1"><h2>Your bench is full</h2></div>
+    <button class="mx" onclick="closeM()">×</button></div>
+  <div class="mb">
+    <div class="note" id="benchCapMsg">Your plan covers ${cap} people on the bench. ${
+      top ? "Need more room? Get in touch and we'll set up Enterprise."
+          : "Upgrade to the Recruiter plan to keep up to 10, or remove someone to make space."}</div>
+    <div class="acts" style="margin-top:16px">
+      ${top ? `<button class="btn btn-p" onclick="closeM();go('support')">Contact us</button>`
+            : `<button class="btn btn-p" id="benchUpgradeBtn" onclick="closeM();subscribe('recruiter')">Upgrade — $169.99/mo</button>`}
+      <button class="btn btn-g" onclick="closeM()">Not now</button>
+    </div>
+  </div>`);
+  openM();
+}
+function saveBench(){
+  store.set("cp_bench",BENCH); store.set("cp_subs",SUBS);
+  pushBench();
+}
+
+/* A signed-in recruiter's bench lives on the server so it survives signing out
+   and follows them to another device; localStorage is only the fast copy.
+   Same rule as the seeker side: PULL FIRST, PUSH AFTER. */
+let BENCH_ARMED = false, BENCH_Q = Promise.resolve();
+const benchSynced = () => BENCH_ARMED && SESSION && SESSION.account_type==="recruiter" && CP_API;
+
+function pushBench(){
+  if(!benchSynced()) return BENCH_Q;
+  const body = JSON.stringify({candidates:BENCH, submissions:SUBS});
+  // One request at a time, in order, so a slow earlier save can't land last.
+  BENCH_Q = BENCH_Q.then(()=>CP_API_call("/api/bench",{method:"PUT",body})).then(()=>{}, async e=>{
+    if(e.status===402){ await pullBench(false); benchUpgrade(); }
+    else if(e.status!==401) toast("Couldn't save your bench. Check your connection and try again.");
+  });
+  return BENCH_Q;
+}
+
+async function pullBench(adoptLocal){
+  if(!SESSION || SESSION.account_type!=="recruiter" || !CP_API) return;
+  try{
+    const r = await CP_API_call("/api/bench");
+    if(r.exists){ BENCH = r.candidates; SUBS = r.submissions; }
+    else{
+      // Nothing saved yet. On a fresh signup, people added while browsing the
+      // demo are theirs (the sample six never are); on a login they are not.
+      if(!adoptLocal){ BENCH = []; SUBS = []; }
+      initBench();
+      BENCH_ARMED = true;
+      if(BENCH.length) await pushBench();
+    }
+    store.set("cp_bench",BENCH); store.set("cp_subs",SUBS);
+  }catch(e){
+    console.warn("Couldn't load your bench:", e.message);
+  }finally{
+    BENCH_ARMED = true;
+    renderBench(); renderSubs();
+  }
+}
 
 function setMode(m){
   // A signed-in account is one product or the other. There is no toggle to
@@ -3921,7 +4072,7 @@ function renderBench(){
   const notice = BENCH.filter(c=>c.avail==="2wk"||c.avail==="1mo").length;
 
   setHtml("benchStats",`
-    <div class="stat3"><div class="s3n">${BENCH.length}</div><div class="s3l">On your bench</div></div>
+    <div class="stat3"><div class="s3n">${BENCH.length}</div><div class="s3l">On your bench${benchCap()!==null?` (limit ${benchCap()})`:""}</div></div>
     <div class="stat3 good"><div class="s3n">${avail}</div><div class="s3l">Available now</div></div>
     <div class="stat3"><div class="s3n">${notice}</div><div class="s3l">On notice</div></div>
     <div class="stat3"><div class="s3n">${SUBS.length}</div><div class="s3l">Submissions out</div></div>
@@ -3941,7 +4092,7 @@ function renderBench(){
     const top=jobsFor(c,1)[0];
     return `<div class="cand" onclick="openCand(${c.id})">
       <div class="candtop">
-        <div class="av3">${c.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</div>
+        <div class="av3">${esc(c.name.split(/\s+/).filter(Boolean).map(x=>x[0]).slice(0,2).join(""))}</div>
         <div style="flex:1;min-width:0">
           <h3>${esc(c.name)}</h3>
           <div class="candrole">${esc(c.role)} · ${c.yrs} yrs</div>
@@ -3958,7 +4109,10 @@ function renderBench(){
         c.skills.length>6?`<span class="tag q">+${c.skills.length-6}</span>`:""}</div>
       ${top?`<div class="candmatch"><b>${top.score}%</b> match for ${esc(top.j.ti)} at ${esc(top.j.co)}</div>`:""}
     </div>`;}).join("")
-    : `<div class="empty"><h3>No one matches that</h3><p>Try clearing the filter.</p></div>`);
+    : BENCH.length
+      ? `<div class="empty"><h3>No one matches that</h3><p>Try clearing the filter.</p></div>`
+      : `<div class="empty"><h3>Your bench is empty</h3><p>Add the people you represent and we'll match them to roles.</p>
+         <button class="btn btn-p" onclick="editCand(0)">+ Add someone</button></div>`);
 }
 
 /* ═══ CANDIDATE DETAIL ═══ */
@@ -3969,7 +4123,7 @@ function openCand(id){
   const matches=jobsFor(c,6);
   const subs=SUBS.filter(s=>s.candId===c.id);
   setHtml("md",`
-  <div class="mh"><div class="av3 lg">${c.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</div>
+  <div class="mh"><div class="av3 lg">${esc(c.name.split(/\s+/).filter(Boolean).map(x=>x[0]).slice(0,2).join(""))}</div>
     <div style="flex:1;min-width:0"><h2>${esc(c.name)}</h2>
       <p style="color:var(--ink2);font-size:14px;margin-top:3px">${esc(c.role)} · ${c.yrs} yrs · ${visaName(c.visa)}</p></div>
     <span class="badge ${a.c}">${a.n}</span>
@@ -4099,6 +4253,7 @@ function setSubStatus(i,v){ if(SUBS[i]){SUBS[i].st=v; SUBS[i].when="Updated just
 /* ═══ ADD / EDIT A CANDIDATE ═══ */
 function editCand(id){
   const isNew=!id;
+  if(isNew && benchFull()) return benchUpgrade();
   const c=isNew?{id:0,name:"",role:DESIGNATIONS[0],yrs:5,visa:"h1b",avail:"now",rate:"",
                  loc:"",relocate:true,email:"",phone:"",skills:[],note:""}
                :BENCH.find(x=>x.id===id);
@@ -4173,6 +4328,7 @@ function saveCand(id){
              avail:$("c-avail").value,rate:g("c-rate")||"Open",loc:g("c-loc")||"—",
              relocate:$("c-reloc").checked,email:g("c-email"),phone:g("c-phone"),
              skills:[...CAND_SKILLS],note:g("c-note")};
+  if(!id && benchFull()){ closeM(); return benchUpgrade(); }
   if(id){ Object.assign(BENCH.find(x=>x.id===id), rec); }
   else  { BENCH.push({id:Math.max(0,...BENCH.map(x=>x.id))+1, ...rec}); }
   saveBench(); closeM(); renderBench();
@@ -4307,7 +4463,16 @@ async function CP_API_call(path, opts={}){
     ...(tok?{Authorization:`Bearer ${tok}`}:{}), ...(opts.headers||{})}});
   if(!r.ok){
     const d = await r.json().catch(()=>({}));
-    throw new Error(d.detail || `Request failed (${r.status})`);
+    // FastAPI's validation errors (422) carry a list of {msg,...}, not a string.
+    const detail = Array.isArray(d.detail)
+      ? d.detail.map(x=>x&&x.msg?String(x.msg).replace(/^Value error, /,""):"").filter(Boolean).join(". ")
+      : d.detail;
+    const err = new Error(detail || `Request failed (${r.status})`);
+    err.status = r.status;
+    // A credential we sent was refused mid-session (expired, revoked, account
+    // deleted). Sign-in and sign-up 401s mean "wrong password", not this.
+    if(r.status===401 && tok && SESSION && !/^\/api\/auth\/(login|signup)/.test(path)) expireSession();
+    throw err;
   }
   return r.json();
 }
@@ -5835,7 +6000,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   get SESSION(){return SESSION},get AUTH_TAB(){return AUTH_TAB},get AUTH_ROLE(){return AUTH_ROLE},
   openAuth,closeAuth,authTab,pickRole,authSubmit,signOut,applySession,bootSession,
   renderAccountBox,signedIn,PAGE_ROLE,ROLE_LABEL,HOME_PAGE,
-  pullSeekerData,pushSeekerData,scheduleSync,syncApplication,toISODate,isServerId,
+  pullSeekerData,pushSeekerData,scheduleSync,syncApplication,setAppStatus,removeApp,expireSession,benchUpgrade,benchFull,toISODate,isServerId,
   wireProfileFields,get SYNC_ARMED(){return SYNC_ARMED},get SYNC_STATE(){return SYNC_STATE},
   clearAccountData,ACCOUNT_KEYS,get WORK_AUTH_KNOWN(){return WORK_AUTH_KNOWN},
   setMode,candFit,bestFor,jobsFor,visaBlocked,submitTo,pickCandidate,

@@ -71,6 +71,10 @@ jobs:
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci_authz.db", ENV: dev }
         run: python test_authz.py
+      - name: Recruiter bench (persistence, plan cap, isolation)
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_bench.db", ENV: dev }
+        run: python test_bench.py
       - name: Job ingest (mocked network)
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci_ingest.db", ENV: dev }

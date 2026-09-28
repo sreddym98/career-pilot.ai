@@ -24,6 +24,7 @@ Each file is self-contained: it loads `../index.html` into a simulated browser (
 | `v2test.js` | Core job search, filtering, apply flow, resume upload — the main journey |
 | `applyflow.js` | The "did you apply?" tracking that fires when you return to the tab |
 | `benchtest.js` | Recruiter mode: bench management, candidate matching |
+| `qa_session_bench_apps_test.js` | Session expiry, sign-out data clearing, server-backed capped bench, applications status/remove |
 | `autopilottest.js` | Autopilot scheduling and the approve-before-send safeguard |
 | `bulkapprovetest.js` | Approving a whole batch of Autopilot-prepared applications at once |
 | `emailtest.js` | The recruiter email flow, including the resume-attachment checklist |
