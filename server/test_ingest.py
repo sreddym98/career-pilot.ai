@@ -81,7 +81,7 @@ sources.HOST_INTERVAL.clear()
 def gh(*jobs):
     return Resp(200, {"jobs": [{"id": i, "title": t, "content": c,
                                 "location": {"name": "Remote"},
-                                "absolute_url": f"https://x/{i}"} for i, t, c in jobs]})
+                                "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{i}"} for i, t, c in jobs]})
 
 
 _OPEN = None
@@ -130,7 +130,7 @@ ok("fresh jobs stay active", db.query(Job).filter(Job.active.is_(True)).count() 
 
 # same id twice within one batch must not blow up the commit
 dupb = [dict(source="jsearch", source_id="J1", company="Dupco", title="SDET", location="Remote",
-             description="Selenium", url="u")] * 3
+             description="Selenium", url="https://jobs.lever.co/acme/1")] * 3
 st = run.ingest_batch(db, dupb, now())
 ok("duplicate ids inside one batch insert once", st["new"] == 1 and st["dup"] == 2 and st["bad"] == 0, st)
 ok("dup row exists once", db.query(Job).filter(Job.company == "Dupco").count() == 1)
@@ -184,7 +184,7 @@ res, exp = run.run_aggregators(db, now(), 21)
 ok("failing aggregator does not expire its rows", exp == 0 and db.get(Job, "agg-old").active is True, exp)
 ok("failing aggregator is reported", any(r["name"] == "remoteok" and not r["ok"] for r in res))
 ROUTES["remoteok.com"] = Resp(200, [{"legal": "x"}, {"id": 7, "position": "QA Lead", "company": "NewCo",
-                                                    "description": "Cypress", "url": "u", "location": "Remote"}])
+                                                    "description": "Cypress", "url": "https://jobs.lever.co/acme/1", "location": "Remote"}])
 res, exp = run.run_aggregators(db, now(), 21)
 db.expire_all()
 ok("healthy aggregator expires stale rows only", exp == 1 and db.get(Job, "agg-old").active is False, exp)
@@ -220,14 +220,14 @@ ok("bad boards are logged, not fatal", not by["greenhouse/dead"]["ok"] and not b
 ok("weird payload is an error, not a crash", not by["greenhouse/weird"]["ok"])
 
 # a poisoned row (unbindable value) costs one row, the rest of the source still commits
-recs = [dict(source="s", source_id="a", company="P", title="QA Engineer", location="x", description="d", url="u"),
-        dict(source="s", source_id="b", company="P", title="SDET", location="x", description="d", url={"bad": 1}),
-        dict(source="s", source_id="c", company="P", title="Test Engineer", location="x", description="d", url="u")]
+recs = [dict(source="s", source_id="a", company="PCo", title="QA Engineer", location="x", description="d", url="https://jobs.lever.co/acme/1"),
+        dict(source="s", source_id={"bad": 1}, company="PCo", title="SDET", location="x", description="d", url="https://jobs.lever.co/acme/2"),
+        dict(source="s", source_id="c", company="PCo", title="Test Engineer", location="x", description="d", url="https://jobs.lever.co/acme/1")]
 st = run.ingest_batch(db, recs, now())
 ok("poisoned row: others commit, bad counted", st["bad"] == 1 and st["new"] == 2
-   and db.query(Job).filter(Job.company == "P").count() == 2, st)
+   and db.query(Job).filter(Job.company == "PCo").count() == 2, st)
 st = run.ingest_batch(db, [dict(source="s", source_id="n", company="NulCo", title="QA Engineer",
-                                description="Sel\x00enium", url="u")], now())
+                                description="Sel\x00enium", url="https://jobs.lever.co/acme/1")], now())
 ok("NUL bytes stripped (Postgres rejects them)", st["new"] == 1 and "\x00" not in (db.query(Job).filter(Job.company == "NulCo").one().description))
 
 # deadline: nothing fetched, nothing deactivated, marked deferred (not failed)
@@ -285,6 +285,146 @@ db.query(Job).filter(Job.fingerprint == "fresh").update({"last_seen": oldt}); db
 p = run.prune(db, 45)
 ok("prune refuses when nothing was seen recently (broken ingest)", p["skipped"] and p["deleted"] == 0 and db.get(Job, "old-ref") is not None, p)
 ok("--prune flag runs via main()", run.main(["--prune"]) == 0)
+
+# ── 6b. quality gates + link verification ───────────────────
+from ingest import quality, verify
+from api.routers.jobs import _shape
+
+good = ["https://boards.greenhouse.io/acme/jobs/1", "https://jobs.lever.co/acme/abc?src=x#frag"]
+bad = ["", None, 5, "u", "https://x/1", "http://localhost:3000/a", "https://localhost/a",
+       "https://127.0.0.1/a", "https://10.0.0.5/jobs", "https://example.com/job/1",
+       "https://www.example.org/x", "https://careers.example-corp.com/1", "https://foo.test/1",
+       "https://acme.invalid/1", "https://placeholder.io/1", "ftp://jobs.acme.io/1",
+       "javascript:alert(1)", "https://user:pw@jobs.acme.io/1", "https://jobs.acme.io/a b",
+       "https://intranet/jobs", "https://yourcompany.com/apply", "https://acme.com/careers"]
+ok("valid https URLs accepted", all(quality.normalize_apply_url(u) for u in good))
+ok("fragment stripped", quality.normalize_apply_url(good[1]) == "https://jobs.lever.co/acme/abc?src=x")
+ok("placeholder/local/example/non-https URLs rejected",
+   [u for u in bad if quality.normalize_apply_url(u)] == [], [u for u in bad if quality.normalize_apply_url(u)])
+ok("http upgraded to https", quality.normalize_apply_url("http://jobs.lever.co/acme/1") == "https://jobs.lever.co/acme/1")
+ok("boilerplate titles rejected", all(quality.bad_title(t) for t in
+   ["", "Test", "test job title", "TBD", "N/A", "Job Title", "Lorem ipsum dolor", "12345", "ab", "x" * 300]))
+ok("real titles pass", not any(quality.bad_title(t) for t in ["QA Engineer", "SDET", "Senior QE Lead (Payments)", "Test Automation Architect"]))
+ok("placeholder companies rejected", all(quality.bad_company(c) for c in ["", "Unknown", "n/a", "Company Name", "X"]) and not quality.bad_company("Stripe"))
+t0 = now()
+ok("stale: >60d non-ATS rejected", quality.is_stale(t0 - dt.timedelta(days=61), "remoteok", t0))
+ok("stale: 59d non-ATS ok", not quality.is_stale(t0 - dt.timedelta(days=59), "remoteok", t0))
+ok("stale: old ATS posting still listed is ok", not quality.is_stale(t0 - dt.timedelta(days=400), "greenhouse", t0))
+ok("stale: unknown posted_at is not stale", not quality.is_stale(None, "remoteok", t0))
+
+db = reset_db()
+def rec(i, **k):
+    r = dict(source="remoteok", source_id=str(i), company="RealCo", title="QA Engineer", location="Remote",
+             description="Selenium", url=f"https://realco.io/jobs/{i}", posted_at=t0.isoformat())
+    r.update(k); return r
+st = run.ingest_batch(db, [rec(1), rec(2, url="https://example.com/x"), rec(3, url=""), rec(4, url="http://localhost/a"),
+                           rec(5, title="Test Job Title"), rec(6, company="Unknown"),
+                           rec(7, posted_at=(t0 - dt.timedelta(days=90)).isoformat()),
+                           rec(8, source="greenhouse", posted_at=(t0 - dt.timedelta(days=90)).isoformat()),
+                           rec(9, url="http://realco.io/jobs/9")], t0, run.WANTED_LOOSE)
+ok("gate: only genuine rows stored", st["new"] == 3 and st["rejected"] == 6, st)
+ok("gate: http upgraded on store", db.query(Job).filter(Job.source_id == "9").one().apply_url == "https://realco.io/jobs/9")
+ok("gate: old ATS posting kept, old aggregator posting dropped",
+   db.query(Job).filter(Job.source_id == "8").count() == 1 and db.query(Job).filter(Job.source_id == "7").count() == 0)
+ok("new rows start unverified", all(j.verified_at is None and j.link_status is None for j in db.query(Job).all()))
+
+# clean_live_board retires legacy rows that fail the gate (never seed rows)
+db.add(Job(fingerprint="l-bad", source="remoteok", source_id="lb", company="OldCo", title="QA Engineer", apply_url="https://example.com/x", active=True))
+db.add(Job(fingerprint="l-none", source="remoteok", source_id="ln", company="OldCo", title="QA Engineer", apply_url=None, active=True))
+db.add(Job(fingerprint="l-old", source="remoteok", source_id="lo", company="OldCo", title="QA Engineer", apply_url="https://oldco.io/1",
+           posted_at=t0 - dt.timedelta(days=200), active=True))
+db.add(Job(fingerprint="l-ats", source="lever", source_id="la", company="OldCo", title="QA Engineer", apply_url="https://jobs.lever.co/oldco/1",
+           posted_at=t0 - dt.timedelta(days=200), active=True))
+db.commit()
+c = run.clean_live_board(db); db.expire_all()
+ok("cleanup: bad-url/no-url/stale legacy rows deactivated, ATS kept",
+   c["bad_url"] == 2 and c["stale"] == 1 and not db.get(Job, "l-bad").active and not db.get(Job, "l-none").active
+   and not db.get(Job, "l-old").active and db.get(Job, "l-ats").active, c)
+
+# ---- link verification (no network: requests.head/get faked, DNS stubbed) ----
+HEADS, GETS, LOG = {}, {}, []
+class LR:
+    def __init__(self, code, loc=None): self.status_code, self.headers = code, ({"Location": loc} if loc else {})
+    def close(self): pass
+def _resolve(code_map):
+    def f(method):
+        def g(url, **kw):
+            assert kw.get("timeout"), "link check without timeout"
+            LOG.append((method, url))
+            h = code_map.get(url, 200)
+            if isinstance(h, Exception): raise h
+            return h if not isinstance(h, int) else LR(h)
+        return g
+    return f
+requests.head = _resolve(HEADS)("HEAD"); requests.get = _resolve(GETS)("GET")
+pub = lambda host: True
+verify._sleep = lambda s: SLEEPS.append(s)
+
+def link_db(urls):
+    d = reset_db()
+    for i, u in enumerate(urls):
+        d.add(Job(fingerprint=f"v{i}", source="remoteok", source_id=str(i), company=f"Co{i}", title="QA Engineer",
+                  apply_url=u, active=True, first_seen=t0))
+    d.commit(); HEADS.clear(); GETS.clear(); LOG.clear(); SLEEPS.clear()
+    return d
+
+U = [f"https://h{i}.io/job" for i in range(8)]
+db = link_db(U)
+HEADS[U[1]] = 404; HEADS[U[2]] = 410; HEADS[U[3]] = 403; GETS[U[3]] = 403
+HEADS[U[4]] = 429; GETS[U[4]] = 429; HEADS[U[5]] = requests.Timeout("slow")
+HEADS[U[6]] = 503; GETS[U[6]] = 503; HEADS[U[7]] = 405; GETS[U[7]] = 200
+st = verify.verify_links(db, budget_s=30, host_interval=0, resolver=pub, now=t0); db.expire_all()
+S = {j.fingerprint: j for j in db.query(Job).all()}
+ok("verify: 200 -> ok + verified_at", S["v0"].link_status == "ok" and S["v0"].verified_at is not None and S["v0"].active)
+ok("verify: 404 and 410 deactivate", not S["v1"].active and not S["v2"].active and S["v1"].link_status == "dead" and S["v2"].link_http == 410)
+ok("verify: 403/429 = blocked, stays live, NOT verified", all(S[k].active and S[k].link_status == "blocked" and S[k].verified_at is None for k in ("v3", "v4")))
+ok("verify: timeout = unreachable, stays live, NOT verified", S["v5"].active and S["v5"].link_status == "unreachable" and S["v5"].verified_at is None)
+ok("verify: 503 = error, stays live, NOT verified", S["v6"].active and S["v6"].link_status == "error" and S["v6"].verified_at is None)
+ok("verify: HEAD 405 falls back to GET -> ok", S["v7"].link_status == "ok" and ("GET", U[7]) in LOG)
+ok("verify: stats add up", st["ok"] == 2 and st["dead"] == 2 and st["blocked"] == 2 and st["unreachable"] == 1 and st["error"] == 1 and st["deactivated"] == 2, st)
+ok("verify: API says verified only for ok links",
+   [_shape(S[k], [])["verified"] for k in ("v0", "v1", "v3", "v5", "v6", "v7")] == [True, False, False, False, False, True])
+LOG.clear()
+verify.verify_links(db, budget_s=30, host_interval=0, resolver=pub, now=t0 + dt.timedelta(days=1))
+ok("verify: recently checked jobs are not re-requested", LOG == [], LOG)
+verify.verify_links(db, budget_s=30, host_interval=0, resolver=pub, now=t0 + dt.timedelta(days=20)); db.expire_all()
+ok("verify: rechecked after 14 days (active only)", len({u for _, u in LOG}) == 6 and all(u not in (U[1], U[2]) for _, u in LOG), LOG)
+
+# redirects: followed by hand, private targets refused, loops bounded
+db = link_db(["https://a.io/j1", "https://b.io/j2", "https://c.io/j3"])
+HEADS["https://a.io/j1"] = LR(302, "https://a.io/final"); HEADS["https://a.io/final"] = 200
+HEADS["https://b.io/j2"] = LR(301, "http://169.254.169.254/latest"); HEADS["https://c.io/j3"] = LR(302, "https://c.io/j3")
+priv = lambda host: not host.startswith("169.") and host != "private.io"
+verify.verify_links(db, budget_s=30, host_interval=0, resolver=priv, now=t0); db.expire_all()
+S = {j.fingerprint: j for j in db.query(Job).all()}
+ok("verify: follows a redirect to a 200", S["v0"].link_status == "ok")
+ok("verify: redirect into a private address is refused, job untouched", S["v1"].link_status == "error" and S["v1"].active and S["v1"].verified_at is None)
+ok("verify: redirect loop is bounded, not verified", S["v2"].link_status == "error" and S["v2"].verified_at is None)
+ok("verify: private host refused without a request", verify.check_url("https://private.io/j", priv) == ("error", None))
+ok("verify: unresolvable host is unreachable, not dead", verify.check_url("https://nx.io/j", lambda h: None) == ("unreachable", None))
+ok("verify: junk URL is error, never ok", verify.check_url("http://localhost/x", pub)[0] == "error")
+
+# time budget + per-host throttle
+db = link_db([f"https://slow.io/{i}" for i in range(5)] + ["https://other.io/1"])
+lim = verify.HostLimiter(1.0)
+w = [lim.slot("slow.io") for _ in range(3)]
+ok("throttle: same host is spaced by the interval", w[0] < 0.01 and 0.9 < w[1] < 1.1 and 1.9 < w[2] < 2.1, w)
+ok("throttle: different hosts do not wait", lim.slot("other.io") < 0.01)
+st = verify.verify_links(db, budget_s=0.0001, host_interval=1.0, resolver=pub, now=t0); db.expire_all()
+ok("budget: nothing checked past the deadline, rows stay unchecked", st["checked"] == 0 and db.query(Job).filter(Job.link_checked_at.isnot(None)).count() == 0, st)
+st = verify.verify_links(db, budget_s=30, host_interval=0, resolver=pub, now=t0, limit=2)
+ok("limit: at most `limit` rows per pass", st["checked"] == 2, st)
+ok("cycle: --no-verify / INGEST_VERIFY=0 skips the pass", run._verify_pass(db, type("A", (), {"verify": False, "max_seconds": 0})(), 0)["checked"] == 0)
+
+# a posting our check found dead (404) is not resurrected by the source still listing the same URL
+db = reset_db()
+run.ingest_batch(db, [rec(1)], t0, run.WANTED_LOOSE)
+j = db.query(Job).one(); j.active = False; j.link_status = "dead"; j.link_http = 404; db.commit()
+run.ingest_batch(db, [rec(1)], t0 + dt.timedelta(days=1), run.WANTED_LOOSE); db.expire_all()
+ok("dead link stays retired when the same URL is re-listed", not db.query(Job).one().active)
+run.ingest_batch(db, [rec(1, url="https://realco.io/jobs/new-link")], t0 + dt.timedelta(days=2), run.WANTED_LOOSE); db.expire_all()
+j = db.query(Job).one()
+ok("a changed URL reactivates and clears old verification", j.active and j.apply_url.endswith("new-link") and j.link_status is None and j.verified_at is None)
 
 # ── 7. seed.py refuses non-dev ──────────────────────────────
 env = {**os.environ, "ENV": "prod", "DATABASE_URL": "postgresql://u:p@127.0.0.1:1/x"}

@@ -35,10 +35,11 @@ ok("internship filter shows only internships",qa(".job").length===4,qa(".job").l
 ok("count line mentions internships",$("count").textContent.includes("internship"));
 
 console.log("── Part-time filter works ──");
+$("f-auth").value="h1b";
 $("f-type").value="parttime";
 $("f-type").dispatchEvent(new w.Event("change",{bubbles:true}));
 await sleep(60);
-ok("part-time filter respects H1B default — 1 sponsors, 2 correctly hidden",qa(".job").length===1,qa(".job").length+"");
+ok("part-time filter respects the H1B choice — 1 sponsors, 2 correctly hidden",qa(".job").length===1,qa(".job").length+"");
 ok("count line mentions part-time",$("count").textContent.includes("part-time"));
 
 console.log("── Visa framing is realistic for students ──");

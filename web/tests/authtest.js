@@ -148,8 +148,8 @@ console.log("\n── Work authorization is never invented ──");
 // The p-auth select ships with h1b marked selected, so an untouched form
 // reads as H1B. That must not be persisted as if the user said it.
 ok("unknown until the server or the user says so", w3.CP.WORK_AUTH_KNOWN===false);
-ok("  even though the control shows a value",
-   !!w3.document.getElementById("p-auth").value, w3.document.getElementById("p-auth").value);
+ok("  and the control does not pre-select a status for the user",
+   !w3.document.getElementById("p-auth").value, w3.document.getElementById("p-auth").value);
 
 console.log("\n── Dates the API will accept ──");
 ok('"May 2024" becomes a real date', w3.CP.toISODate("May 2024")==="2024-05-01", w3.CP.toISODate("May 2024"));

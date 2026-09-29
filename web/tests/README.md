@@ -37,6 +37,7 @@ Each file is self-contained: it loads `../index.html` into a simulated browser (
 | `pricingtest.js` / `pricingv2test.js` | Plan pricing display and the multi-month term picker |
 | `employmenttypestest.js` | Internship / part-time filters and Enterprise plan visibility |
 | `sidebartest.js` | Sidebar navigation and the split-pane job view |
+| `nofakedatatest.js` | With an API configured no sample roles, contacts, bench, referral link or stored "Just now" text can appear on any page; demo mode still works without one; invite links are attributed at signup |
 | `funneltest.js` | Evaluation-to-subscription funnel messaging |
 | `coursefixtest.js` | Skill-gap course links are real and clickable |
 | `clean.js` | No developer jargon leaks into anything customer-facing |

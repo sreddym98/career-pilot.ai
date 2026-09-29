@@ -105,9 +105,9 @@ console.log("── Recruiter bench ──");
       doc=body;return{status:200,json:{exists:true,...doc}};}
     return null;};
   const t=mk({api});await sleep(300);const {w,$}=t;
-  // signed-out demo keeps its six sample people
+  // An API is configured here, so even signed out there are no sample people.
   w.CP.setMode("recruiter");await sleep(60);
-  ok("signed-out demo bench is the six samples",w.CP.BENCH.length===6);
+  ok("signed-out bench with an API configured is empty, not the six samples",w.CP.BENCH.length===0,w.CP.BENCH.length);
   w.CP.applySession({id:"r1",email:"r@x.com",name:"R",account_type:"recruiter",plan,bench_limit:limit},true);
   await sleep(300);
   ok("signed-in recruiter does not inherit the sample six",w.CP.BENCH.length===0,w.CP.BENCH.length);
@@ -159,7 +159,7 @@ console.log("── Applications tracker ──");
   const t=mk({token:"good",role:"seeker",api});await sleep(1000);const {w,$}=t;
   const A=()=>w.CP.APPS;
   ok("loaded from the server",A().length===1&&A()[0].co==="Acme");
-  ok("a stale auto-note is not shown as if it were current",A()[0].when==="3 days ago",A()[0].when);
+  ok("a stale auto-note is not shown as if it were current",w.CP.whenText(A()[0])==="3 days ago",w.CP.whenText(A()[0]));
 }
 {
   const rows=[];
@@ -176,6 +176,9 @@ console.log("── Applications tracker ──");
     if(p==="/api/connections")return{status:200,json:{companies:[]}};
     return null;};
   const t=mk({token:"good",role:"seeker",api});await sleep(1000);const {w,$,calls}=t;
+  // No sample roles exist with an API configured, so seed one real-shaped row explicitly.
+  w.CP.J.push(w.CP.mapJob({fingerprint:"fp-test-1",company:"Acme Payments",title:"SDET",location:"Remote",
+    work_mode:"remote",employment:"fulltime",role_family:"ui",apply_url:"https://jobs.acme.test/1",skills:["Playwright"]},0));
   const job=w.CP.J[0];
   // Apply through the UI path: open the posting, then answer the ask bar.
   w.applyTo(job.id);await sleep(50);

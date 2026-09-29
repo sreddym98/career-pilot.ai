@@ -38,6 +38,7 @@ from sqlalchemy import select, text
 from ingest import sources, scheduler
 from ingest.visa_parse import parse_visa
 from ingest.skills import extract_skills
+from ingest import quality, verify
 try:
     from api.db import SessionLocal, init_db
     from api.models import Job, Application
@@ -211,6 +212,11 @@ def upsert(db, rec, now, seen=None):
     company = _s((rec.get("company") or "").strip())
     if not title or not company or PLACEHOLDER_TITLE.match(title):
         return None
+    # Static quality gate: real https apply link, real title/company, not stale.
+    # Rejected rows are never stored, so nothing unverifiable reaches the board.
+    if quality.reject_reason(rec, _parse_dt(rec.get("posted_at")), now):
+        return None
+    apply_url = quality.normalize_apply_url(rec.get("url"))
     desc = _s(rec.get("description") or "")
     fp = fingerprint(company, title, rec.get("location", ""),
                      rec.get("source", ""), rec.get("source_id", ""))
@@ -221,6 +227,11 @@ def upsert(db, rec, now, seen=None):
     row = db.get(Job, fp)
 
     if row:
+        if row.link_status == "dead" and not row.active and apply_url == quality.normalize_apply_url(row.apply_url):
+            # The link answered 404/410 and the source still shows the same URL:
+            # keep it retired instead of resurrecting a dead posting each run.
+            row.last_seen = now
+            return "seen"
         last = _aware(row.last_seen)
         gap = (now - last).days if last else 0
         status = "relisted" if (gap >= 21 or not row.active) else "seen"
@@ -229,8 +240,11 @@ def upsert(db, rec, now, seen=None):
         row.active = True
         if status == "relisted":
             row.relisted = True
-        if rec.get("url") and not row.apply_url:
-            row.apply_url = rec["url"]
+        if apply_url and quality.normalize_apply_url(row.apply_url) != apply_url:
+            # first real link, or the source moved the posting: take the new one
+            # and forget any verification of the old one.
+            row.apply_url = apply_url
+            row.verified_at = row.link_checked_at = row.link_status = row.link_http = None
         if desc and desc[:20000] != (row.description or ""):
             # Refresh what is derived from the text (and backfill rows ingested
             # before skills extraction existed). Never blank a description a
@@ -254,7 +268,7 @@ def upsert(db, rec, now, seen=None):
         location=_s(rec.get("location", "")),
         work_mode=work_mode(rec.get("location", ""), desc, rec.get("remote")),
         employment=employment_of(desc, rec.get("employment")),
-        description=desc[:20000], apply_url=_s(rec.get("url", "")),
+        description=desc[:20000], apply_url=_s(apply_url),
         visa_usc=v["usc"], visa_gc=v["gc"], visa_h1b=v["h1b"], visa_opt=v["opt"],
         required_skills=extract_skills(title, desc),
         posted_at=_parse_dt(rec.get("posted_at")),
@@ -263,7 +277,8 @@ def upsert(db, rec, now, seen=None):
 
 
 def _zero():
-    return {"new": 0, "relisted": 0, "seen": 0, "skipped": 0, "dup": 0, "bad": 0, "kept": 0}
+    return {"new": 0, "relisted": 0, "seen": 0, "skipped": 0, "dup": 0, "bad": 0, "kept": 0,
+            "rejected": 0}
 
 
 def ingest_batch(db, recs, now, pat=WANTED):
@@ -282,6 +297,7 @@ def ingest_batch(db, recs, now, pat=WANTED):
                 continue
             r = upsert(db, rec, now, seen if seen_for_row is None else seen_for_row)
             if r is None:
+                st["rejected"] += 1
                 continue
             st["kept"] += 1 if r != "dup" else 0
             st[r] += 1
@@ -469,14 +485,24 @@ def clean_live_board(db):
     if has_real:
         seeded = db.query(Job).filter(Job.source == "seed", Job.active.is_(True)).update(
             {"active": False}, synchronize_session=False)
-    live = db.query(Job.fingerprint, Job.title, Job.source, Job.source_id) \
+    live = db.query(Job.fingerprint, Job.title, Job.source, Job.source_id,
+                    Job.apply_url, Job.company, Job.posted_at) \
         .filter(Job.active.is_(True)).order_by(Job.first_seen.desc()).all()
     bad, seen = [], set()
-    placeholders = duplicates = 0
-    for fp, title, src, sid in live:
-        if PLACEHOLDER_TITLE.match((title or "").strip()):
+    placeholders = duplicates = unverifiable = stale = 0
+    now = dt.datetime.now(dt.timezone.utc)
+    for fp, title, src, sid, url, company, posted in live:
+        if PLACEHOLDER_TITLE.match((title or "").strip()) or quality.bad_title(title) \
+                or quality.bad_company(company):
             bad.append(fp); placeholders += 1
             continue
+        if src != "seed":
+            if quality.normalize_apply_url(url) is None:
+                bad.append(fp); unverifiable += 1
+                continue
+            if quality.is_stale(posted, src, now):
+                bad.append(fp); stale += 1
+                continue
         key = (src, sid)
         if sid and key in seen:
             bad.append(fp); duplicates += 1
@@ -486,7 +512,8 @@ def clean_live_board(db):
         db.query(Job).filter(Job.fingerprint.in_(bad[i:i + 500])).update(
             {"active": False}, synchronize_session=False)
     db.commit()
-    return {"seeded": seeded, "placeholders": placeholders, "duplicates": duplicates}
+    return {"seeded": seeded, "placeholders": placeholders, "duplicates": duplicates,
+            "bad_url": unverifiable, "stale": stale}
 
 
 def prune(db, days=45, now=None):
@@ -557,7 +584,7 @@ def summarize(results, expired, closed_by_board, cleaned, t0, mode, deferred_not
     deferred = [r for r in results if r["deferred"]]
     status = "failed" if attempted and not ok else ("degraded" if failed else "ok")
     line = (f"INGEST SUMMARY status={status} mode={mode} new={tot['new']} relisted={tot['relisted']} "
-            f"seen={tot['seen']} filtered={tot['skipped']} bad_rows={tot['bad']} "
+            f"seen={tot['seen']} filtered={tot['skipped']} rejected={tot['rejected']} bad_rows={tot['bad']} "
             f"deactivated={closed_by_board + expired} sources_ok={len(ok)}/{len(attempted)} "
             f"failed={len(failed)} deferred={len(deferred)} duration={time.time()-t0:.0f}s")
     return line, status, failed, deferred
@@ -578,6 +605,24 @@ def _step_summary(line, failed, deferred):
                 fh.write(f"\n{len(deferred)} sources deferred (time budget); they rotate next run.\n")
     except OSError:
         pass
+
+
+def _verify_pass(db, a, t0):
+    """Bounded link check after ingest. Time budget: INGEST_VERIFY_SECONDS
+    (default 60), and never past the run's own --max-seconds."""
+    empty = {"checked": 0, "ok": 0, "dead": 0, "blocked": 0, "unreachable": 0, "error": 0,
+             "skipped": 0, "deactivated": 0}
+    if not getattr(a, "verify", True) or os.environ.get("INGEST_VERIFY", "1") == "0":
+        return empty
+    budget = int(os.environ.get("INGEST_VERIFY_SECONDS", "60") or 60)
+    if a.max_seconds:
+        budget = min(budget, int(a.max_seconds - (time.time() - t0) - 15))
+    try:
+        return verify.verify_links(db, budget_s=budget)
+    except Exception as e:                       # verification must never fail the ingest
+        db.rollback()
+        print(f"  ! link verification failed: {type(e).__name__}: {str(e)[:100]}", file=sys.stderr)
+        return empty
 
 
 def cycle(db, a, ats=True, agg=True):
@@ -602,11 +647,17 @@ def cycle(db, a, ats=True, agg=True):
         sources.set_deadline(None)
     closed = sum(r["swept"] for r in results)
     cleaned = clean_live_board(db)
+    checked = _verify_pass(db, a, t0)
     mode = "full" if ats and agg else ("fast" if agg else "ats")
     line, status, failed, deferred = summarize(results, expired, closed, cleaned, t0, mode)
     print(f"  {line}")
     print(f"  cleanup: removed seed {cleaned['seeded']}  placeholders {cleaned['placeholders']}  "
-          f"duplicates {cleaned['duplicates']}")
+          f"duplicates {cleaned['duplicates']}  bad-url {cleaned['bad_url']}  stale {cleaned['stale']}")
+    rej = sum(r.get("rejected", 0) for r in results)
+    print(f"  quality gate: rejected {rej} records (bad/placeholder url, title or company, or stale)")
+    print(f"  link check: {checked['ok']} verified  {checked['dead']} dead (deactivated)  "
+          f"{checked['blocked']} blocked  {checked['unreachable'] + checked['error']} unreachable/error  "
+          f"{checked['skipped']} not reached (time budget; next run)")
     for r in [x for x in results if x["note"]][:5]:
         print(f"    ~ {r['name']}: sweep skipped — {r['note']}")
     for r in failed[:10]:
@@ -628,6 +679,8 @@ def main(argv=None):
     ap.add_argument("--prune", action="store_true", help="drop jobs unseen for --prune-days")
     ap.add_argument("--prune-days", type=int, default=45)
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--no-verify", dest="verify", action="store_false",
+                    help="skip the post-ingest apply-link check")
     ap.add_argument("--max-seconds", type=int,
                     default=1000 if os.environ.get("GITHUB_ACTIONS") else 0,
                     help="time budget for fetching; 0 = unlimited (default 1000 on GitHub Actions)")

@@ -154,6 +154,13 @@ class Job(Base):
     seen_count = Column(Integer, default=1)
     relisted = Column(Boolean, default=False)
     active = Column(Boolean, default=True, index=True)
+    # Link verification (ingest/verify.py). All nullable: NULL = never checked,
+    # which is NOT the same as failed. link_status: ok | dead | blocked |
+    # unreachable | error. Only 'ok' ever shows as a verified link.
+    verified_at = Column(DateTime(timezone=True))       # last time the link answered OK
+    link_checked_at = Column(DateTime(timezone=True))   # last attempt, whatever the outcome
+    link_status = Column(String)
+    link_http = Column(Integer)
 
     __table_args__ = (
         Index("ix_jobs_browse", "active", "role_family", "posted_at"),

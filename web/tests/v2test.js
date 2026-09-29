@@ -69,8 +69,9 @@ console.log("── Jobs work before any setup ──");
 const n=()=>$("list").querySelectorAll(".job").length;
 ok("jobs listed immediately",n()>0,n()+" jobs");
 ok("no fit score before upload",!$("list").innerHTML.includes("FIT"));
-ok("prompts to upload resume",$("count").innerHTML.includes("upload your resume"));
-ok("H1B is the default filter",$("f-auth").value==="h1b");
+ok("demo board invents no fit prompt or number",!$("count").innerHTML.includes("to see fit")&&!$("list").innerHTML.includes("FIT"));
+ok("work authorization defaults to Any (nothing assumed about the user)",$("f-auth").value==="any");
+$("f-auth").value="h1b"; w.rn();
 ok("  non-sponsoring roles hidden",!$("list").innerHTML.includes("Bank of America"));
 ok("  says how many were hidden",/\d+ hidden/.test($("count").textContent),$("count").textContent.slice(0,80));
 ok("  splits full-time vs contract",/full-time · \d+ contract/.test($("count").textContent));
@@ -97,8 +98,36 @@ ok("  gap flagged",$("gapNote").innerHTML.includes("4 mos"));
 
 console.log("── Jobs now personalised ──");
 w.rn();
-ok("fit scores appear",$("list").innerHTML.includes("FIT"));
-ok("  no more upload prompt",!$("count").innerHTML.includes("upload your resume"));
+// Fit is computed by the server from saved skills. Without a server (demo board)
+// an uploaded resume must NOT produce invented percentages.
+ok("no invented fit scores from a client-side resume",!$("list").innerHTML.includes("FIT")&&CP.J.every(j=>j.fit==null&&CP.scoreFor(j)==null));
+{ // server-supplied fit: shown, ordered, explained; null stays hidden
+  const M=x=>w.CP.mapJob({fingerprint:x.f,company:x.f,title:"QA "+x.f,skills:["Selenium","Kafka"],apply_url:"https://boards.greenhouse.io/x/jobs/1",
+    exp:{},visa:{},comp:{},...x.o},0);
+  const keep=CP.J.splice(0,CP.J.length);
+  const hi=M({f:"HiFit",o:{fit:91,fit_reasons:{matched_skills:["Selenium"],missing_skills:["Kafka"],title_match:1,years:7,job_exp:{min:5,max:9},visa:"stated_yes",work_mode:null},verified:true,verified_at:"2026-09-01T00:00:00Z",source:"greenhouse",direct:true}});
+  const lo=M({f:"LoFit",o:{fit:34,fit_reasons:{matched_skills:[],missing_skills:["Selenium","Kafka"],years:7,job_exp:{}}}});
+  const nu=M({f:"NoFit",o:{source:"remoteok",direct:false}});
+  CP.J.push(nu,lo,hi);
+  w.eval("FIT_AVAILABLE=true"); w.rn();
+  const order=[...$("list").querySelectorAll(".job h3")].map(e=>e.textContent);
+  ok("server fit orders the list (best first, unscored last)",order.join("|")==="QA HiFit|QA LoFit|QA NoFit",order.join("|"));
+  const cards=[...$("list").querySelectorAll(".job")];
+  ok("  fit ring shows the server number",cards[0].innerHTML.includes(">91<")&&cards[1].innerHTML.includes(">34<"));
+  ok("  a job with null fit shows no percentage",!cards[2].innerHTML.includes("FIT")&&!cards[2].querySelector(".fitring"));
+  ok("  verified badge only where the server verified",cards[0].innerHTML.includes("Verified link")&&!cards[1].innerHTML.includes("Verified link")&&!cards[2].innerHTML.includes("Verified link"));
+  ok("  no verification claimed for an unchecked non-ATS job",!cards[2].innerHTML.includes("Direct from company"));
+  ok("  no hint once fit is available",!$("count").innerHTML.includes("to see fit"));
+  const d0=w.buildJobDetailHTML(hi,"closeM()").body;
+  ok("  detail explains why: matched + missing skills",d0.includes("Why you fit")&&d0.includes("Selenium")&&d0.includes("Not on your profile: Kafka"));
+  const dn=w.buildJobDetailHTML(nu,"closeM()").body;
+  ok("  detail of unscored job has no fit sections",!dn.includes("Why you fit")&&!dn.includes("Be ready to talk about"));
+  CP.J.forEach(j=>{j.fit=null;});
+  w.eval("LIVE=true;FIT_AVAILABLE=false"); w.rn();
+  ok("  live board, no profile fit: ONE honest hint, zero per-card numbers",
+     ($("count").innerHTML.match(/to see fit/g)||[]).length===1&&!$("list").innerHTML.includes("FIT")&&!$("list").querySelector(".fitring"),$("count").textContent);
+  CP.J.splice(0,CP.J.length,...keep); w.eval("LIVE=false;FIT_AVAILABLE=false"); w.rn();
+}
 ok("skills matched on job card",$("list").innerHTML.length>500);
 
 console.log("── Job descriptions & source ──");
@@ -172,6 +201,7 @@ ok("  modal closed",!$("ov").classList.contains("on"));
 
 console.log("── Apply: agency, email known ──");
 const ag=CP.J.find(j=>!j.url&&j.rec&&j.rec.e);
+$("p-auth").value="h1b"; w.syncAuth();
 w.openJob(ag.id);
 ok("button names the action",/Reply to |Email /.test($("md").innerHTML));
 click(qa("#md button").find(b=>/Reply to |Email /.test(b.textContent)));
@@ -252,6 +282,8 @@ for(const p of ["apps","learn","people","resume","refer","plan"]){
 }
 w.go("apps");
 ok("applications grouped by status",/Applied|Offer|Interview|Opened, not applied|Passed on/.test($("appList").innerHTML)||CP.APPS.length===0,$("appList").textContent.slice(0,60));
+// skill gaps count roles the SERVER scored as a strong fit; stand in for that response
+CP.J.forEach(j=>{if(j.need&&j.need.length)j.fit=80;});
 w.go("learn");
 ok("gaps computed",$("gapList").innerHTML.length>200);
 ok("  courses linked to gaps",$("courses").innerHTML.includes("Opens up"));

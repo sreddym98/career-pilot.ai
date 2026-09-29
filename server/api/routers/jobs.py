@@ -6,8 +6,11 @@ from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import optional_user
 from api.models import Job, Connection
+from api.matching import load_profile, score_job
+from ingest.quality import ATS_SOURCES
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+MAX_SCORED = 5000
 VISA_COL = {"usc": Job.visa_usc, "gc": Job.visa_gc, "h1b": Job.visa_h1b, "opt": Job.visa_opt}
 
 
@@ -18,7 +21,7 @@ def list_jobs(
     modes: str = "", company: str = "",
     fresh_days: int = 0, hide_reposts: bool = False,
     limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0),
-    sort: str = "match",
+    sort: str = "match", min_fit: int = Query(0, ge=0, le=100),
     db: Session = Depends(get_db), user=Depends(optional_user),
 ):
     Q = db.query(Job).filter(Job.active.is_(True))
@@ -53,9 +56,30 @@ def list_jobs(
     if hide_reposts:
         Q = Q.filter(Job.seen_count < 3)
 
-    total = Q.count()
-    Q = Q.order_by(Job.posted_at.desc() if sort == "new" else Job.first_seen.desc())
-    rows = Q.offset(offset).limit(limit).all()
+    # Fit is per-viewer and computed here from real profile data. It is None for
+    # signed-out viewers and for seekers with no saved skills; then nothing below
+    # sorts or filters on it.
+    prof = load_profile(db, user)
+    if prof is not None and (sort == "match" or min_fit):
+        # Score the whole filtered set, order/filter on the score, then page.
+        # Bounded: the board holds hundreds of rows, not millions.
+        scored = []
+        for j in Q.order_by(Job.first_seen.desc()).limit(MAX_SCORED).all():
+            r = score_job(prof, j)
+            if min_fit and (r["fit"] is None or r["fit"] < min_fit):
+                continue
+            scored.append((j, r))
+        if sort == "match":
+            scored.sort(key=lambda t: -1 if t[1]["fit"] is None else t[1]["fit"], reverse=True)
+        total = len(scored)
+        page = scored[offset:offset + limit]
+        rows = [j for j, _ in page]
+        fits = {j.fingerprint: r for j, r in page}
+    else:
+        total = Q.count()
+        Q = Q.order_by(Job.posted_at.desc() if sort == "new" else Job.first_seen.desc())
+        rows = Q.offset(offset).limit(limit).all()
+        fits = {j.fingerprint: score_job(prof, j) for j in rows}
 
     # referral paths — a referral beats any cover letter
     refs = {}
@@ -64,7 +88,8 @@ def list_jobs(
             refs.setdefault(c.company, []).append({"name": c.name, "role": c.role, "degree": c.degree})
 
     return {"total": total, "offset": offset, "limit": limit,
-            "jobs": [_shape(j, refs.get(j.company, [])) for j in rows]}
+            "fit_available": prof is not None,
+            "jobs": [_shape(j, refs.get(j.company, []), fits.get(j.fingerprint)) for j in rows]}
 
 
 @router.get("/{fingerprint}")
@@ -77,7 +102,8 @@ def get_job(fingerprint: str, db: Session = Depends(get_db), user=Depends(option
         refs = [{"name": c.name, "role": c.role, "degree": c.degree}
                 for c in db.query(Connection).filter(
                     Connection.user_id == user.id, Connection.company == j.company).all()]
-    d = _shape(j, refs)
+    prof = load_profile(db, user)
+    d = _shape(j, refs, score_job(prof, j))
     d["description"] = j.description
     return d
 
@@ -90,7 +116,7 @@ def _aware(d):
     return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
 
 
-def _shape(j: Job, refs):
+def _shape(j: Job, refs, fit=None):
     # Competition is ESTIMATED from age + repost breadth. No board publishes
     # exact applicant counts — inventing one is the fastest way to lose trust.
     import datetime as dt
@@ -109,4 +135,14 @@ def _shape(j: Job, refs):
         "skills": j.required_skills or [],
         "days_live": age, "seen_count": j.seen_count, "relisted": j.relisted,
         "competition": comp, "referrals": refs,
+        # Per-viewer fit: null (no percentage anywhere) when signed out / no skills.
+        "fit": fit["fit"] if fit else None,
+        "fit_reasons": fit["fit_reasons"] if fit else None,
+        # `verified` is true ONLY if our own request to apply_url succeeded
+        # (2xx/3xx). Never inferred from the source. `direct` means the posting
+        # came straight from the company's own ATS careers board.
+        "verified": j.link_status == "ok" and j.verified_at is not None,
+        "verified_at": j.verified_at.isoformat() if j.verified_at else None,
+        "link_status": j.link_status,
+        "source": j.source, "direct": j.source in ATS_SOURCES,
     }

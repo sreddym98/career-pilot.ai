@@ -398,6 +398,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .sbicon{width:18px;height:18px;flex-shrink:0;color:var(--ink3)}
 .sbi span:not(.sbbadge){flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sbbadge{font:10px var(--m);color:var(--ink3);background:var(--sunk);border-radius:20px;padding:2px 7px;flex-shrink:0}
+.sbbadge:empty{display:none}
 .sbbadge.price{background:var(--gold-s);color:var(--gold);font-weight:600}
 .sbbadge.new{background:var(--moss);color:#fff;font-weight:700}
 .sbi.on .sbbadge{background:var(--card)}
@@ -833,9 +834,9 @@ select.sel:focus{border-color:var(--moss);outline:none}
 
     <div class="fld" id="authNameFld" style="display:none">
       <label for="au-name">Your name</label>
-      <input id="au-name" autocomplete="name" placeholder="Sam Rivera"></div>
+      <input id="au-name" autocomplete="name" placeholder="Your name"></div>
     <div class="fld"><label for="au-email">Email</label>
-      <input id="au-email" type="email" autocomplete="email" placeholder="you@company.com"
+      <input id="au-email" type="email" autocomplete="email" placeholder="Email address"
              onkeydown="if(event.key==='Enter')authSubmit()"></div>
     <div class="fld"><label for="au-pass">Password</label>
       <input id="au-pass" type="password" autocomplete="current-password"
@@ -946,10 +947,10 @@ select.sel:focus{border-color:var(--moss);outline:none}
   <div class="filters">
     <div class="search"><i>⌕</i><input id="q" placeholder="Search roles, companies, skills…" oninput="deb()"></div>
     <select class="sel" id="f-auth" onchange="rn()">
-      <option value="any">Any work authorization</option>
+      <option value="any" selected>Any work authorization</option>
       <option value="usc">I'm a US Citizen</option>
       <option value="gc">I have a Green Card</option>
-      <option value="h1b" selected>I'm on H1B</option>
+      <option value="h1b">I'm on H1B</option>
       <option value="opt">I'm on OPT / EAD</option>
     </select>
     <select class="sel" id="f-fam" onchange="rn()"></select>
@@ -1016,15 +1017,15 @@ select.sel:focus{border-color:var(--moss);outline:none}
         <h2>Details</h2>
         <p>Used when you apply. Only these five fields.</p>
         <div class="fld"><label>Name</label><input id="p-name" placeholder="Your name"></div>
-        <div class="fld"><label>Email</label><input id="p-email" placeholder="you@example.com"></div>
-        <div class="fld"><label>Phone</label><input id="p-phone" placeholder="+1 555 000 0000"></div>
+        <div class="fld"><label>Email</label><input id="p-email" placeholder="Your email" type="email"></div>
+        <div class="fld"><label>Phone</label><input id="p-phone" placeholder="Your phone number"></div>
         <div class="fld"><label>Location</label><input id="p-loc" placeholder="City, ST"></div>
         <div class="fld"><label>LinkedIn</label><input id="p-li" placeholder="linkedin.com/in/yourname">
           <small>Paste your URL. LinkedIn closed profile import to independent developers, so this stays manual — it's one field, once.</small></div>
         <div class="fld"><label>Work authorization</label>
           <select id="p-auth" onchange="syncAuth()">
-            <option value="usc">US Citizen</option><option value="gc">Green Card</option>
-            <option value="h1b" selected>H1B</option><option value="opt">OPT / EAD</option>
+            <option value="" selected disabled>Select…</option><option value="usc">US Citizen</option><option value="gc">Green Card</option>
+            <option value="h1b">H1B</option><option value="opt">OPT / EAD</option>
           </select></div>
       </div>
     </div>
@@ -1073,7 +1074,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
   <div class="card">
     <div class="grid2">
       <div class="fld"><label>Target role</label><input id="iv-title" placeholder="Senior SDET, QA Engineer…"></div>
-      <div class="fld"><label>Company <span style="color:var(--ink3)">— optional</span></label><input id="iv-company" placeholder="Mastercard"></div>
+      <div class="fld"><label>Company <span style="color:var(--ink3)">— optional</span></label><input id="iv-company" placeholder="Company name"></div>
     </div>
     <div class="fld"><label>Job description <span style="color:var(--ink3)">— optional, but sharpens it a lot</span></label>
       <textarea id="iv-jd" style="height:120px;font-size:13.5px" placeholder="Paste the posting…"></textarea></div>
@@ -1205,7 +1206,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
   <div class="ph"><h1>Build a resume</h1><p>Tailored to one role, using what's already in your profile.</p></div>
   <div class="grid2">
     <div class="card">
-      <div class="fld"><label>Target job title</label><input id="b-title" value="Senior SDET / QA Automation Engineer"></div>
+      <div class="fld"><label>Target job title</label><input id="b-title" placeholder="The role you're applying for"></div>
       <div class="fld"><label>Focus on</label><select id="b-spec"></select></div>
       <div class="fld"><label>How much detail</label><select id="b-depth">
         <option value="exactly 12 to 15">Deep — 12–15 points per role</option>
@@ -1225,7 +1226,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
 <div class="pg" id="p-refer">
   <div class="ph"><h1>Invite a friend</h1><p>You both get 100 extra AI generations a month, every month they stay.</p></div>
   <div class="card">
-    <div class="fld"><label>Your link</label><input id="refLink" value="careerpilot.ai/join/santoshreddy" readonly></div>
+    <div class="fld"><label>Your link</label><input id="refLink" value="" placeholder="Sign in to get your invite link" readonly></div>
     <div style="display:flex;gap:9px;flex-wrap:wrap">
       <button class="btn btn-p" onclick="copyRef()">Copy link</button>
       <button class="btn btn-g" onclick="shareRef('email')">Email it</button>
@@ -1374,10 +1375,22 @@ function fmtD(n){const y=Math.floor(n/12),d=n%12,p=[];
 function durM(a,b){const x=toM(a),y=toM(b);return x==null||y==null?0:Math.max(0,y-x+1);}
 const totalM=()=>EXP.reduce((s,e)=>s+durM(e.from,e.to),0);
 
+/* ═══ DEMO GATE ═══
+   Sample data (roles, résumé, contacts, referrals, bench) exists ONLY so the
+   page is explorable with no backend at all (window.CP_CONFIG.api empty and
+   not on localhost). The moment an API is configured, DEMO is false and every
+   sample structure below is built EMPTY, so it cannot be rendered, counted,
+   synced or exported no matter which code path runs. Nothing else in this
+   file may consult a sample constant without going through DEMO. */
+const API_ENDPOINT = (typeof window!=="undefined" && window.CP_CONFIG && window.CP_CONFIG.api)
+  || (["localhost","127.0.0.1",""].includes(location.hostname) ? "http://localhost:8000" : "");
+const CP_API = API_ENDPOINT || (()=>{try{const v=localStorage.getItem("cp_api");return v?JSON.parse(v):"";}catch(e){return "";}})() || "";
+const DEMO   = !CP_API;
+
 /* ═══ STATE ═══ */
 let EXP=[], SKILLS=[], UF=null, PROFILE_READY=false;
 
-const DEMO_EXP=[
+const DEMO_EXP=!DEMO?[]:[
 {id:1,co:"Mastercard",role:"Sr. SDET / Senior Quality Engineer",from:"May 2024",to:"Present",loc:"O'Fallon, MO",
  b:["Playwright (JS/TS) + Selenium Hybrid/POM framework for payment platforms",
     "ETL testing for payment pipelines; medallion-pattern lakehouse validation",
@@ -1426,12 +1439,12 @@ Fully remote. We sponsor H1B transfers.`},
 
 {id:3,co:"CashAPona",role:"QA Engineer",from:"Sep 2018",to:"Jul 2019",loc:"Hyderabad, India",
  b:["E-commerce checkout, payment gateway, and cross-browser automation"]}];
-const DEMO_SKILLS=["Playwright","Cypress","Selenium","API Testing","PySpark","AWS Redshift","HL7/FHIR","PEGA",
+const DEMO_SKILLS=!DEMO?[]:["Playwright","Cypress","Selenium","API Testing","PySpark","AWS Redshift","HL7/FHIR","PEGA",
  "GitHub Copilot","ETL Testing","Java","Python","TypeScript","SQL","TestNG","Cucumber","Postman","RestAssured",
  "JMeter","k6","Jenkins","GitHub Actions","Azure DevOps","Docker","Kubernetes","Burp Suite","Appium"];
 
 /* ═══ JOBS ═══ */
-const J=[
+const J=!DEMO?[]:[
 {id:1,co:"Mastercard",ti:"Senior SDET — Payment Processing",lo:"O'Fallon, MO",md:"hybrid",em:"fulltime",fm:"ui",
  rt:"$145–175k",yr:"5–10 yrs",d:2,sn:1,f5:1,tp:"employer",cp:"md",
  url:"https://careers.mastercard.com/us/en/search-results?keywords=SDET",sample:1,
@@ -1549,7 +1562,7 @@ const J=[
    `src` matters: "email" means a recruiter actually wrote to you, so
    replying makes sense. "board" means we found it — you're reaching out
    cold, and the wording should say so rather than pretending otherwise. */
-const JD={
+const JD=!DEMO?{}:{
 1:{src:"board",text:`Mastercard is hiring a Senior SDET to own end-to-end quality for our payment authorization and settlement platforms.
 
 WHAT YOU'LL DO
@@ -1924,7 +1937,6 @@ WHAT WE'RE LOOKING FOR
 Remote, contractor. Not eligible for H1B sponsorship; open to US work-authorized candidates including OPT.`}
 };
 J.forEach(j=>{const x=JD[j.id]; if(x){j.jd=x.text; j.src=x.src; j.from=x.from; j.received=x.received;}});
-J.forEach((j,i)=>j._b=70+(i*9)%26);
 
 const COURSES=[
 {n:"Apache Kafka for Beginners",p:"Udemy",price:"$84.99",num:85,hrs:"8 hrs",sk:["Kafka"],
@@ -1938,7 +1950,7 @@ const COURSES=[
  d:"Official and free. dbt's built-in tests map almost directly onto ETL QA."},
 {n:"AWS Certified Data Engineer",p:"Amazon",price:"$150",num:150,hrs:"40 hrs",sk:["Airflow","DBT","Kafka"],
  url:"https://aws.amazon.com/certification/certified-data-engineer-associate/",
- d:"Covers ingestion, transformation, orchestration. Pairs with your Redshift work."},
+ d:"Covers ingestion, transformation, orchestration. Pairs well with Redshift and warehouse testing."},
 {n:"Terraform Associate",p:"HashiCorp",price:"$70.50",num:70,hrs:"25 hrs",sk:["Terraform"],
  url:"https://www.hashicorp.com/certification/terraform-associate",
  d:"Increasingly assumed for senior SDETs who own their test environments."},
@@ -1947,7 +1959,7 @@ const COURSES=[
  d:"A faster on-ramp before the official HashiCorp exam if you're new to IaC."},
 {n:"SpecFlow & ReqnRoll for .NET",p:"Pluralsight",price:"$29/mo",num:29,hrs:"6 hrs",sk:["SpecFlow"],
  url:"https://www.pluralsight.com/search?q=specflow",
- d:"Your Cucumber experience carries over — this is mostly syntax."},
+ d:"If you already know Cucumber, this is mostly syntax."},
 {n:"Go: Complete Developer's Guide",p:"Udemy",price:"$74.99",num:75,hrs:"9 hrs",sk:["Go"],
  url:"https://www.udemy.com/course/go-the-complete-developers-guide/",
  d:"Go shows up constantly in SRE and platform roles."},
@@ -1973,7 +1985,7 @@ const COURSES=[
  url:"https://www.istqb.org/certifications/certified-tester-foundation-level",
  d:"The one QA credential nearly every recruiter recognizes by name, regardless of your stack."}];
 
-const PEOPLE=[
+const PEOPLE=!DEMO?[]:[
 {n:"Anil Kumar",r:"Senior QA Engineer",co:"Cognizant",deg:1,how:"Worked together at TCS, 2021–2023"},
 {n:"Meera Sundaram",r:"Engineering Manager",co:"Cognizant",deg:2,how:"Through Anil — both TCS alumni"},
 {n:"Deepa Nair",r:"Data Engineer",co:"UnitedHealth Group",deg:1,how:"Webster University, same cohort"},
@@ -1985,7 +1997,7 @@ const PEOPLE=[
    the account. They're swapped for what the server holds (usually nothing yet). */
 let LIVE_PEOPLE=null;
 const peopleNow=()=>SESSION?(LIVE_PEOPLE||[]):PEOPLE;
-let APPS=[
+let APPS=!DEMO?[]:[
 {co:"Vaspire Technologies",ti:"Senior SDET — GenAI",lo:"Minneapolis, MN",st:"offer",when:"Offer discussion today"},
 {co:"STG Consulting",ti:"QA Automation Engineer",lo:"Salt Lake City, UT",st:"intv",when:"Call scheduled"},
 {co:"Xchange Software",ti:"ETL SDET — Data Lakehouse",lo:"Remote",st:"reply",when:"Recruiter replied yesterday"},
@@ -1994,7 +2006,16 @@ let APPS=[
 {co:"Bank of America",ti:"Quality Engineer — Payments API",lo:"Charlotte, NC",st:"closed",when:"They don't sponsor H1B"}];
 
 const SEED_APPS=JSON.stringify(APPS);
-const REFS=[{n:"Anil Kumar",e:"a•••@gmail.com",st:"active",when:"12 days ago"},
+/* Earlier builds showed sample rows to everyone and let them be saved into
+   this browser's localStorage. Those copies must not survive into a live
+   (API-configured) build. Signatures only — none of this is ever rendered. */
+const LEGACY_SAMPLE_APPS=new Set(["Vaspire Technologies|Senior SDET — GenAI","STG Consulting|QA Automation Engineer",
+  "Xchange Software|ETL SDET — Data Lakehouse","Ampstek|Automation Testing — PEGA",
+  "Techrakers|SDET — Cypress & Load","Bank of America|Quality Engineer — Payments API"]);
+const LEGACY_SAMPLE_EMAILS=new Set(["priya.v@example.com","arjun.m@example.com","lakshmi.r@example.com",
+  "daniel.o@example.com","wei.c@example.com","sofia.r@example.com"]);
+const isLegacySampleApp=a=>LEGACY_SAMPLE_APPS.has(a.co+"|"+a.ti) && !a.id && !a._id;
+const REFS=!DEMO?[]:[{n:"Anil Kumar",e:"a•••@gmail.com",st:"active",when:"12 days ago"},
 {n:"Deepa Nair",e:"d•••@outlook.com",st:"active",when:"9 days ago"},
 {n:"James Okoro",e:"j•••@gmail.com",st:"pending",when:"3 days ago"},
 {n:"Priyanka Das",e:"p•••@yahoo.com",st:"invited",when:"Invited 5 days ago"}];
@@ -2031,7 +2052,7 @@ function loadState(){
   try{
     if(st.exp&&st.exp.length){EXP=st.exp;SKILLS=st.skills||[];UF=st.uf||null;
       PROFILE_READY=!!st.ready;RESUME_NAME=st.resumeName||"your resume";}
-    if(st.apps)APPS=st.apps;
+    if(st.apps)APPS=DEMO?st.apps:st.apps.filter(a=>!isLegacySampleApp(a));
     Object.entries(st.me||{}).forEach(([id,v])=>{const el=$(id);if(el&&v)el.value=v;});
     Object.entries(st.filters||{}).forEach(([k,v])=>{
       const el=$({auth:"f-auth",fam:"f-fam",type:"f-type",mode:"f-mode"}[k]);
@@ -2141,7 +2162,7 @@ function go(p){
   if(p==="refer")renderRefer();
   if(p==="apps")renderApps();
   if(p==="autopilot"){renderAutopilot();refreshAutopilotIntegrations();syncAP();}
-  if(p==="support")renderSupport();
+  if(p==="support"){renderSupport();loadSupportHistory();}
   if(p==="interview")renderInterviewPage();
 }
 
@@ -2249,8 +2270,8 @@ function detect(text){
 
 /* Pulls roles out of resume text. Handles the two common shapes:
    "Company | Title | Mon YYYY – Mon YYYY" and a company line followed
-   by a dates line. Falls back to the demo profile if nothing parses,
-   so the app is never left empty. */
+   by a dates line. Returns [] if nothing parses (parseResume decides what an
+   empty result means; only the no-backend demo substitutes a sample profile). */
 function extractRoles(text){
   const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const DATE=/([A-Z][a-z]{2})[a-z]*\.?\s+(\d{4})\s*[–—-]{1,2}\s*((?:[A-Z][a-z]{2})[a-z]*\.?\s+\d{4}|Present|Current)/i;
@@ -2292,6 +2313,9 @@ function parseResume(text,name){
   if(!roles.length && !skills.length){
     toast("Couldn't read that file. A PDF or Word export usually works.");return;
   }
+  // Only the no-backend demo may fall back to the sample profile. With an API
+  // configured, whatever the file really contained is all there is: an empty
+  // list is shown as such and the person adds their roles themselves.
   EXP = roles.length ? roles : DEMO_EXP.map(r=>({...r}));
   SKILLS = skills.length ? skills : [...DEMO_SKILLS];
   UF = fams.length ? fams : null;
@@ -2300,9 +2324,9 @@ function parseResume(text,name){
   const T=totalM();
   $("drop").classList.add("done");
   $("drop").innerHTML=`<div class="parsed"><div class="chk">✓</div><div>
-    <h3 style="font-size:16px">${name}</h3>
+    <h3 style="font-size:16px">${esc(name)}</h3>
     <p style="font-size:14px;color:var(--ink2);margin-top:3px">
-      Found <b>${EXP.length} role${EXP.length>1?"s":""}</b> — ${fmtD(T)} in total — and <b>${SKILLS.length} skills</b>${
+      Found <b>${EXP.length} role${EXP.length===1?"":"s"}</b> — ${fmtD(T)} in total — and <b>${SKILLS.length} skills</b>${
       UF?`. You look strongest at <b>${UF[0].n}</b>`:""}.</p>
     ${UF?`<div style="margin-top:9px">${UF.slice(0,4).map(f=>`<span class="pill">${f.n} · ${f.p}%</span>`).join("")}</div>`:""}
     <p style="font-size:13px;color:var(--ink3);margin-top:10px">Everything below is editable. <a onclick="resetProfile()" style="color:var(--moss2)">Upload a different file</a></p>
@@ -2310,7 +2334,8 @@ function parseResume(text,name){
   $("afterUpload").style.display="";
   renderProfile(); rn(); saveState();
   if(!EVAL_REPORT) setHtml("evalPrompt", evalPromptHtml());
-  toast(`Profile ready — ${fmtD(T)} across ${EXP.length} roles`);
+  toast(EXP.length?`Profile ready — ${fmtD(T)} across ${EXP.length} role${EXP.length===1?"":"s"}`
+    :"We found skills but no work history — add your roles below");
 }
 
 function resetProfile(){
@@ -2468,7 +2493,38 @@ function fitRing(score, size){
       font-size="${size*0.32}" fill="var(--ink)">${score}</text>
   </svg>`;
 }
-const scoreFor=j=>{if(!UF)return j._b;const m=UF.find(f=>f.id===j.fm);return m?Math.round(45+m.p*.5):38;};
+/* Fit is computed server-side from the signed-in user's saved skills, positions
+   and work authorization (server/api/matching.py). Null means "we have nothing
+   to compare" — signed out, no saved skills, or demo board — and then NO
+   percentage is shown anywhere. There is deliberately no client-side guess. */
+const scoreFor=j=>Number.isFinite(j.fit)?j.fit:null;
+let FIT_AVAILABLE=false, RELOAD_JOBS=false;
+function fitBadge(s,size,lab){
+  return s==null?"":`<div style="text-align:center;flex-shrink:0" title="Match against your saved skills, experience and work authorization">${fitRing(s,size)}<div class="fitl">${lab||"FIT"}</div></div>`;
+}
+/* Plain-language reasons from the server's fit_reasons — nothing invented. */
+function fitReasons(x){
+  const r=x&&x.fit_reasons; if(!r) return {hi:[],gp:[],need:[]};
+  const hi=[], gp=[], m=r.matched_skills||[], miss=r.missing_skills||[];
+  if(m.length) hi.push(`You list ${m.length} of the ${m.length+miss.length} skills they ask for: ${m.map(esc).join(", ")}`);
+  if(r.title_match!=null&&r.title_match>=0.5) hi.push("Your past job titles line up with this role");
+  const je=r.job_exp||{};
+  if(r.years!=null&&(je.min||je.max)&&r.years>=(je.min||0)&&(!je.max||r.years<=je.max)) hi.push(`Your ${r.years} years of experience fits their ${je.min||0}${je.max?"–"+je.max:"+"} year range`);
+  if(r.visa==="stated_yes") hi.push("The posting says it accepts your work authorization");
+  if(r.work_mode&&/matches/.test(r.work_mode)) hi.push("Work style "+r.work_mode);
+  if(miss.length) gp.push(`Not on your profile: ${miss.map(esc).join(", ")}`);
+  if(r.years!=null&&je.min&&r.years<je.min) gp.push(`They ask for ${je.min}+ years; your profile shows ${r.years}`);
+  if(r.work_mode&&/^you prefer/.test(r.work_mode)) gp.push(`Work style differs — ${r.work_mode}`);
+  if(r.blocked) gp.unshift("The posting explicitly excludes your work authorization");
+  return {hi,gp,need:miss};
+}
+/* Only states what the server actually did. verified = our own request to the
+   apply link succeeded; direct = it was read from the company's own ATS board. */
+function trustBadge(j){
+  if(j.verified) return `<span class="tag ok" title="We requested this apply link and the site answered successfully${j.vat?" ("+j.vat.slice(0,10)+")":""}">Verified link</span>`;
+  if(j.direct) return `<span class="tag" title="Read from this company's own applicant-tracking board. We have not checked the apply link ourselves.">Direct from company careers page</span>`;
+  return "";
+}
 const hostOf=u=>{try{return new URL(u).hostname.replace(/^www\./,"")}catch(e){return "the employer's site"}};
 
 let debT;
@@ -2483,18 +2539,16 @@ function deb(){clearTimeout(debT);debT=setTimeout(()=>{LIVE?loadJobs():rn();},25
    Customers never see or configure this. A setup screen is available at
    ?setup=1 for your own use on staging.
    ═══════════════════════════════════════════════════════════════ */
-const API_ENDPOINT = (typeof window!=="undefined" && window.CP_CONFIG && window.CP_CONFIG.api)
-  || (["localhost","127.0.0.1",""].includes(location.hostname) ? "http://localhost:8000" : "");
-
-const CP_API = API_ENDPOINT || store.get("cp_api","") || "";
-const DEMO   = !CP_API;
-let LIVE = false, LOADING = false, LAST_SYNC = null;
+/* API_ENDPOINT, CP_API and DEMO are defined once, near the top (DEMO GATE),
+   because the sample data below has to be gated on them. */
+let LIVE = false, LOADING = false, LAST_SYNC = null, LOAD_ERR = false;
 
 async function loadJobs(){
-  if(!CP_API || LOADING) return;
+  if(!CP_API) return;
+  if(LOADING){ RELOAD_JOBS = true; return; }      // profile/sign-in changed mid-flight: fetch again after
   LOADING = true;
   try{
-    const p=new URLSearchParams({limit:100,
+    const p=new URLSearchParams({limit:100, sort:"match",
       q:$("q").value.trim(), auth:$("f-auth").value,
       families:$("f-fam").value||"", employment:$("f-type").value||"", modes:$("f-mode").value||""});
     const r=await fetch(`${CP_API}/api/jobs?${p}`,{headers:authHeaders()});
@@ -2502,15 +2556,16 @@ async function loadJobs(){
     const d=await r.json();
     J.length=0;
     d.jobs.forEach((x,i)=>J.push(mapJob(x,i)));
-    LIVE=true; LAST_SYNC=new Date(); TOTAL_LIVE=d.total;
+    FIT_AVAILABLE=d.fit_available===true;
+    LIVE=true; LOAD_ERR=false; LAST_SYNC=new Date(); TOTAL_LIVE=d.total;
     rn();
     if(!d.total && !$("q").value.trim() && !($("f-fam").value||$("f-type").value||$("f-mode").value)){
       $("count").innerHTML=`<span style="color:var(--ink3)">No roles loaded yet. The board fills after the first job import runs — check back shortly.</span>`;
     }
   }catch(e){
-    LIVE=false;
+    LIVE=false; LOAD_ERR=true; if(!J.length) rn();
     $("count").innerHTML=`<span style="color:var(--clay)">Having trouble loading jobs. Retrying shortly.</span>`;
-  }finally{ LOADING=false; }
+  }finally{ LOADING=false; if(RELOAD_JOBS){ RELOAD_JOBS=false; loadJobs(); } }
 }
 let TOTAL_LIVE=0;
 /* Through `store`, never localStorage directly: store.set() JSON-encodes, so a
@@ -2529,8 +2584,10 @@ function mapJob(x,i){
     d:x.days_live??0, sn:x.seen_count??1, f5:x.is_fortune500?1:0,
     tp:x.company_type||"employer", cp:x.competition||"md", url:x.apply_url||"",
     src:x.apply_url?"board":"board", au:x.visa||{usc:"u",gc:"u",h1b:"u",opt:"u"},
-    sk:x.skills||[], need:[], hm:"", hi:[], gp:[], jd:x.description||"",
-    rec:null, _b:70+(i*9)%26};
+    sk:x.skills||[], hm:"", jd:x.description||"",
+    rec:null, fit:Number.isFinite(x.fit)?x.fit:null, fr:x.fit_reasons||null,
+    verified:x.verified===true, vat:x.verified_at||"", direct:x.direct===true, source:x.source||"",
+    ...fitReasons(x)};
 }
 
 /* One plain sentence instead of a colour-coded grid. */
@@ -2563,7 +2620,9 @@ function rn(){
     if(mode&&j.md!==mode)return false;
     if(appliedState(j)==="skipped"&&!$("f-showall").checked)return false;
     return true;
-  }).map(j=>({...j,s:scoreFor(j)})).sort((a,b)=>b.s-a.s);
+  }).map(j=>({...j,s:scoreFor(j)}));
+  // Best real fit first; unscored rows keep the server's order (stable sort).
+  if(r.some(j=>j.s!=null)) r.sort((a,b)=>(b.s==null?-1:b.s)-(a.s==null?-1:a.s));
 
   // Must apply the SAME filters as the main list (minus auth) — otherwise
   // this reports how many are H1B-blocked across the WHOLE board, not
@@ -2591,7 +2650,9 @@ function rn(){
   if(hidden)bits.push(`${hidden} hidden — they won't sponsor ${AUTH_LABEL[auth]}`);
   if(LIVE&&LAST_SYNC)bits.push(`<span style="color:var(--moss2)">updated ${agoStr(LAST_SYNC)}</span>`);
   if(!LIVE&&!DEMO)bits.push(`<span style="color:var(--clay)">reconnecting…</span>`);
-  if(!PROFILE_READY)bits.push(`<a onclick="go('me')" style="color:var(--moss2)">upload your resume</a> to see fit`);
+  if(LIVE&&!FIT_AVAILABLE)bits.push(store.get("cp_token","")
+    ?`<a onclick="go('me')" style="color:var(--moss2)">Add your skills</a> to see fit`
+    :`<a onclick="go('me')" style="color:var(--moss2)">Sign in and add your skills</a> to see fit`);
   $("count").innerHTML = r.length ? bits.join(" · ") : "";
   sampleBanner();
   if(SELECTED_JOB!=null){
@@ -2608,20 +2669,21 @@ function rn(){
           <h3>${j.ti}</h3>
           <div class="jco">${j.co} · ${j.lo}</div>
         </div>
-        ${PROFILE_READY?`<div style="text-align:center">${fitRing(j.s,46)}<div class="fitl">FIT</div></div>`:""}
+        ${fitBadge(j.s,46)}
       </div>
       <div class="meta">
         <span>${j.em==="contract"?"Contract":"Full-time"}</span>
         <span>${j.rt}</span>
         <span>${j.md==="remote"?"Remote":j.md==="hybrid"?"Hybrid":"On-site"}</span>
         <span>${j.yr}</span>
-        <span style="color:var(--ink3)">${j.d===1?"Today":j.d+" days ago"}</span>
+        <span style="color:var(--ink3)">${j.d<=1?"Today":j.d+" days ago"}</span>
       </div>
       <div class="tags">
         <span class="tag q">${FAM[j.fm]?.n||j.fm}</span>
         ${j.tp==="staffing"?'<span class="tag">Agency</span>':j.f5?'<span class="tag">Fortune 500</span>':""}
+        ${trustBadge(j)}
         ${j.sn>=3?`<span class="tag warn">Posted ${j.sn} times</span>`:""}
-        ${j.cp==="lo"?'<span class="tag ok">Few applicants so far</span>':""}
+        ${j.cp==="lo"?'<span class="tag ok">Freshly posted</span>':""}
       </div>
       ${visaLine(j,auth)}
       <div class="cardacts" onclick="event.stopPropagation()">
@@ -2632,7 +2694,13 @@ function rn(){
         <button class="btn btn-g btn-s" onclick='openJob(${jid(j)})'>Details</button>
       </div>
     </div>`).join("")
-    : `<div class="empty"><h3>Nothing matches</h3><p>Try clearing a filter, or set work authorization to "Any".</p></div>`;
+    : (!DEMO && !LIVE)
+      ? (LOAD_ERR
+          ? `<div class="empty"><h3>Couldn't load roles</h3><p>We'll keep trying. Refresh if this doesn't clear up.</p></div>`
+          : `<div class="empty"><h3>Loading roles…</h3><p>Fetching the latest listings.</p></div>`)
+      : (!J.length && !$("q").value.trim() && !($("f-fam").value||$("f-type").value||$("f-mode").value))
+        ? `<div class="empty"><h3>No roles yet</h3><p>The board fills after the first job import runs. Check back shortly.</p></div>`
+        : `<div class="empty"><h3>Nothing matches</h3><p>Try clearing a filter, or set work authorization to "Any".</p></div>`;
 }
 
 const agoStr=d=>{const s=Math.round((Date.now()-d)/1000);
@@ -2713,7 +2781,7 @@ function buildJobDetailHTML(j, closeFn){
     header: `<div class="lg2" style="width:46px;height:46px;font-size:18px">${j.co[0]}</div>
     <div style="flex:1;min-width:0"><h2>${j.ti}</h2>
       <p style="color:var(--ink2);font-size:14px;margin-top:3px">${j.co} · ${j.lo} · ${j.md}</p></div>
-    ${PROFILE_READY?`<div style="text-align:center;flex-shrink:0">${fitRing(s,58)}<div class="fitl">FIT</div></div>`:""}
+    ${fitBadge(s,58)}
     <button class="mx" onclick="${closeFn}" aria-label="Close">×</button>`,
     body: `
     ${blocked?`<div class="note bad"><b>They won't sponsor ${AUTH_LABEL[auth]}.</b> Stated in the posting — not worth an application.</div>`:""}
@@ -2723,7 +2791,7 @@ function buildJobDetailHTML(j, closeFn){
       <span class="si">${fromEmail?"✉":"⌕"}</span>
       <div>${fromEmail
         ? `<b>${j.from}</b> sent you this ${j.received}. Replying to their email is how you apply.`
-        : `Listed on <b>${j.tp==="staffing"?"a job board":hostOf(j.url)}</b>. Nobody has contacted you about it, so this would be you reaching out first.`}</div>
+        : `Listed on <b>${j.tp==="staffing"?"a job board":hostOf(j.url)}</b>. Nobody has contacted you about it, so this would be you reaching out first. ${trustBadge(j)}`}</div>
     </div>
     ${j.sample?`<div class="note"><b>Example listing.</b> Applying opens a live search for "${esc(j.ti)}" on ${hostOf(j.url)}, so you'll see their real openings.</div>`:""}
 
@@ -2745,7 +2813,7 @@ function buildJobDetailHTML(j, closeFn){
         <div><span>They want</span><b>${j.yr}</b></div>
         ${PROFILE_READY?`<div><span>You have</span><b>${fmtD(totalM())}</b></div>`:""}
         <div><span>Work style</span><b>${j.md==="remote"?"Remote":j.md==="hybrid"?"Hybrid":"On-site"}</b></div>
-        <div><span>Posted</span><b>${j.d===1?"Today":j.d+" days ago"}</b></div>
+        <div><span>Posted</span><b>${j.d<=1?"Today":j.d+" days ago"}</b></div>
       </div>
       ${j.sn>=3?`<div class="note" style="margin-top:12px">This has been posted ${j.sn} times. Sometimes that means genuinely hard to fill; sometimes it means the req isn't real. Worth confirming it's live before you spend time on it.</div>`:""}
     </div>
@@ -2758,12 +2826,12 @@ function buildJobDetailHTML(j, closeFn){
     ${j.hm?`<div class="sec"><h4>Who you'd work with</h4><p style="font-size:14px;color:var(--ink2)">${j.hm}</p></div>`:""}
 
     ${refs.length?`<div class="sec"><h4>You know someone here</h4>
-      ${refs.map(p=>`<div class="row"><div style="flex:1"><b>${p.n}</b><div class="sub">${p.r} · ${p.deg===1?"direct contact":"through someone you know"}</div>
-      <div class="dt">${p.how}</div></div><div class="rt"><button class="btn btn-g btn-s" onclick="toast('Intro drafted to ${p.n}')">Ask</button></div></div>`).join("")}
+      ${refs.map(p=>`<div class="row"><div style="flex:1"><b>${esc(p.n)}</b><div class="sub">${esc(p.r)} · ${p.deg===1?"direct contact":"through someone you know"}</div>
+      <div class="dt">${esc(p.how||"")}</div></div><div class="rt"><button class="btn btn-g btn-s" onclick='askIntro(${peopleNow().indexOf(p)},${jid(j)})'>Ask</button></div></div>`).join("")}
       <p style="font-size:13.5px;color:var(--moss2);margin-top:10px">Ask before you apply — a referral skips the resume screen entirely.</p></div>`:""}
 
-    ${PROFILE_READY&&j.hi.length?`<div class="sec"><h4>Why you fit</h4><ul class="why">${j.hi.map(h=>`<li>${h}</li>`).join("")}</ul></div>`:""}
-    ${PROFILE_READY&&j.gp.length?`<div class="sec"><h4>Be ready to talk about</h4><ul class="why gap">${j.gp.map(g=>`<li>${g}</li>`).join("")}</ul>
+    ${s!=null&&j.hi.length?`<div class="sec"><h4>Why you fit</h4><ul class="why">${j.hi.map(h=>`<li>${h}</li>`).join("")}</ul></div>`:""}
+    ${s!=null&&j.gp.length?`<div class="sec"><h4>Be ready to talk about</h4><ul class="why gap">${j.gp.map(g=>`<li>${g}</li>`).join("")}</ul>
       ${j.need.length?`<button class="btn btn-g btn-s" style="margin-top:10px" onclick="go('learn')">Find a course for ${j.need.join(", ")}</button>`:""}</div>`:""}
 
     <div class="sec"><h4>What they use</h4><div class="tags">${j.sk.map(k=>`<span class="tag ${SKILLS.some(x=>x.toLowerCase()===k.toLowerCase())?"ok":""}">${k}</span>`).join("")}</div>
@@ -2872,7 +2940,7 @@ const findJob=id=>J.find(x=>String(x.id)===String(id)||JSON.stringify(x.id)===St
 function mark(j,st,note){
   // application state persists too
   const i=APPS.findIndex(a=>a.co===j.co&&a.ti===j.ti);
-  const rec={co:j.co,ti:j.ti,lo:j.lo,st,when:note||"Just now",_id:j.id};
+  const rec={co:j.co,ti:j.ti,lo:j.lo,st,when:note&&!AUTO_WHEN.test(String(note).trim())?note:"",at:Date.now(),_id:j.id};
   if(i>=0)APPS[i]={...APPS[i],...rec}; else APPS.unshift(rec);
   renderApps(); saveState();
   syncApplication(rec);        // discrete event — goes now, not on the debounce
@@ -2991,8 +3059,12 @@ function writeRecruiter(j){
   const r=j.rec||{};
   const mine=j.sk.filter(k=>SKILLS.some(x=>x.toLowerCase()===k.toLowerCase()));
   const T=PROFILE_READY?fmtD(totalM()):"";
-  const auth=$("p-auth")?$("p-auth").selectedOptions[0].text:"H1B";
-  const subject=`${j.ti} — ${$("p-name")?.value||"Santosh Reddy"}${T?` | ${T}`:""}`;
+  // The select reads "H1B" for someone who never touched it; only state a work
+  // authorization in an email the person has actually chosen or the server holds.
+  const auth=($("p-auth")&&(WORK_AUTH_KNOWN||DEMO))?$("p-auth").selectedOptions[0].text:"";
+  const myName=$("p-name")?.value||SESSION?.name||"";
+  const myLoc=$("p-loc")?.value||"";
+  const subject=`${j.ti}${myName?` — ${myName}`:""}${T?` | ${T}`:""}`;
   const fromEmail=j.src==="email";
   EMAIL_STEPS = {resume:false, cover:false};
   EF_FILES = {};
@@ -3003,20 +3075,17 @@ ${fromEmail
   ? `Thanks for sending over the ${j.ti} role${j.lo?` in ${j.lo}`:""} — I'd like to be considered.`
   : `I came across the ${j.ti} role${j.lo?` in ${j.lo}`:""} and wanted to put myself forward.`}
 
-${T?`I've spent ${T} in test automation across payments, healthcare, and retail e-commerce.`:""}${
+${T?`I have ${T} of experience${[...new Set(EXP.map(e=>e.co))].length?` across ${[...new Set(EXP.map(e=>e.co))].slice(0,3).join(", ")}`:""}.`:""}${
 mine.length?`\n\nWhat lines up with your requirements:\n${mine.slice(0,5).map(k=>`• ${k}`).join("\n")}`:""}
 
-Practical details:
-• Work authorization: ${auth}
-• Location: ${$("p-loc")?.value||"St. Louis, MO"}${j.md==="onsite"?" — open to relocating":""}
+Practical details:${auth?`\n• Work authorization: ${auth}`:""}${myLoc?`\n• Location: ${myLoc}${j.md==="onsite"?" — open to relocating":""}`:""}
 • Rate: ${j.rt&&j.rt!=="Open"&&j.rt!=="Not stated"?`your range of ${j.rt} works for me`:"open to your offer"}
-• Available: 2 weeks
 
 I've attached my resume — happy to talk whenever suits.
 
 Best,
-${$("p-name")?.value||"Santosh Reddy"}
-${$("p-phone")?.value||""} · ${$("p-email")?.value||""}`;
+${myName}
+${[$("p-phone")?.value,$("p-email")?.value].filter(Boolean).join(" · ")}`;
 
   $("md").innerHTML=`<div class="mh"><div class="lg2" style="width:46px;height:46px;font-size:18px">${j.co[0]}</div>
     <div style="flex:1"><h2>${fromEmail?"Reply to "+(r.n||"the recruiter"):"Email "+(r.n||j.co)}</h2>
@@ -3283,7 +3352,7 @@ function renderApps(){
         <div style="flex:1"><b>${esc(a.ti)}</b><div class="sub">${esc(a.co)} · ${esc(a.lo)}</div></div>
         <div class="rt"><select class="ministat appst" aria-label="Status of ${esc(a.ti)}" onchange="setAppStatus(${APPS.indexOf(a)},this.value)">${
             Object.entries(ST).map(([v,l])=>`<option value="${v}"${v===a.st?" selected":""}>${l}</option>`).join("")}</select>
-          <div class="dt">${esc(a.when)}</div>
+          <div class="dt">${esc(whenText(a))}</div>
           <a class="dt appdel" role="button" tabindex="0" onclick="removeApp(${APPS.indexOf(a)})" style="cursor:pointer;text-decoration:underline">Remove</a></div></div>`).join("")}
     </div>`;}).join("")
     : `<div class="empty"><h3>No applications yet</h3><p>They'll appear here automatically once you apply.</p></div>`;
@@ -3292,7 +3361,7 @@ function renderApps(){
 /* ═══ LEARN ═══ */
 function skillGaps(){
   const m={};
-  J.filter(j=>scoreFor(j)>=68).forEach(j=>(j.need||[]).forEach(k=>{
+  J.filter(j=>(scoreFor(j)??-1)>=68).forEach(j=>(j.need||[]).forEach(k=>{
     if(!SKILLS.some(s=>s.toLowerCase()===k.toLowerCase()))m[k]=(m[k]||0)+1;}));
   return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([sk,n])=>({sk,n}));
 }
@@ -3308,8 +3377,9 @@ function renderLearn(){
   const rel=COURSES.filter(c=>c.sk.some(s=>set.has(s)));
   const show=rel.length?rel:COURSES;
   $("courses").innerHTML=`<div class="card"><h2>${rel.length?"Courses that close those gaps":"Worth a look"}</h2>
+    <p style="font-size:12.5px;color:var(--ink3)">A hand-picked list, not live data — prices and availability change, so check the provider's page before you pay.</p>
     ${show.map(c=>{
-      const unlocks=J.filter(j=>(j.need||[]).some(k=>c.sk.includes(k))&&scoreFor(j)>=60);
+      const unlocks=J.filter(j=>(j.need||[]).some(k=>c.sk.includes(k))&&(scoreFor(j)??-1)>=60);
       return `<div class="row"><div style="flex:1">
         <a href="${c.url}" target="_blank" rel="noopener" class="courselink"><b>${c.n}</b> ↗</a>
         <div class="sub">${c.p} · ${c.hrs}</div>
@@ -3323,48 +3393,137 @@ function renderLearn(){
     }).join("")}</div>`;
 }
 
-/* ═══ PEOPLE ═══ */
+/* ═══ PEOPLE ═══
+   Signed in, this list is the account's own (GET/POST/DELETE /api/connections)
+   and starts empty. Nothing here is generated or scraped. */
 function renderPeople(){
   const targets=[...new Set(J.map(j=>j.co))];
   const ALL=peopleNow();
   const useful=ALL.filter(p=>targets.includes(p.co));
   const rest=ALL.filter(p=>!targets.includes(p.co));
-  const card=p=>`<div class="row"><div class="lg2">${p.n[0]}</div>
-    <div style="flex:1"><b>${p.n}</b><div class="sub">${p.r} · ${p.co}</div><div class="dt">${p.how}</div></div>
-    <div class="rt"><button class="btn btn-g btn-s" onclick="toast('Intro drafted to ${p.n}')">Ask for an intro</button></div></div>`;
+  const card=p=>`<div class="row"><div class="lg2">${esc(p.n[0]||"?")}</div>
+    <div style="flex:1"><b>${esc(p.n)}</b><div class="sub">${esc(p.r)}${p.r?" · ":""}${esc(p.co)}</div><div class="dt">${esc(p.how||"")}</div></div>
+    <div class="rt"><button class="btn btn-g btn-s" onclick="askIntro(${ALL.indexOf(p)})">Ask for an intro</button>
+      <a class="dt" role="button" tabindex="0" onclick="removePerson(${ALL.indexOf(p)})" style="cursor:pointer;text-decoration:underline;display:block;margin-top:6px">Remove</a></div></div>`;
   $("peopleList").innerHTML =
+    `<div style="margin-bottom:14px"><button class="btn btn-p btn-s" onclick="editPerson()">+ Add someone you know</button></div>` +
     (useful.length?`<div class="card"><h2>At companies you're looking at</h2>
       <p>These are the ones worth a message.</p>${useful.map(card).join("")}</div>`:"") +
-    (rest.length?`<div class="card"><h2>Everyone else</h2>${rest.map(card).join("")}</div>`:"") +
+    (rest.length?`<div class="card"><h2>${useful.length?"Everyone else":"People you know"}</h2>${rest.map(card).join("")}</div>`:"") +
     (!ALL.length?`<div class="card"><h2>Nobody added yet</h2>
-      <p>People you know at companies you're targeting will show up here, next to the roles they're hiring for.</p></div>`:"");
+      <p>${!DEMO&&!SESSION?"Sign in, then add ":"Add "}people you know at companies you're targeting. They'll show up here, next to the roles those companies are hiring for.</p></div>`:"");
 }
+function editPerson(){
+  if(!DEMO && !SESSION){ toast("Sign in to keep a list of people you know"); openAuth("up"); return; }
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Add someone you know</h2>
+    <p style="color:var(--ink2);font-size:14px;margin-top:3px">A real person who works somewhere you'd apply.</p></div>
+    <button class="mx" onclick="closeM()">×</button></div>
+  <div class="mb">
+    <div class="fld"><label>Name</label><input id="pp-name" maxlength="120"></div>
+    <div class="fld"><label>Company</label><input id="pp-co" maxlength="120"></div>
+    <div class="fld"><label>Their role <span style="color:var(--ink3)">— optional</span></label><input id="pp-role" maxlength="120"></div>
+    <div class="fld"><label>How you know them <span style="color:var(--ink3)">— optional</span></label><input id="pp-how" maxlength="300"></div>
+    <div class="fld"><label>Connection</label><select id="pp-deg"><option value="1">I know them directly</option><option value="2">Through someone I know</option></select></div>
+    <div id="pp-err"></div>
+    <div class="acts"><button class="btn btn-p" id="pp-save" onclick="savePerson()">Add</button>
+      <button class="btn btn-g" onclick="closeM()">Cancel</button></div>
+  </div>`);
+  openM();
+}
+async function savePerson(){
+  const n=$("pp-name").value.trim(), co=$("pp-co").value.trim();
+  if(!n||!co){ setHtml("pp-err",`<div class="note bad">A name and a company are needed.</div>`); return; }
+  const body={name:n, company:co, role:$("pp-role").value.trim()||null,
+              degree:+$("pp-deg").value||1, how_known:$("pp-how").value.trim()||null};
+  const btn=$("pp-save"); btn.disabled=true;
+  try{
+    if(CP_API && SESSION){
+      const r=await CP_API_call("/api/connections",{method:"POST",body:JSON.stringify(body)});
+      LIVE_PEOPLE=(LIVE_PEOPLE||[]).concat([{id:r.id,n:r.name,r:r.role||"",co:r.company,deg:r.degree,how:r.how_known||""}]);
+    }else{
+      PEOPLE.push({n,r:body.role||"",co,deg:body.degree,how:body.how_known||""});   // demo only, this tab
+    }
+    closeM(); renderPeople(); setTxt("m-net", peopleNow().length+" people");
+    toast(`${n} added`);
+  }catch(e){ btn.disabled=false; setHtml("pp-err",`<div class="note bad">${esc(e.message||"Couldn't save that.")}</div>`); }
+}
+async function removePerson(i){
+  const p=peopleNow()[i]; if(!p) return;
+  if(!confirm(`Remove ${p.n} from your list?`)) return;
+  try{
+    if(CP_API && SESSION){
+      if(p.id) await CP_API_call(`/api/connections/${encodeURIComponent(p.id)}`,{method:"DELETE"});
+      LIVE_PEOPLE=LIVE_PEOPLE.filter((_,k)=>k!==i);
+    }else PEOPLE.splice(i,1);
+    renderPeople(); setTxt("m-net", peopleNow().length+" people");
+  }catch(e){ toast(e.message||"Couldn't remove them"); }
+}
+/* We hold no email or LinkedIn address for anyone, so nothing can be sent from
+   here. What this really does is write the message for you to send yourself. */
+function askIntro(i, jobId){
+  const p=peopleNow()[i]; if(!p) return;
+  const j=jobId!=null?findJob(jobId):null;
+  const me=$("p-name")?.value||SESSION?.name||"";
+  const first=(p.n||"").split(/\s+/)[0];
+  const msg=`Hi ${first},
+
+${p.deg===1?"Hope you're doing well. ":""}I'm exploring ${j?`the ${j.ti} role`:"roles"} at ${p.co} and would value your view on the team. ${j
+    ?"If you think I'm a fit, would you be open to referring me or pointing me to the right person?"
+    :"Would you be open to a short chat, or to pointing me to the right person?"}
+
+I can send my resume and a short summary of my background.
+
+Thanks,
+${me}`.trim();
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Message to ${esc(p.n)}</h2>
+    <p style="color:var(--ink2);font-size:14px;margin-top:3px">A draft to send yourself — nothing has been sent.</p></div>
+    <button class="mx" onclick="closeM()">×</button></div>
+  <div class="mb">
+    <div class="fld"><textarea id="intro-body" style="height:220px;font-size:13.5px;line-height:1.65">${esc(msg)}</textarea></div>
+    <div class="acts"><button class="btn btn-p" onclick="copyIntro(this)">Copy message</button>
+      <button class="btn btn-g" onclick="closeM()">Close</button></div>
+  </div>`);
+  openM();
+}
+function copyIntro(b){navigator.clipboard?.writeText($("intro-body").value);
+  const o=b.textContent;b.textContent="Copied";setTimeout(()=>b.textContent=o,1400);}
 
 /* ═══ REFER ═══ */
 async function renderReferLive(){
   let r=null, c=null;
   try{ [r,c]=await Promise.all([CP_API_call("/api/referrals"), CP_API_call("/api/ai/credits")]); }catch(_){}
-  const link=(r&&r.link)||(SESSION.referral_code?`https://careerpilot.ai/join/${SESSION.referral_code}`:"");
+  const link=(r&&r.link)||(SESSION.referral_code?`${location.origin}/join/${SESSION.referral_code}`:"");
   REF_LINK=link;
-  const li=$("refLink"); if(li) li.value=link.replace(/^https?:\/\//,"");
+  const li=$("refLink"); if(li){ li.value=link.replace(/^https?:\/\//,""); li.placeholder="Your link isn't available yet"; }
   if(!r&&!c){ $("crTxt").textContent="—"; $("crBar").style.width="0%";
     $("crNote").textContent="Couldn't load your credits just now."; $("refList").innerHTML=""; return; }
   const allowance=(c&&c.allowance)||(r&&r.allowance)||SESSION.credits_allowance||0;
   const used=c?c.used:Math.max(0,allowance-(SESSION.credits_remaining||0));
   $("crTxt").textContent=`${used} of ${allowance}`;
   $("crBar").style.width=(allowance?Math.min(100,Math.round(used/allowance*100)):0)+"%";
-  const active=r?r.active:0, base=r?r.base:10;
-  $("crNote").innerHTML=`${base} on the ${esc(SESSION.plan||"free")} plan${active?` plus <b style="color:var(--moss2)">${active*100} from ${active} friend${active>1?"s":""} who stuck around</b>`:""}. Resets on the 1st.`;
-  const L={active:"Earning you 100/mo",pending:"Unlocks in a few days",invited:"Hasn't joined yet"};
+  const active=r?r.active:0, base=r&&r.base!=null?r.base:0;
+  const bonus=r&&r.bonus_credits!=null?r.bonus_credits:0, per=active?Math.round(bonus/active):0;
+  $("crNote").innerHTML=`${base} on the ${esc(SESSION.plan||"free")} plan${active?` plus <b style="color:var(--moss2)">${bonus} from ${active} friend${active>1?"s":""} who stuck around</b>`:""}. Resets on the 1st.`;
+  const L={active:`Earning you ${per||100}/mo`,pending:"Unlocks in a few days",invited:"Hasn't joined yet"};
   const list=(r&&r.referrals)||[];
   $("refList").innerHTML=list.length?list.map(x=>`<div class="row"><div class="lg2">${esc((x.name||"?")[0])}</div>
     <div style="flex:1"><b>${esc(x.name||"")}</b><div class="sub">${esc(x.email_masked||"")}</div></div>
     <div class="rt"><span class="st ${x.status==="active"?"reply":"sent"}">${L[x.status]||esc(x.status)}</span></div></div>`).join("")
     :`<p style="font-size:13.5px;color:var(--ink3)">Nobody yet. Share your link and they'll show up here.</p>`;
 }
-let REF_LINK="https://careerpilot.ai/join/santoshreddy";
+let REF_LINK=DEMO?"https://careerpilot.ai/join/demo":"";
 function renderRefer(){
   if(SESSION && CP_API){ renderReferLive(); return; }
+  if(!DEMO){
+    // Live, signed out: there is no account, so no link, credits or invites to show.
+    REF_LINK="";
+    const li=$("refLink"); if(li){ li.value=""; li.placeholder="Sign in to get your invite link"; }
+    setTxt("crTxt","—"); $("crBar").style.width="0%";
+    setHtml("crNote",`<a onclick="openAuth('up')" style="color:var(--moss2);cursor:pointer">Create an account</a> to see your monthly credits.`);
+    setHtml("refList",`<p style="font-size:13.5px;color:var(--ink3)">Sign in to invite friends and see who joined.</p>`);
+    return;
+  }
+  { const li=$("refLink"); if(li) li.value=REF_LINK.replace(/^https?:\/\//,""); }
   const active=REFS.filter(r=>r.st==="active").length;
   const base=10, total=Math.min(500,base+active*100), used=47;
   $("crTxt").textContent=`${used} of ${total}`;
@@ -3379,10 +3538,12 @@ function renderRefer(){
 }
  function copyRef(){
    const url=REF_LINK;
+   if(!url){ toast("Sign in to get your invite link"); if(!SESSION)openAuth("up"); return; }
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(url).catch(()=>{});
    toast("Link copied");
  }
 function shareRef(where){
+  if(!REF_LINK){ toast("Sign in to get your invite link"); if(!SESSION)openAuth("up"); return; }
   const url=encodeURIComponent(REF_LINK);
   const txt=encodeURIComponent("Been using CareerPilot for my job search — it filters by visa status and matches on what your resume actually shows. Free to start:");
   const m={linkedin:`https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
@@ -3515,6 +3676,7 @@ async function authSubmit(){
     const r = await CP_API_call(`/api/auth/${up?"signup":"login"}`,
                                 {method:"POST", body:JSON.stringify(body)});
     store.set("cp_token", r.access_token);
+    if(up) await attributeReferral();    // arrived via someone's invite link
     applySession(r.user, up);      // `up` = signing up, so keep local work
     closeAuth();
     $("au-pass").value = "";
@@ -3525,6 +3687,30 @@ async function authSubmit(){
   }finally{
     btn.disabled = false; setTxt("authGo", up ? "Create account" : "Sign in");
   }
+}
+
+/* ═══ REFERRAL ATTRIBUTION ═══
+   An invite link is https://<site>/join/CODE; web/_redirects sends that to
+   /?ref=CODE. The code is remembered here until the visitor creates an
+   account, then handed to POST /api/referrals/attribute/{code}, which is what
+   makes the invite count for the person who sent it. */
+(function captureReferral(){
+  try{
+    const u=new URL(location.href), c=u.searchParams.get("ref");
+    if(!c) return;
+    if(/^[\w-]{3,64}$/.test(c)) store.set("cp_ref", c);
+    u.searchParams.delete("ref");
+    history.replaceState(null,"",u.pathname+u.search+u.hash);
+  }catch(_){}
+})();
+async function attributeReferral(){
+  const code=store.get("cp_ref","");
+  if(!code||!CP_API) return;
+  store.del("cp_ref");                       // one attempt: a bad or own code must not retry forever
+  try{
+    await CP_API_call(`/api/referrals/attribute/${encodeURIComponent(code)}`,{method:"POST"});
+    toast("Invite applied — you both get bonus credits once you've been active for a week");
+  }catch(_){ /* invalid code or already attributed: the account is still fine */ }
 }
 
 /* Everything the signed-in account touched, including SKEY — that one holds
@@ -3565,7 +3751,12 @@ function noteExpiredSession(){
 /* ═══ APPLYING A SESSION ═══ */
 async function bootSession(){
   const tok = store.get("cp_token","");
-  if(!tok || !CP_API){ renderAccountBox(); noteExpiredSession(); return; }
+  if(!tok || !CP_API){
+    renderAccountBox(); noteExpiredSession();
+    // Someone who followed an invite link came here to make an account.
+    if(CP_API && store.get("cp_ref","")) setTimeout(()=>openAuth("up"), 500);
+    return;
+  }
   // Paint the side we saw last time so a recruiter doesn't watch the seeker
   // sidebar flash past on every reload. Corrected below if it's wrong.
   const remembered = store.get("cp_role","");
@@ -3717,14 +3908,16 @@ async function pullSeekerData(adoptLocal){
     try{
       const c = await CP_API_call("/api/connections");
       LIVE_PEOPLE = (c.companies||[]).flatMap(g=>g.people.map(x=>
-        ({n:x.name, r:x.role||"", co:x.company, deg:x.degree, how:x.how_known||""})));
+        ({id:x.id, n:x.name, r:x.role||"", co:x.company, deg:x.degree, how:x.how_known||""})));
     }catch(_){ LIVE_PEOPLE = []; }
     setTxt("m-net", LIVE_PEOPLE.length+" people");
 
     const a = await CP_API_call("/api/applications");
     if(a.applications.length){
       APPS = a.applications.map(x=>({id:x.id, co:x.company, ti:x.title,
-        lo:x.location||"—", st:x.short, when:appWhen(x)}));
+        lo:x.location||"—", st:x.short,
+        when:(x.note&&!AUTO_WHEN.test(x.note.trim()))?x.note:"",
+        at:Date.parse(x.updated_at||x.applied_at||"")||0}));
     }else{
       // The sample rows were never this person's applications, so they are
       // dropped either way. On a fresh signup whatever real ones they marked
@@ -3735,6 +3928,7 @@ async function pullSeekerData(adoptLocal){
     }
 
     renderProfile(); renderApps(); rn();
+    loadJobs();      // fit is computed server-side from the profile we just loaded
   }catch(e){
     // A recruiter hitting this would 403; anyone else just keeps local state.
     console.warn("Couldn't load your saved profile:", e.message);
@@ -3772,6 +3966,7 @@ async function pushSeekerData(){
 
     await pushPositions();
     syncBadge("saved");
+    if(LIVE) loadJobs();      // skills/titles may have changed, so fit has too
   }catch(e){
     syncBadge("error");
   }
@@ -3829,6 +4024,17 @@ async function postApplication(app){
 }
 
 const AUTO_WHEN = /^(just now|applied just now|opened, not applied yet|not a fit|updated just now)$/i;
+/* Timestamps are stored, never words like "Just now" — those are wrong the
+   moment the page is reloaded. Age is worked out when it is drawn. Rows with
+   no timestamp (old saves) fall back to whatever note they carry. */
+function parseTs(v){ if(typeof v==="number") return v;
+  if(!v) return 0; const t=Date.parse(/(Z|[+-]\d\d:?\d\d)$/.test(String(v))?v:v+"Z"); return t||0; }
+function relWhen(t){
+  const ms=Date.now()-t, m=Math.floor(ms/6e4), d=Math.floor(ms/864e5);
+  return m<1?"Just now":m<60?`${m} min ago`:d<1?"Today":d===1?"Yesterday":d<30?`${d} days ago`
+       : new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+function whenText(o){ return [o.when, o.at?relWhen(o.at):""].filter(Boolean).join(" · "); }
 function appWhen(x){
   if(x.note && !AUTO_WHEN.test(x.note.trim())) return x.note;
   const t = Date.parse(x.updated_at || x.applied_at || "");
@@ -3841,7 +4047,7 @@ function appWhen(x){
 /* The tracker's own controls: correct a status, or drop a row entirely. */
 async function setAppStatus(i, st){
   const a = APPS[i]; if(!a || !ST[st]) return;
-  a.st = st; a.when = "Updated just now";
+  a.st = st; a.when = ""; a.at = Date.now();
   renderApps(); saveState();
   if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
   if(isServerId(a.id)) apiTry(`/api/applications/${a.id}`, {method:"PATCH", body:JSON.stringify({status:st})}).catch(()=>{});
@@ -3909,7 +4115,7 @@ const AVAIL = [
   {v:"placed", n:"Currently placed", c:"muted"},
   {v:"hold", n:"On hold", c:"muted"}];
 
-const SEED_BENCH = [
+const SEED_BENCH = !DEMO ? [] : [
  {id:1,name:"Priya Venkatesan",role:"Senior SDET",yrs:8,visa:"h1b",avail:"now",rate:"$65-72/hr",
   loc:"Dallas, TX",relocate:true,email:"priya.v@example.com",phone:"+1 469-555-0142",
   skills:["Playwright","Selenium","Java","TestNG","RestAssured","Jenkins","SQL"],
@@ -3941,9 +4147,11 @@ const availOf  = v => AVAIL.find(x=>x.v===v) || AVAIL[0];
 /* The six sample people are a demo of the product. A signed-in recruiter's
    bench is theirs alone: it starts empty, and any sample rows carried over from
    browsing the demo are dropped (they would also blow the free plan's cap). */
-const isSeedCand = c => SEED_BENCH.some(x=>x.email===c.email && x.name===c.name);
+const isSeedCand = c => SEED_BENCH.some(x=>x.email===c.email && x.name===c.name)
+  || (!DEMO && LEGACY_SAMPLE_EMAILS.has(c.email));   // saved by an earlier build that showed the sample six
 function initBench(){
-  if(SESSION){
+  if(SESSION || !DEMO){
+    // Real accounts, and any live (API-configured) visitor, never see sample people.
     BENCH = (BENCH||[]).filter(c=>!isSeedCand(c));
     const ids = new Set(BENCH.map(c=>c.id));
     SUBS = SUBS.filter(s=>ids.has(s.candId));
@@ -4165,7 +4373,7 @@ function openCand(id){
       ${subs.map(s=>`<div class="row"><div style="flex:1"><b>${esc(s.title)}</b>
         <div class="sub">${esc(s.company)}</div></div>
         <div class="rt"><span class="st ${s.st}">${SUB_ST[s.st]}</span>
-        <div class="dt">${esc(s.when)}</div></div></div>`).join("")}
+        <div class="dt">${esc(whenText(s))}</div></div></div>`).join("")}
     </div>`:""}
   </div>`);
   openM();
@@ -4193,7 +4401,7 @@ function submitTo(candId, jobId){
   }
   const f=candFit(c,j);
   SUBS.unshift({candId, jobId:String(j.id), cand:c.name, title:j.ti, company:j.co,
-                fit:f.score, st:"submitted", when:"Just now"});
+                fit:f.score, st:"submitted", at:Date.now()});
   saveBench(); renderSubs(); renderBench();
   toast(`${c.name.split(" ")[0]} submitted to ${j.co}`);
 }
@@ -4251,7 +4459,7 @@ function renderSubs(){
         </div>`;}).join("")
     : `<div class="empty"><h3>Nothing submitted yet</h3><p>Open any role and pick someone from your bench.</p></div>`);
 }
-function setSubStatus(i,v){ if(SUBS[i]){SUBS[i].st=v; SUBS[i].when="Updated just now"; saveBench(); renderSubs();} }
+function setSubStatus(i,v){ if(SUBS[i]){SUBS[i].st=v; SUBS[i].when=""; SUBS[i].at=Date.now(); saveBench(); renderSubs();} }
 
 /* ═══ ADD / EDIT A CANDIDATE ═══ */
 function editCand(id){
@@ -4279,10 +4487,10 @@ function editCand(id){
     <div class="grid2">
       <div class="fld"><label>Availability</label><select id="c-avail">${
         AVAIL.map(a=>`<option value="${a.v}"${a.v===c.avail?" selected":""}>${a.n}</option>`).join("")}</select></div>
-      <div class="fld"><label>Rate</label><input id="c-rate" placeholder="$65-72/hr" value="${esc(c.rate)}"></div>
+      <div class="fld"><label>Rate</label><input id="c-rate" placeholder="e.g. $/hr or annual" value="${esc(c.rate)}"></div>
     </div>
     <div class="grid2">
-      <div class="fld"><label>Based in</label><input id="c-loc" placeholder="Dallas, TX" value="${esc(c.loc)}"></div>
+      <div class="fld"><label>Based in</label><input id="c-loc" placeholder="City, ST" value="${esc(c.loc)}"></div>
       <div class="fld"><label style="margin-bottom:9px">Relocation</label>
         <label class="chk"><input type="checkbox" id="c-reloc"${c.relocate?" checked":""}> Open to relocating</label></div>
     </div>
@@ -5007,7 +5215,7 @@ async function apPut(patch){
   try{
     adoptAP(await CP_API_call("/api/autopilot",{method:"PUT",body:JSON.stringify({tz:AP_TZ(),...patch})}));
     renderAutopilot(); return true;
-  }catch(e){ toast(e.message||"Couldn't save that"); await syncAP(); return false; }
+  }catch(e){ toast(e.status?(e.message||"Couldn't save that"):"Couldn't reach the server — nothing was changed. Try again."); await syncAP(); return false; }
 }
 
 function addSlot(){
@@ -5045,21 +5253,37 @@ function rmApTitle(i){
   AP.titles.splice(i,1); saveAP(); renderAutopilot();
 }
 
+/* The on/off switch must always answer, even while a run is in flight: a run
+   tailors up to 5 applications with AI and can take a minute or more, and
+   queueing the toggle behind it (apAct) made "off" silently do nothing. The
+   switch only writes the on flag, so it doesn't need the queue-row guard;
+   it has its own re-entrancy guard, and the first run starts in the background. */
+let apToggling=false;
 async function toggleAutopilot(){
   initAP();
   const wantOn = $("ap-on").checked;
-  const steps = ["resumeConfirmed",...(AP.phoneRequired===false?[]:["phoneVerified"])];
-  if(wantOn && steps.some(k=>!AP[k])){
+  if(apToggling){ renderAutopilot(); return; }
+  if(wantOn && apLive() && !AP.dailyCap){      // free plan: say so, don't send them through setup first
     $("ap-on").checked=false;
-    toast("Finish setup first — resume and phone verification");
+    toast("Autopilot is part of Pro — upgrade to turn it on");
+    go("plan"); return;
+  }
+  const missing = [["resumeConfirmed","confirm your resume"],
+    ...(AP.phoneRequired===false?[]:[["phoneVerified","verify your phone"]])].filter(([k])=>!AP[k]).map(([,l])=>l);
+  if(wantOn && missing.length){
+    $("ap-on").checked=false;
+    toast("Finish setup first: "+missing.join(" and "));
+    const cl=$("ap-checklist"); if(cl && cl.scrollIntoView) cl.scrollIntoView({behavior:"smooth",block:"center"});
     return;
   }
   if(apLive()){
-    return apAct(async()=>{
-      if(!(await apPut({on:wantOn}))){ renderAutopilot(); return; }
-      toast(AP.on ? "Autopilot is on — finding your first matches…" : "Autopilot paused");
-      if(AP.on) await apRunLive();
-    });
+    apToggling=true;
+    let ok;
+    try{ ok = await apPut({on:wantOn}); } finally{ apToggling=false; }
+    if(!ok){ renderAutopilot(); return; }
+    toast(AP.on ? "Autopilot is on — finding your first matches…" : "Autopilot paused");
+    if(AP.on) apAct(apRunLive);
+    return;
   }
   AP.on = wantOn; saveAP(); renderAutopilot();
   toast(AP.on ? "Autopilot is on" : "Autopilot paused");
@@ -5084,7 +5308,7 @@ async function apRunLive(){
     const last=AP.runs[0];
     if(last && last.prepared) toast(`${last.prepared} application${last.prepared>1?"s":""} ready for your approval`);
     else if(last && last.note) toast(last.note);
-  }catch(e){ toast(e.message||"Couldn't run Autopilot"); await syncAP(); }
+  }catch(e){ if(AP.on) toast(e.message||"Couldn't run Autopilot"); await syncAP(); }   // switched off mid-flight: nothing to report
 }
 async function runAutopilotNow(){
   initAP();
@@ -5219,17 +5443,27 @@ async function approveAllQueued(){
    request, same as the Autopilot note is honest about not blind-sending.
    ═══════════════════════════════════════════════════════════════ */
 
-let SUP_TICKETS = store.get("cp_support_tickets", []);
+let SUP_TICKETS = store.get("cp_support_tickets", [])
+  .filter(t=>DEMO || !/not actually sent/.test(t.when||""));   // demo-mode leftovers are not requests
 function saveSupTickets(){ store.set("cp_support_tickets", SUP_TICKETS); }
 
 const currentPlan = () => {
-  // Mirrors whatever the Plan page currently shows as active — in demo
-  // mode that's always "free" since no checkout has actually happened.
-  return "free";
+  // The plan is the account's, as the server reports it. Signed out (or in the
+  // no-backend demo) nothing has been bought, so it is "free".
+  return (SESSION && SESSION.plan) || "free";
 };
 const PLAN_SLA = { free: {label:"standard", hours:48}, pro: {label:"priority", hours:4},
                    recruiter: {label:"priority", hours:4} };
 
+/* With a backend the request history is the server's, not a browser-side list. */
+async function loadSupportHistory(){
+  if(!CP_API || !SESSION) return;
+  try{
+    const rows = await CP_API_call("/api/support/mine");
+    SUP_TICKETS = rows.map(t=>({subject:t.subject, priority:t.priority, at:parseTs(t.created_at), status:t.status}));
+    saveSupTickets(); renderSupport();
+  }catch(_){ /* keep whatever is showing */ }
+}
 function renderSupport(){
   const plan = currentPlan();
   const sla = PLAN_SLA[plan] || PLAN_SLA.free;
@@ -5250,7 +5484,7 @@ function renderSupport(){
     hist.style.display = "";
     setHtml("sup-history", SUP_TICKETS.slice(0,10).map(t=>`
       <div class="row"><div style="flex:1"><b>${esc(t.subject)}</b>
-        <div class="sub">${t.when}</div></div>
+        <div class="sub">${esc(whenText(t))}</div></div>
         <div class="rt"><span class="st ${t.priority==='priority'?'reply':'sent'}">${t.priority==='priority'?'Priority':'Sent'}</span></div></div>`).join(""));
   } else {
     hist.style.display = "none";
@@ -5272,13 +5506,14 @@ async function submitSupport(){
   try{
     if(CP_API){
       const r = await CP_API_call("/api/support", {method:"POST", body: JSON.stringify({subject, message})});
-      SUP_TICKETS.unshift({subject, priority:r.priority, when:"Just now"});
+      SUP_TICKETS.unshift({subject, priority:r.priority, at:Date.now()});
       saveSupTickets();
+      loadSupportHistory();
       toast(`Sent — typical first reply within ${r.sla_hours} hours`);
     } else {
       // No backend connected. Don't pretend it went anywhere — same
       // honesty standard as everything else that touches sending.
-      SUP_TICKETS.unshift({subject, priority: PLAN_SLA[currentPlan()].label, when:"Just now (demo — not actually sent)"});
+      SUP_TICKETS.unshift({subject, priority: PLAN_SLA[currentPlan()].label, when:"demo — not actually sent", at:Date.now()});
       saveSupTickets();
       toast("Demo mode — nothing was actually sent. Connect the backend for this to reach a real inbox.");
     }
@@ -5461,7 +5696,8 @@ function renderInterview(){
 
     <p style="text-align:center;font-size:12.5px;color:var(--ink3);margin-top:4px">
       A rehearsal aid built from your resume and this role — not a guarantee of the real questions.
-      ${data._demo?' <b style="color:var(--gold)">Demo mode — connect the backend for a live version.</b>':""}
+      ${data._demo?(DEMO?' <b style="color:var(--gold)">Demo mode — connect the backend for a live version.</b>'
+      :' <b style="color:var(--gold)">Built from your profile alone — the AI service is unavailable right now, so these are templates, not tailored questions.</b>'):""}
     </p>`;
 }
 function toggleReveal(id){
@@ -5505,8 +5741,9 @@ function resetCache(){CACHE={key:null,header:null,roles:{}};}
 
 async function buildResume(){
   if(!PROFILE_READY){toast("Upload your resume first");go("me");return;}
+  if(!EXP.length){toast("Add at least one role to your profile first");go("me");return;}
   const o=$("b-out"), T=totalM();
-  const title=$("b-title").value, spec=$("b-spec").value, depth=$("b-depth").value;
+  const title=$("b-title").value.trim()||EXP[0].role||"", spec=$("b-spec").value, depth=$("b-depth").value;
   const jd=$("b-jd").value.trim().slice(0,1500);
   const key=`${title}|${spec}|${depth}|${jd.slice(0,200)}`;
   if(CACHE.key&&CACHE.key!==key)resetCache();
@@ -5999,6 +6236,8 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   basicResumeDoc,coverLetterText,downloadCoverLetter,handleResumeStep,markStep,sendMail,copyBody,
   get EMAIL_STEPS(){return EMAIL_STEPS},preloadLib,
   get EVAL_REPORT(){return EVAL_REPORT},get EVAL_GOALS(){return EVAL_GOALS},
+  get DEMO(){return DEMO},get CP_API(){return CP_API},whenText,relWhen,askIntro,editPerson,savePerson,removePerson,attributeReferral,
+  renderPeople,renderRefer,get REF_LINK(){return REF_LINK},peopleNow,loadSupportHistory,
   get MODE(){return MODE},get BENCH(){return BENCH},get SUBS(){return SUBS},
   get SESSION(){return SESSION},get AUTH_TAB(){return AUTH_TAB},get AUTH_ROLE(){return AUTH_ROLE},
   openAuth,closeAuth,authTab,pickRole,authSubmit,signOut,applySession,bootSession,

@@ -3,3 +3,5 @@
 # only the trailing-slash variants are handled here.
 /privacy/ /privacy 301
 /terms/ /terms 301
+# Invite links: careerpilot.ai/join/CODE -> /?ref=CODE (the app stores the code and attributes it at signup)
+/join/* /?ref=:splat 302

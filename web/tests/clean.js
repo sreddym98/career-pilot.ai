@@ -76,9 +76,10 @@ console.log("── Deep sweep of every page ──");
 const BAD=/\b(api|endpoint|localhost|backend|ingest|aggregator|slug|schema|fingerprint|bearer|json|payload|env var|rapidapi|adzuna|cron|uvicorn|sqlite|postgres)\b/i;
 for(const p of ["jobs","me","apps","learn","people","resume","refer","plan"]){
   w.go(p);
-  let txt=$("p-"+p).textContent.replace(/\s+/g," ");
-  // job descriptions are employer content, not our UI copy
-  d.querySelectorAll("#p-"+p+" .jd").forEach(n=>{txt=txt.replace(n.textContent.replace(/\s+/g," "),"");});
+  const clone=$("p-"+p).cloneNode(true);
+  // job descriptions, titles and company names are employer content, not our UI copy
+  clone.querySelectorAll(".jd,.job").forEach(n=>n.remove());
+  let txt=clone.textContent.replace(/\s+/g," ");
   const hit=txt.match(BAD);
   ok(`${p} page is clean`,!hit,hit?`"${hit[0]}" in: ${txt.slice(Math.max(0,hit.index-40),hit.index+50)}`:"");
 }
