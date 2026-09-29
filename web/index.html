@@ -297,6 +297,28 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .ctag.skip{background:var(--sunk);color:var(--ink3);border:1px solid var(--line2)}
 @media(max-width:520px){.cardacts .btn{flex:1}.ctag{width:100%;margin-bottom:4px;text-align:center}}
 
+/* ── Add to Autopilot, on every job card and in the job detail ── */
+.apadd{display:inline-flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;max-width:100%}
+.apadd .btn{text-decoration:none}
+.apadd .btn:disabled{opacity:.8;cursor:progress}
+.apadd .btn:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+.apadd.done .btn{color:var(--moss2);border-color:var(--moss-l);background:var(--moss-s)}
+.apadd-spin{width:13px;height:13px;border-radius:50%;border:2px solid var(--moss-l);border-top-color:var(--moss);animation:apspin .8s linear infinite;flex-shrink:0}
+.apadd-note{font-size:12px;color:var(--ink3);line-height:1.35;overflow-wrap:anywhere}
+.apadd-err{font-size:12.5px;color:var(--clay);line-height:1.4;overflow-wrap:anywhere}
+.apadd-err a{color:var(--moss2);font-weight:600;cursor:pointer;text-decoration:underline}
+.acts .apadd{flex:1 1 180px}
+.acts .apadd .btn{width:100%}
+.cardacts .apadd{flex:1 1 100%;flex-direction:row;align-items:center;flex-wrap:wrap;gap:5px 10px}
+.cardacts .apadd .apadd-err{flex:1 1 100%}
+@media(max-width:520px){.cardacts .apadd .btn{flex:1 1 100%;width:100%}.cardacts .apadd .apadd-note{flex:1 1 100%}}
+.apfree[hidden]{display:none}
+.apfree{border-color:var(--moss-l);background:linear-gradient(180deg,var(--moss-s),var(--card) 80%)}
+.apfree p{font-size:13.5px;color:var(--ink2);line-height:1.6;margin:6px 0 0}
+.apfree .acts{margin-top:14px}
+.apfree .acts .btn{flex:0 1 auto}
+@media(max-width:520px){.apfree .acts .btn{flex:1 1 100%}}
+
 .showall{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink2);
   padding:11px 13px;border:1px solid var(--line2);border-radius:var(--r2);
   background:var(--card);cursor:pointer;white-space:nowrap}
@@ -1149,8 +1171,14 @@ select.sel:focus{border-color:var(--moss);outline:none}
 <div class="pg" id="p-autopilot">
   <div class="ph hero">
     <div><h1>Autopilot</h1>
-      <p>Runs on the schedule you set, prepares a tailored application for every fresh match, and holds each one ready — you approve with one tap, nothing goes out unreviewed.</p></div>
+      <p>Prepares a tailored application and holds it ready — you approve with one tap, nothing goes out unreviewed. Add any job yourself from Explore Jobs, or on Pro let it run on the schedule you set.</p></div>
     <div class="apbadge" id="ap-status"></div>
+  </div>
+
+  <div class="card apfree" id="ap-free" hidden>
+    <h2 id="ap-free-title"></h2>
+    <div id="ap-free-body"></div>
+    <div class="acts" id="ap-free-acts"></div>
   </div>
 
   <div class="card approg" id="ap-prog" hidden>
@@ -1167,14 +1195,14 @@ select.sel:focus{border-color:var(--moss);outline:none}
     <p><b>Autopilot never sends anything for you.</b> It finds and scores roles, tailors a cover letter and highlights for each, and holds them here. You read them, then Approve opens the real posting so you submit it yourself — one tap per role, or approve a whole batch at once. Nothing is emailed to an employer, so there is no unattended sending to get an account flagged and no unchecked AI message going out under your name.</p>
   </div>
 
-  <div class="card">
+  <div class="card" data-sched>
     <h2>Setup <span class="cnt" id="ap-setup-count"></span></h2>
     <div id="ap-checklist"></div>
     <div id="ap-needskills"></div>
   </div>
 
   <div class="card" id="ap-flightplan">
-    <h2>Flight plan</h2>
+    <h2>Flight plan <span class="tag" id="ap-flight-pro" hidden>Pro</span></h2>
     <p>Daily run slots</p>
     <div id="ap-slots"></div>
     <button class="btn btn-g btn-s" id="ap-addslot" onclick="addSlot()">+ Add a slot</button>
@@ -1223,7 +1251,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
     <button class="btn btn-p" style="width:100%;margin-top:12px" onclick="saveFlightPlan()">Save flight plan</button>
   </div>
 
-  <div class="card">
+  <div class="card" data-sched>
     <h2>What each run does</h2>
     <div class="ap-explain">
       <div class="apx"><div class="apxi">◆</div><div><b>Scores fresh, open roles</b><span>Recent postings that still have a working link are scored against your profile; only those at or above your minimum fit move on. Roles that exclude your work authorization are never queued.</span></div></div>
@@ -1234,7 +1262,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
     </div>
   </div>
 
-  <div class="card" id="ap-previewcard" data-live>
+  <div class="card" id="ap-previewcard" data-live data-sched>
     <div class="apqueuehead">
       <h2>What would run next</h2>
       <button class="btn btn-g btn-s" id="ap-previewbtn" onclick="previewNextRun()">Check matches</button>
@@ -1252,7 +1280,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
     <div id="ap-queue"></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-sched>
     <h2>Recent runs</h2>
     <div id="ap-runs"></div>
   </div>
@@ -1324,7 +1352,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
       <div class="row"><b>Everything on the job board</b></div>
       <div class="row"><b>Visa filtering</b></div>
       <div class="row"><b>10 tailored resumes &amp; cover letters / month</b></div>
-      <div class="row"><b>Autopilot</b><span class="rowsub">— Pro only</span></div>
+      <div class="row"><b>5 Autopilot applications</b><span class="rowsub">— add jobs yourself; a one-time starter allowance</span></div>
       <div class="row"><b>Application tracking</b></div>
       <button class="btn btn-g" id="free-cta" style="width:100%;margin-top:14px" disabled>Your current plan</button>
     </div>
@@ -1345,7 +1373,8 @@ select.sel:focus{border-color:var(--moss);outline:none}
       </div>
 
       <div class="row"><b>400 applications / month</b><span class="rowsub">tailored resume + cover letter, each one</span></div>
-      <div class="row"><b>Autopilot, higher daily cap</b></div>
+      <div class="row"><b>Scheduled Autopilot</b><span class="rowsub">— finds and prepares matches every weekday, up to 60 a day</span></div>
+      <div class="row"><b>Add any job to Autopilot</b><span class="rowsub">— no 5-job limit</span></div>
       <div class="row"><b>Pre-filled application answers</b></div>
       <div class="row"><b>Browser autofill extension</b></div>
       <div class="row"><b>Priority support</b></div>
@@ -2200,6 +2229,9 @@ window.addEventListener("resize", ()=>{
   _resizeT = setTimeout(()=>{
     if(typeof SELECTED_JOB==="undefined" || SELECTED_JOB==null) return;
     if(typeof isSplitView!=="function") return;
+    // Only while Explore Jobs is the page on screen; on any other page a resize
+    // (rotating a phone, resizing the window) must not pop the old job open over it.
+    if(!$("p-jobs") || !$("p-jobs").classList.contains("on")) return;
     const nowSplit = isSplitView();
     if(nowSplit && $("ov").classList.contains("on")){
       closeM(); openJob(SELECTED_JOB);
@@ -2629,6 +2661,7 @@ async function loadJobs(){
     FIT_AVAILABLE=d.fit_available===true;
     LIVE=true; LOAD_ERR=false; LAST_SYNC=new Date(); TOTAL_LIVE=d.total;
     rn();
+    if(SESSION && apLive() && !AP.plan) syncAP();     // once per visit: the free-allowance counter on the Add to Autopilot buttons
     if(!d.total && !$("q").value.trim() && !($("f-fam").value||$("f-type").value||$("f-mode").value)){
       $("count").innerHTML=`<span style="color:var(--ink3)">No roles loaded yet. The board fills after the first job import runs — check back shortly.</span>`;
     }
@@ -2657,6 +2690,7 @@ function mapJob(x,i){
     sk:x.skills||[], hm:"", jd:x.description||"",
     rec:null, fit:Number.isFinite(x.fit)?x.fit:null, fr:x.fit_reasons||null,
     verified:x.verified===true, vat:x.verified_at||"", direct:x.direct===true, source:x.source||"",
+    ap:x.autopilot==="queued"||x.autopilot==="approved"?x.autopilot:null,
     ...fitReasons(x)};
 }
 
@@ -2732,7 +2766,7 @@ function rn(){
   }
 
   $("list").innerHTML = r.length ? r.map(j=>`
-    <div class="job" data-jid="${j.id}" onclick='openJob(${jid(j)})' role="button" tabindex="0" onkeydown='if(event.key==="Enter")openJob(${jid(j)})'>
+    <div class="job" data-jid="${j.id}" onclick='openJob(${jid(j)})' role="button" tabindex="0" onkeydown='if(event.key==="Enter"&&event.target===this)openJob(${jid(j)})'>
       <div class="jt">
         <div class="lg2">${j.co[0]}</div>
         <div style="flex:1;min-width:0">
@@ -2756,12 +2790,13 @@ function rn(){
         ${j.cp==="lo"?'<span class="tag ok">Freshly posted</span>':""}
       </div>
       ${visaLine(j,auth)}
-      <div class="cardacts" onclick="event.stopPropagation()">
+      <div class="cardacts" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
         ${MODE==="recruiter"?benchTag(j):appliedTag(j)}
         ${MODE==="recruiter"
           ? `<button class="btn btn-p btn-s" onclick="pickCandidate('${String(j.id).replace(/'/g,"")}')">Submit someone</button>`
           : `<button class="btn btn-p btn-s" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>`}
         <button class="btn btn-g btn-s" onclick='openJob(${jid(j)})'>Details</button>
+        ${apAddHtml(j,"card")}
       </div>
     </div>`).join("")
     : (!DEMO && !LIVE)
@@ -2871,6 +2906,7 @@ function buildJobDetailHTML(j, closeFn){
            <button class="btn btn-g" onclick="go('bench')">Open bench</button>`
           : `<button class="btn btn-p" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>
             <button class="btn btn-g" onclick='tailorFor(${jid(j)})'>Tailor my resume</button>
+            ${apAddHtml(j,"detail")}
             <button class="btn btn-g" onclick='closeM();go("interview");prefillInterviewFromJob(J.find(x=>x.id===${jid(j)}))'>Practice interview</button>`}
     </div>
 
@@ -2962,6 +2998,83 @@ function toggleJD(){
   const b=$("jdBox"), m=$("jdMore");
   b.classList.toggle("open");
   m.textContent=b.classList.contains("open")?"Show less":"Read the full description";
+}
+
+/* ═══ ADD TO AUTOPILOT (one specific job, on demand) ═══
+   Every job card and the job detail carry this. The server does the work
+   (POST /api/autopilot/add-job: same queue, same AI checks and same approval
+   step as a scheduled run; nothing is ever sent) and is the only source of
+   truth: the state on each job (j.ap) comes from the jobs API, and the free
+   allowance from GET /api/autopilot. Nothing here is remembered in the browser. */
+const AP_ADD = {busy:new Set(), err:{}};
+const apPlanFree = () => !!SESSION && (AP.plan ? !["pro","recruiter"].includes(AP.plan) : !["pro","recruiter"].includes(SESSION.plan||"free"));
+function apAddHtml(j, ctx){
+  if(MODE==="recruiter") return "";
+  const id=String(j.id), sid=esc(id);
+  const box=(cls,inner,note,err)=>`<span class="apadd ${cls}" data-apid="${sid}" data-apctx="${ctx}">${inner}`
+    +(note?`<span class="apadd-note" role="status">${note}</span>`:"")
+    +(err?`<span class="apadd-err" role="alert">${err}</span>`:"")+`</span>`;
+  const e=AP_ADD.err[id];
+  const err=e?esc(e.msg)+(e.profile?` <a role="button" tabindex="0" onclick="closeM();go('me')" onkeydown="if(event.key==='Enter')this.click()">Open your profile</a>`:""):"";
+  if(AP_ADD.busy.has(id))
+    return box("busy",`<button type="button" class="btn btn-g btn-s" disabled aria-busy="true"><span class="apadd-spin" aria-hidden="true"></span>Preparing…</button>`,"Tailoring a cover letter for this role. This can take up to a minute.");
+  if(j.ap==="queued")
+    return box("done",`<a class="btn btn-g btn-s" href="#autopilot" onclick="go('autopilot');closeM();return false">✓ In your Autopilot queue</a>`,"Review it and approve it there.");
+  if(j.ap==="approved")
+    return box("done",`<a class="btn btn-g btn-s" href="#apps" onclick="go('apps');closeM();return false">✓ Approved in Autopilot</a>`,"");
+  const left = SESSION && apPlanFree() && Number.isFinite(AP.freeLeft) ? AP.freeLeft : null;
+  if(left===0)
+    return box("",`<button type="button" class="btn btn-p btn-s" onclick="closeM();go('plan')">Upgrade for more Autopilot</button>`,
+      `You've used your ${AP.freeAllowance||5} free Autopilot applications.`,err);
+  const note = left!=null ? `${left} of ${AP.freeAllowance||5} free left` : "";
+  return box("",`<button type="button" class="btn btn-g btn-s" onclick='addToAutopilot(${jid(j)})' title="Prepare a tailored application for this job and hold it for your approval. Nothing is sent.">Add to Autopilot</button>`,note,err);
+}
+/* Redraw every Add-to-Autopilot control in place (list + detail), so a state
+   change never re-renders the list or scrolls the detail pane. */
+function apRefreshAddButtons(){
+  document.querySelectorAll(".apadd[data-apid]").forEach(el=>{
+    const j=findJob(el.dataset.apid); if(!j) return;
+    const t=document.createElement("div"); t.innerHTML=apAddHtml(j,el.dataset.apctx);
+    const n=t.firstElementChild; if(!n) return;
+    const hadFocus=el.contains(document.activeElement);
+    el.replaceWith(n);
+    if(hadFocus){ const b=n.querySelector("button:not([disabled]),a"); if(b) b.focus({preventScroll:true}); }
+  });
+}
+function apTakeAllowance(r){
+  if(!r) return;
+  if(r.plan) AP.plan=r.plan;
+  if(Number.isFinite(r.freeAllowance)) AP.freeAllowance=r.freeAllowance;
+  if(Number.isFinite(r.freeUsed)) AP.freeUsed=r.freeUsed;
+  AP.freeLeft = Number.isFinite(r.freeLeft) ? r.freeLeft : null;
+}
+async function addToAutopilot(id){
+  const j=findJob(id); if(!j) return;
+  const key=String(j.id);
+  if(!CP_API){ toast("Autopilot needs a live account. This demo board can't prepare real applications."); return; }
+  if(!SESSION){ toast("Sign in to add jobs to Autopilot"); openAuth("up"); return; }
+  if(SESSION.account_type!=="seeker" || AP_ADD.busy.has(key) || j.ap) return;
+  initAP();
+  if(apPlanFree() && AP.freeLeft===0){ closeM(); go("plan"); return; }
+  AP_ADD.busy.add(key); delete AP_ADD.err[key]; apRefreshAddButtons();
+  const owner=AP.owner;
+  try{
+    const r=await CP_API_call("/api/autopilot/add-job",{method:"POST",body:JSON.stringify({fingerprint:key})});
+    if(AP.owner!==owner) return;
+    j.ap="queued"; apTakeAllowance(r); saveAP();
+    toast(r.alreadyQueued ? "This job was already in your Autopilot queue"
+      : r.belowMinFit ? `Added to your Autopilot queue. Note: it scores below your ${r.minFit}% minimum fit`
+      : "Added to your Autopilot queue. Review it under Autopilot");
+    syncAP();
+  }catch(e){
+    if(e.status===402 && apPlanFree()){ AP.freeLeft=0; AP.freeUsed=AP.freeAllowance||5; }
+    AP_ADD.err[key]={msg: e.status ? (e.message||"Couldn't add that job") : "Couldn't reach the server, so nothing was used. Try again.",
+                     profile: e.status===400 && /^Add your skills first/.test(e.message||"")};
+    if(!e.status){ loadJobs(); }              // the request may have landed: let the server say
+    else if(e.status===409 || e.status===402){ syncAP(); }
+  }finally{
+    AP_ADD.busy.delete(key); apRefreshAddButtons();
+  }
 }
 
 /* ═══ APPLY ═══
@@ -5074,8 +5187,11 @@ function renderPlanContext(){
 
 const apBlank = () => ({on:false, gmailConnected:false, resumeConfirmed:false, phoneVerified:false,
   slots:[9,13,17], titles:[], skills:[], workStyle:"", dailyCap:60, queue:[], runs:[], owner:"",
-  minFit:60, pausedUntil:"", emailDigest:true, emailConfigured:false, needsSkills:false, nextRunAt:""});
+  minFit:60, pausedUntil:"", emailDigest:true, emailConfigured:false, needsSkills:false, nextRunAt:"",
+  plan:"", freeAllowance:5, freeUsed:null, freeLeft:null});
 let AP = store.get("cp_autopilot", null);
+// The free allowance is the server's to say, never a cached copy from an earlier visit.
+if(AP){ AP.plan=""; AP.freeUsed=null; AP.freeLeft=null; }
 // A copy that belongs to a signed-in account must not outlive that session:
 // sign-out doesn't clear this key, so the next person on this browser would
 // otherwise see the previous account's queue, titles and setup state.
@@ -5170,7 +5286,7 @@ function renderAutopilot(){
       <button class="mini danger" onclick="removeSlot(${h})" title="Remove slot">✕</button>
     </div>`).join("") || `<p class="apsmall">No slots yet — add one below.</p>`);
   const perSlotCap = AP.slots.length ? Math.floor(AP.dailyCap / AP.slots.length) : 0;
-  if(!AP.dailyCap && apLive()) setHtml("ap-cap", `Autopilot isn't part of the Free plan. <a onclick="go('plan')" style="color:var(--moss2);font-weight:600">See Pro →</a>`);
+  if(!AP.dailyCap && apLive()) setHtml("ap-cap", `Scheduled runs are part of Pro. Free accounts add jobs to Autopilot themselves, one at a time, from Explore Jobs. <a onclick="go('plan')" style="color:var(--moss2);font-weight:600;cursor:pointer">See Pro →</a>`);
   else setHtml("ap-cap", `Total up to <b>${AP.slots.length*perSlotCap}/day</b> — your plan allows <b>${AP.dailyCap}/day</b>.`);
   const addBtn=$("ap-addslot"); if(addBtn) addBtn.disabled = AP.slots.length>=8;
 
@@ -5193,6 +5309,26 @@ function renderAutopilot(){
   const onEl=$("ap-on"); if(onEl) onEl.checked = AP.on;
   setTxt("ap-toggle-label", AP.on ? "Autopilot is on" : "Autopilot is paused");
 
+  const free = apLive() && apPlanFree();
+  const fc=$("ap-free");
+  if(fc){
+    fc.hidden=!free;
+    if(free){
+      const total=AP.freeAllowance||5, left=Number.isFinite(AP.freeLeft)?AP.freeLeft:null;
+      if(left===null){ setTxt("ap-free-title","Free Autopilot applications"); setHtml("ap-free-body",`<p>Checking how many you have left…</p>`); setHtml("ap-free-acts",""); }
+      else if(left>0){
+        setTxt("ap-free-title",`You have ${left} of ${total} free Autopilot applications`);
+        setHtml("ap-free-body",`<p>Use <b>Add to Autopilot</b> on any job in Explore Jobs and we'll tailor a cover letter and highlights for it and hold it below for your approval. The ${total} are a starter allowance for your whole account, not per day, and one isn't given back if you skip or remove it. <b>Scheduled Autopilot</b>, which finds and prepares matches for you on its own every weekday, is part of Pro. Nothing is ever sent for you.</p>`);
+        setHtml("ap-free-acts",`<button class="btn btn-p" onclick="go('jobs')">Explore jobs</button><button class="btn btn-g" onclick="go('plan')">See Pro</button>`);
+      }else{
+        setTxt("ap-free-title",`You've used your ${total} free Autopilot applications`);
+        setHtml("ap-free-body",`<p>What's in your queue below still works: read it, approve it or skip it. To add more jobs, and to run Autopilot on a schedule every weekday, upgrade to Pro.</p>`);
+        setHtml("ap-free-acts",`<button class="btn btn-p" onclick="go('plan')">Upgrade for more Autopilot</button><button class="btn btn-g" onclick="go('jobs')">Explore jobs</button>`);
+      }
+    }
+  }
+  document.querySelectorAll("#p-autopilot [data-sched]").forEach(el=>{ el.style.display = free ? "none" : (el.hasAttribute("data-live") ? (apLive()?"":"none") : ""); });
+  const fp=$("ap-flight-pro"); if(fp) fp.hidden=!free;
   setHtml("ap-queue-count", AP.queue.length ? `<span class="cnt">${AP.queue.length}</span>` : "");
   const allBtn=$("ap-approveall");
   if(allBtn){ allBtn.style.display = AP.queue.length>1 ? "" : "none"; allBtn.textContent = `Approve all ${AP.queue.length} — one tap`; }
@@ -5210,7 +5346,7 @@ function renderAutopilot(){
         <button class="btn btn-p btn-s" onclick="approveQueued(${i})">Approve</button>
       </div>
     </div>`).join("")
-    : `<div class="empty" style="padding:30px 20px"><h3>Nothing waiting</h3><p>${AP.on?"Your next run will prepare fresh matches at your next slot.":"Turn Autopilot on to start preparing applications."}</p></div>`);
+    : `<div class="empty" style="padding:30px 20px"><h3>Nothing waiting</h3><p>${free?"Add a job from Explore Jobs and it will be prepared and held here for your approval.":AP.on?"Your next run will prepare fresh matches at your next slot.":"Turn Autopilot on to start preparing applications."}</p></div>`);
 
   setHtml("ap-runs", AP.runs.length ? AP.runs.map(r=>`
     <div class="row"><div style="flex:1"><b>${esc(r.when)}</b><div class="sub">${+r.found||0} found · ${+r.prepared||0} prepared · ${+r.skipped||0} skipped${r.note?` · ${esc(r.note)}`:""}</div>${apReasons(r.details)}</div>
@@ -5290,6 +5426,7 @@ function adoptAP(s){
   AP.workStyle=["remote","hybrid","onsite"].includes(s.workStyle)?s.workStyle:""; AP.dailyCap=+s.dailyCap||0;
   AP.minFit=Number.isFinite(+s.minFit)?+s.minFit:60; AP.pausedUntil=s.pausedUntil||""; AP.emailDigest=s.emailDigest!==false;
   AP.emailConfigured=!!s.emailConfigured; AP.needsSkills=!!s.needsSkills; AP.nextRunAt=s.nextRunAt||"";
+  apTakeAllowance(s);
   AP.gmailConnected=!!s.gmailConnected; AP.resumeConfirmed=!!s.resumeConfirmed; AP.phoneVerified=!!s.phoneVerified; AP.phoneRequired=s.phoneRequired!==false;
   AP.queue=(s.queue||[]).map(q=>{
     let host="the employer's application form";
@@ -5302,7 +5439,11 @@ function adoptAP(s){
   AP.runs=(s.runs||[]).map(r=>({
     when:new Date(/(Z|[+-]\d\d:?\d\d)$/.test(r.at)?r.at:r.at+"Z").toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit"}),
     found:r.found, prepared:r.prepared, skipped:r.skipped, note:r.note, details:r.details||{}}));
+  // Keep each job's Autopilot state in step with the queue the server just sent.
+  const queued=new Set(AP.queue.map(q=>String(q.jobId)));
+  J.forEach(j=>{ if(queued.has(String(j.id))) j.ap="queued"; else if(j.ap==="queued") j.ap=null; });
   saveAP();
+  if(typeof apRefreshAddButtons==="function") apRefreshAddButtons();
 }
 async function syncAP(){
   if(!apLive()) return;
@@ -5377,7 +5518,7 @@ async function toggleAutopilot(){
   if(apToggling){ renderAutopilot(); return; }
   if(wantOn && apLive() && !AP.dailyCap){      // free plan: say so, don't send them through setup first
     $("ap-on").checked=false;
-    toast("Autopilot is part of Pro — upgrade to turn it on");
+    toast("Scheduled Autopilot is part of Pro. You can still add jobs to Autopilot yourself from Explore Jobs.");
     go("plan"); return;
   }
   const missing = [["resumeConfirmed","confirm your resume"],
@@ -5519,7 +5660,7 @@ function apOutcome(run){
     case "ai_invalid": return {head:"Nothing queued — the drafts failed our checks", detail:"The AI's drafts contained invented figures or leftover placeholders, so none were queued.", go:"retry"};
     case "out_of_credits": return {head:"Nothing queued — you're out of generations this month", detail:run.note||"", go:null};
     case "out_of_time": return {head:"Stopped early to stay within the time limit", detail:"The rest will be prepared on the next run.", go:"retry"};
-    case "not_pro": return {head:"Autopilot is part of Pro", detail:"", go:null};
+    case "not_pro": return {head:"Scheduled Autopilot is part of Pro", detail:"", go:null};
     default: return {head:"Run finished — nothing new was prepared", detail:run.note||"", go:null};
   }
 }
@@ -5723,7 +5864,7 @@ async function approveQueued(i,id){
     const q = AP.queue[apIdx(i,id)]; if(!q) return;
     try{
       const r = await CP_API_call(`/api/autopilot/queue/${encodeURIComponent(q.id)}/approve`,{method:"POST"});
-      const j = J.find(x=>x.id===q.jobId); if(j) mark(j,"opened","Approved for manual application");
+      const j = J.find(x=>x.id===q.jobId); if(j){ mark(j,"opened","Approved for manual application"); j.ap="approved"; }
       if(/^https?:\/\//i.test(r.apply_url||"")) window.open(r.apply_url,"_blank","noopener");
       toast(`Approved for ${q.co} — submit it on the posting that just opened`);
     }catch(e){ toast(e.message||"Couldn't approve that"); }
@@ -5740,7 +5881,7 @@ async function skipQueued(i,id){
   initAP();
   if(apLive()) return apAct(async()=>{
     const q = AP.queue[apIdx(i,id)]; if(!q) return;
-    try{ await CP_API_call(`/api/autopilot/queue/${encodeURIComponent(q.id)}`,{method:"DELETE"}); toast("Skipped"); }
+    try{ await CP_API_call(`/api/autopilot/queue/${encodeURIComponent(q.id)}`,{method:"DELETE"}); const sj=J.find(x=>x.id===q.jobId); if(sj) sj.ap=null; toast("Skipped"); }
     catch(e){ toast(e.message||"Couldn't skip that"); }
     return syncAP();
   });
@@ -5758,7 +5899,7 @@ async function approveAllQueued(){
   if(apLive()) return apAct(async()=>{
     try{
       const r = await CP_API_call("/api/autopilot/queue/approve-all",{method:"POST"});
-      AP.queue.forEach(q=>{ const j=J.find(x=>x.id===q.jobId); if(j) mark(j,"opened","Approved for manual application"); });
+      AP.queue.forEach(q=>{ const j=J.find(x=>x.id===q.jobId); if(j){ mark(j,"opened","Approved for manual application"); j.ap="approved"; } });
       const k = Number.isInteger(r&&r.approved) ? r.approved : n;
       toast(`${k} application${k>1?"s":""} approved for manual submission`);
     }catch(e){ toast(e.message||"Couldn't approve the batch"); }

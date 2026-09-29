@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     RATE_AI_PER_USER: int = 30           # /api/ai/* calls per user per window
     RATE_AI_PER_IP: int = 120
     RATE_AI_WINDOW_S: int = 60
+    RATE_AUTOPILOT_ADD: int = 12         # POST /api/autopilot/add-job (one AI call each) per user per window
+    RATE_AUTOPILOT_ADD_PER_IP: int = 40  # ... per source IP (all accounts)
+    RATE_AUTOPILOT_ADD_WINDOW_S: int = 60
     # Which X-Forwarded-For entry is the client when ENV != dev. 0 = first hop,
     # -1 = last (the address the platform proxy itself saw; unspoofable).
     TRUSTED_IP_HOP: int = 0

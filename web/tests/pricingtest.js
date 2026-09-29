@@ -26,7 +26,7 @@ const cards = qa('.pricegrid[data-only="seeker"] .pricecard');
 ok("two cards shown",cards.length===2,cards.length+"");
 const freeText = cards[0].textContent;
 ok("Free tier states 10 tailored resumes+covers",/10 tailored resumes/i.test(freeText));
-ok("Free tier does not claim Autopilot (server: Pro only)",!/Autopilot included/i.test(freeText)&&/Autopilot[\s\S]*Pro only/i.test(freeText));
+ok("Free tier lists 5 Autopilot applications, not scheduled Autopilot",/5 Autopilot applications/i.test(freeText)&&!/Scheduled Autopilot/i.test(freeText));
 
 const proText = cards[1].textContent;
 ok("Pro shows the list price struck through",proText.includes("$149.99"));
@@ -34,6 +34,7 @@ ok("Pro shows the offer price prominently",proText.includes("$119.99"));
 ok("  list price actually has strikethrough styling",!!cards[1].querySelector(".pwas"));
 ok("  offer price is the bigger/emphasized element",!!cards[1].querySelector(".pnow"));
 ok("Pro states 400 applications/month",/400 applications/i.test(proText));
+ok("Pro lists Scheduled Autopilot",/Scheduled Autopilot/i.test(proText));
 ok("  button shows the real charge amount",qa(".pricecard")[1].querySelector("button").textContent.includes("119.99"));
 ok("Pro card is visually featured",cards[1].classList.contains("featured"));
 ok("  has a badge",!!cards[1].querySelector(".pricebadge"));

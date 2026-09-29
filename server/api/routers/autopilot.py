@@ -23,11 +23,13 @@ import re
 import threading
 import time
 from collections import Counter
+from contextlib import contextmanager
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import or_
+from sqlalchemy import func, or_, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api import credits, mailer, matching
@@ -36,11 +38,14 @@ from api.db import SessionLocal, get_db
 from api.models import (Application, AutopilotConfig, AutopilotRun, Integration,
                         Job, Position, User, UserSkill)
 from api.routers import ai
+from api.ratelimit import autopilot_add_limit
 from api.settings import settings
 
 router = APIRouter(prefix="/api/autopilot", tags=["autopilot"])
 
-DAILY_CAP = {"pro": 60, "recruiter": 60}   # free has no Autopilot
+DAILY_CAP = {"pro": 60, "recruiter": 60}   # scheduled runs are Pro-only; free has no schedule
+FREE_ALLOWANCE = 5         # free accounts: LIFETIME count of on-demand preparations (not per day, never resets)
+MANUAL_NOTE = "Added by you from Explore Jobs"   # marks the bookkeeping run row an on-demand add leaves
 MAX_PER_RUN = 5            # bounds AI spend and run time per slot
 MAX_QUEUE = 25             # stop piling up work the user hasn't looked at
 MAX_USERS_PER_TICK = 40    # one tick is one HTTP-triggered background job
@@ -55,6 +60,8 @@ INTERACTIVE_BUDGET_S = 70  # "Run now" is an HTTP request; stay under typical 10
 STALE_RUN_MIN = 15         # a run still "Running" after this long was cut off (host restart)
 RUNNING_NOTE = "Running…"
 STALE_PROGRESS_S = 180     # a run that hasn't reported progress for this long is shown as stopped early
+AI_BREAKER_S = 45          # on-demand adds stop calling a failing AI for this long (circuit breaker)
+LOCK_WAIT_S = 100          # how long an on-demand add waits behind the same user's other add
 ITEM_REASONS = {"ai_unavailable": "AI busy — try again later", "ai_invalid": "Draft failed our checks",
                 "duplicate": "Already in your list"}
 MAX_PAUSE_DAYS = 90
@@ -89,8 +96,14 @@ def _config(db: Session, user: User) -> AutopilotConfig:
     if not cfg:
         cfg = AutopilotConfig(user_id=user.id, on=False, resume_confirmed=False,
                               slots=[9, 13, 17], titles=[], skills=[], work_style="",
-                              min_fit=DEFAULT_MIN_FIT, email_digest=True)
-        db.add(cfg); db.commit(); db.refresh(cfg)
+                              min_fit=DEFAULT_MIN_FIT, email_digest=True, free_used=0)
+        db.add(cfg)
+        try:
+            db.commit()
+        except IntegrityError:            # another request created it first
+            db.rollback()
+            cfg = db.get(AutopilotConfig, user.id)
+        db.refresh(cfg)
     return cfg
 
 
@@ -121,6 +134,18 @@ def _gates(db: Session, user: User, cfg: AutopilotConfig) -> dict:
 
 def _cap(user: User) -> int:
     return DAILY_CAP.get(user.plan, 0)
+
+
+def _free_plan(user: User) -> bool:
+    """Accounts with no scheduled-run cap are on the starter allowance."""
+    return _cap(user) == 0
+
+
+def _allowance(user: User, cfg: AutopilotConfig) -> dict:
+    """The free starter allowance. `freeLeft` is None for plans that don't use it."""
+    used = int(cfg.free_used or 0)
+    return {"freeAllowance": FREE_ALLOWANCE, "freeUsed": used,
+            "freeLeft": max(0, FREE_ALLOWANCE - used) if _free_plan(user) else None}
 
 
 # ── profile + scoring ────────────────────────────────────────────────────
@@ -192,6 +217,12 @@ def _drop_closed(db: Session, user: User) -> int:
     return n
 
 
+def _not_manual():
+    """Scheduled/"Run now" runs only. On-demand adds leave a bookkeeping row (so
+    the daily cap counts them) that is not a run and is kept out of run history."""
+    return or_(AutopilotRun.note.is_(None), AutopilotRun.note != MANUAL_NOTE)
+
+
 def _beat_of(r: AutopilotRun) -> dt.datetime | None:
     """When this run last reported progress: its heartbeat, else when it started."""
     hb = (r.details or {}).get("heartbeat")
@@ -255,7 +286,7 @@ def _state(db: Session, user: User) -> dict:
     jobs = {j.fingerprint: j for j in db.query(Job).filter(
         Job.fingerprint.in_([a.fingerprint for a in q if a.fingerprint]))} if q else {}
     prof = _matcher(db, user, cfg) if q else None
-    runs = (db.query(AutopilotRun).filter(AutopilotRun.user_id == user.id)
+    runs = (db.query(AutopilotRun).filter(AutopilotRun.user_id == user.id, _not_manual())
             .order_by(AutopilotRun.ran_at.desc()).limit(10).all())
     nxt = next_run_at(cfg) if cfg.on else None
     return {
@@ -267,7 +298,8 @@ def _state(db: Session, user: User) -> dict:
         "emailDigest": bool(cfg.email_digest), "emailConfigured": email_configured(),
         "needsSkills": not (_skills_of(db, user) or cfg.skills),
         "nextRunAt": nxt.isoformat() if nxt else None,
-        "plan": user.plan, **_gates(db, user, cfg),
+        "plan": user.plan, "scheduledAvailable": _cap(user) > 0, **_allowance(user, cfg),
+        **_gates(db, user, cfg),
         "queue": [_item(a, jobs.get(a.fingerprint), prof) for a in q],
         "runs": [{"at": r.ran_at, "found": r.found, "prepared": r.prepared,
                   "skipped": r.skipped, "note": r.note, "details": r.details or {}} for r in runs],
@@ -338,7 +370,8 @@ def save(body: ConfigIn, user: User = Depends(require_seeker), db: Session = Dep
 
     if body.on is True:
         if _cap(user) == 0:
-            raise HTTPException(402, "Autopilot is part of Pro. Upgrade to turn it on.")
+            raise HTTPException(402, "Scheduled Autopilot runs are part of Pro. On the Free plan you can still add "
+                                     f"up to {FREE_ALLOWANCE} jobs to Autopilot yourself from Explore Jobs.")
         missing = [label for ok, label in (
             (_gates(db, user, cfg)["resumeConfirmed"], "confirm your resume"),
             (_gates(db, user, cfg)["phoneVerified"] or not phone_required(), "verify your phone")) if not ok]
@@ -466,9 +499,16 @@ def _clean_ai(got, source_text: str, job: Job, user: User) -> dict | None:
             "cover_letter": letter.strip()[:4000]}
 
 
-def _prepare_one(db: Session, user: User, job: Job, profile: str) -> tuple[Application | None, str | None]:
+def _prepare_one(db: Session, user: User, job: Job, profile: str, charge: str = "credit",
+                 manual: bool = False, replace: Application | None = None) -> tuple[Application | None, str | None]:
     """(application, None) or (None, reason) with reason in duplicate |
-    ai_unavailable | ai_invalid. A failed attempt costs the user nothing."""
+    ai_unavailable | ai_invalid | free_exhausted. A failed attempt costs the
+    user nothing.
+
+    charge="credit" is the ordinary path: one generation credit. charge="free"
+    spends the free starter allowance instead (NOT a credit): the queued draft
+    and the counter bump commit together, and the bump is a conditional UPDATE,
+    so two racing requests can never both take the last one."""
     source = profile + "\n" + (job.description or "") + "\n" + (job.title or "")
     key = ai._key("autopilot", user.id, job.fingerprint, hashlib.sha256(profile.encode()).hexdigest()[:12])
     clean = None
@@ -507,18 +547,46 @@ RULES
         ai._store(db, key, clean)
 
     # Re-check right before writing: two overlapping runs must not double-queue.
-    if db.query(Application.id).filter(Application.user_id == user.id,
-                                       Application.fingerprint == job.fingerprint).first():
+    dup = db.query(Application.id).filter(Application.user_id == user.id,
+                                          Application.fingerprint == job.fingerprint)
+    if replace is not None:             # the user's own earlier skip, being re-added on purpose
+        dup = dup.filter(Application.id != replace.id)
+    if dup.first():
         return None, "duplicate"
+    if replace is not None:
+        db.delete(replace); db.flush()
     app = Application(
         user_id=user.id, fingerprint=job.fingerprint, company=job.company, title=job.title,
         location=job.location, status="ready", origin="autopilot",
         tailored_resume={"summary": clean["summary"], "highlights": clean["highlights"]},
         cover_letter=clean["cover_letter"], form_fields={"subject": clean["subject"]})
     db.add(app)
-    credits.spend(db, user, 1)          # one commit: the queued item and its generation
+    if manual:                          # bookkeeping so DAILY_CAP counts on-demand adds too
+        db.add(AutopilotRun(user_id=user.id, found=1, prepared=1, skipped=0, note=MANUAL_NOTE,
+                            details={"manual": True, "outcome": "manual"},
+                            ran_at=dt.datetime.now(dt.timezone.utc)))
+    if charge == "free":
+        if not _spend_free(db, user):
+            db.rollback()               # nothing queued, nothing spent
+            return None, "free_exhausted"
+    else:
+        credits.spend(db, user, 1)      # one commit: the queued item and its generation
     db.refresh(app)
     return app, None
+
+
+def _spend_free(db: Session, user: User) -> bool:
+    """Take one of the free allowance atomically and commit (the caller's pending
+    queue item goes in the same commit). False if none was left."""
+    res = db.execute(update(AutopilotConfig)
+                     .where(AutopilotConfig.user_id == user.id,
+                            func.coalesce(AutopilotConfig.free_used, 0) < FREE_ALLOWANCE)
+                     .values(free_used=func.coalesce(AutopilotConfig.free_used, 0) + 1)
+                     .execution_options(synchronize_session=False))
+    if res.rowcount != 1:
+        return False
+    db.commit()
+    return True
 
 
 def _plural(n: int, one: str, many: str | None = None) -> str:
@@ -594,7 +662,7 @@ def prepare_for(db: Session, user: User, cfg: AutopilotConfig, budget_s: float |
         if dropped:
             details["dropped_closed"] = dropped
         if _cap(user) == 0:
-            return finish("Autopilot is part of Pro", "not_pro")
+            return finish("Scheduled Autopilot runs are part of Pro", "not_pro")
         queue_len = len(_queue(db, user))
         if queue_len >= MAX_QUEUE:
             return finish("Your approval queue is full — approve or clear some items", "queue_full")
@@ -753,7 +821,7 @@ def progress(user: User = Depends(require_seeker), db: Session = Depends(get_db)
     Covers scheduled runs too, since they leave the same row."""
     cfg = _config(db, user)
     now = dt.datetime.now(dt.timezone.utc)
-    r = (db.query(AutopilotRun).filter(AutopilotRun.user_id == user.id)
+    r = (db.query(AutopilotRun).filter(AutopilotRun.user_id == user.id, _not_manual())
          .order_by(AutopilotRun.ran_at.desc()).first())
     nxt = next_run_at(cfg) if cfg.on else None
     return {"now": now.isoformat(), "on": bool(cfg.on),
@@ -784,6 +852,167 @@ def preview_next(user: User = Depends(require_seeker), db: Session = Depends(get
                    "thisRun": i < per_slot}
                   for i, (fit, r, j) in enumerate(eligible[:10])],
     }
+
+
+# ── add one job on demand ────────────────────────────────────────────────
+
+_locks: dict[str, list] = {}       # user id -> [Lock, waiters]; entries vanish when idle
+_locks_guard = threading.Lock()
+
+
+@contextmanager
+def _user_lock(uid: str):
+    """One on-demand add per user at a time, in this process. Concurrent clicks
+    queue up instead of racing, and each one re-reads the queue and the counter
+    once it gets its turn (so a double-click on one job yields ONE draft). The
+    conditional UPDATE in _spend_free is what protects the counter if the API
+    ever runs as more than one process."""
+    with _locks_guard:
+        ent = _locks.setdefault(uid, [threading.Lock(), 0])
+        ent[1] += 1
+    got = ent[0].acquire(timeout=LOCK_WAIT_S)
+    try:
+        if not got:
+            raise HTTPException(503, "Still preparing your previous job. Try again in a moment.")
+        yield
+    finally:
+        if got:
+            ent[0].release()
+        with _locks_guard:
+            ent[1] -= 1
+            if ent[1] <= 0:
+                _locks.pop(uid, None)
+
+
+_breaker = {"strikes": 0, "until": 0.0}
+_breaker_lock = threading.Lock()
+
+
+def _breaker_open() -> bool:
+    with _breaker_lock:
+        return time.monotonic() < _breaker["until"]
+
+
+def _breaker_record(ai_down: bool | None):
+    """True/False = the AI call failed/succeeded; None = no verdict. AI_STRIKES
+    failures in a row open the breaker for AI_BREAKER_S so clicks answer at once
+    instead of each waiting out a slow, failing provider."""
+    if ai_down is None:
+        return
+    with _breaker_lock:
+        if not ai_down:
+            _breaker["strikes"] = 0
+            return
+        _breaker["strikes"] += 1
+        if _breaker["strikes"] >= AI_STRIKES:
+            _breaker["until"] = time.monotonic() + AI_BREAKER_S
+            _breaker["strikes"] = 0
+
+
+def reset_breaker():
+    with _breaker_lock:
+        _breaker["strikes"], _breaker["until"] = 0, 0.0
+
+
+AUTH_LABEL = {"usc": "U.S. citizen", "gc": "green card", "h1b": "H-1B", "opt": "OPT/CPT", "cpt": "OPT/CPT"}
+
+
+class AddJobIn(BaseModel):
+    fingerprint: str = Field(min_length=1, max_length=200)
+
+
+def _added(db: Session, user: User, cfg: AutopilotConfig, app: Application, job: Job, prof, already: bool) -> dict:
+    item = _item(app, job, prof)
+    db.refresh(cfg)
+    return {"item": item, "alreadyQueued": already, "plan": user.plan,
+            "belowMinFit": item["fit"] is not None and item["fit"] < _min_fit(cfg),
+            "minFit": _min_fit(cfg), "queueSize": len(_queue(db, user)), **_allowance(user, cfg)}
+
+
+@router.post("/add-job", dependencies=[Depends(autopilot_add_limit)])
+def add_job(body: AddJobIn, user: User = Depends(require_seeker), db: Session = Depends(get_db)):
+    """Prepare ONE specific job the user picked on Explore Jobs into their
+    approval queue, now. Same queue, same AI rules and same approval step as a
+    scheduled run; nothing is ever sent. Free accounts spend the lifetime
+    starter allowance (never a generation credit); Pro spends a credit and
+    counts toward the daily cap. A failed or rejected draft costs nothing."""
+    with _user_lock(user.id):
+        return _add_job(db, user, body.fingerprint.strip())
+
+
+def _add_job(db: Session, user: User, fp: str) -> dict:
+    job = db.get(Job, fp)
+    if not job:
+        raise HTTPException(404, "That job isn't on the board any more.")
+    if not job.active or job.link_status == "dead":
+        raise HTTPException(409, "This posting has closed or its apply link no longer works, so it can't be added.")
+    if not (job.apply_url or "").lower().startswith("https://"):
+        raise HTTPException(400, "This posting has no secure (https) apply link, so Autopilot can't hand it to you to submit.")
+
+    _drop_closed(db, user)
+    cfg = _config(db, user)
+    db.refresh(cfg)
+    mine = db.query(Application).filter(Application.user_id == user.id, Application.fingerprint == fp).first()
+    replace = None
+    if mine is not None:
+        if mine.origin == "autopilot" and mine.status == "ready":     # idempotent: same item, nothing spent
+            return _added(db, user, cfg, mine, job, _matcher(db, user, cfg), True)
+        if mine.status != "skipped":
+            raise HTTPException(409, "You already have this job in your applications"
+                                     + (" (approved in Autopilot)." if mine.origin == "autopilot" else "."))
+        replace = mine
+    else:
+        key = ((job.company or "").strip().lower(), (job.title or "").strip().lower())
+        for a in db.query(Application).filter(Application.user_id == user.id, Application.status != "skipped").all():
+            if ((a.company or "").strip().lower(), (a.title or "").strip().lower()) == key:
+                raise HTTPException(409, f"You already have {job.title} at {job.company} in your applications or queue "
+                                         "(this looks like a re-listing of it).")
+
+    profile, skills = _profile_block(db, user)
+    prof = _matcher(db, user, cfg, skills)
+    if prof is None:
+        raise HTTPException(400, "Add your skills first. Autopilot scores every job against your skills and writes "
+                                 "the tailored application from your profile.")
+    scored = matching.score_job(prof, job)
+    if (scored["fit_reasons"] or {}).get("blocked"):
+        held = ", ".join(dict.fromkeys(AUTH_LABEL.get(a, a) for a in prof.auth_names)) or "your work authorization"
+        raise HTTPException(400, f"This posting says it won't accept {held}, so it isn't one you can apply to.")
+    if len(_queue(db, user)) >= MAX_QUEUE:
+        raise HTTPException(409, f"Your Autopilot queue is full ({MAX_QUEUE}). Approve or skip a few, then add this one.")
+
+    free = _free_plan(user)
+    if free:
+        if int(cfg.free_used or 0) >= FREE_ALLOWANCE:
+            raise HTTPException(402, f"You've used all {FREE_ALLOWANCE} of your free Autopilot applications. "
+                                     "Upgrade to Pro to add more, and to run Autopilot on a schedule.")
+    else:
+        if credits.remaining(db, user) < 1:
+            raise HTTPException(402, "You're out of generations for this month, so nothing more can be prepared until it resets.")
+        since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=24)
+        today = sum(r.prepared or 0 for r in db.query(AutopilotRun).filter(
+            AutopilotRun.user_id == user.id, AutopilotRun.ran_at >= since))
+        if today >= _cap(user):
+            raise HTTPException(429, f"Daily limit reached ({_cap(user)}/day). More can be prepared tomorrow.")
+    cost = "Nothing was used from your free allowance." if free else "No generation was used."
+    if _breaker_open():
+        raise HTTPException(503, f"The AI is busy right now, so this wasn't prepared. {cost} Try again in a minute.")
+
+    app, reason = _prepare_one(db, user, job, profile, charge="free" if free else "credit", manual=True, replace=replace)
+    _breaker_record(True if reason == "ai_unavailable" else False if app else None)
+    if app:
+        return _added(db, user, cfg, app, job, prof, False)
+    if reason == "duplicate":
+        again = db.query(Application).filter(Application.user_id == user.id, Application.fingerprint == fp).first()
+        if again is not None and again.origin == "autopilot" and again.status == "ready":
+            return _added(db, user, cfg, again, job, prof, True)
+        raise HTTPException(409, "You already have this job in your applications.")
+    if reason == "free_exhausted":
+        raise HTTPException(402, f"You've used all {FREE_ALLOWANCE} of your free Autopilot applications. "
+                                 "Upgrade to Pro to add more, and to run Autopilot on a schedule.")
+    if reason == "ai_invalid":
+        raise HTTPException(422, "The AI's draft didn't pass our accuracy checks (it included figures or placeholders that "
+                                 f"aren't in your profile), so it wasn't added. {cost} Try again.")
+    raise HTTPException(503, f"The AI is busy right now, so this wasn't prepared. {cost} Try again in a minute.")
 
 
 # ── the schedule ─────────────────────────────────────────────────────────

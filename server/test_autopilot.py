@@ -474,6 +474,326 @@ AP.run_due(tue_9am_ct)
 ok("progress: a tick-driven run is visible the same way", AP.progress(pg, db)["run"]["state"] == "done" and AP.progress(pg, db)["run"]["prepared"] >= 1)
 db.query(Application).filter(Application.user_id.in_([pg.id, other.id])).delete(); db.commit()
 
+# ── add one job on demand + the free starter allowance ──
+print("\nADD TO AUTOPILOT / FREE ALLOWANCE\n")
+import threading, time as _tm
+from fastapi.testclient import TestClient
+from sqlalchemy import event as _ev, text as _text
+from api.main import app as _app
+from api import ratelimit as _RL
+from api.db import engine as _engine
+
+_cl = TestClient(_app, raise_server_exceptions=False)
+settings.RATE_LIMIT_ENABLED = False
+_RL.reset(); AP.reset_breaker()
+_RUN = str(int(_tm.time() * 1000))
+FAKE_CALLS = {"n": 0}
+def slow_ok(prompt, max_tokens=1400, label="", fast=False):
+    FAKE_CALLS["n"] += 1
+    ok("add-job uses the fast model", fast is True)
+    _tm.sleep(0.05)
+    return {"subject": "S", "summary": "sum", "highlights": ["a", "b"], "cover_letter": LETTER}
+AI._call = slow_ok
+
+def mkuser(tag, plan="free", skills=("Cypress",), position=True, auth=("h1b",)):
+    r = _cl.post("/api/auth/signup", json={"email": f"{tag}{_RUN}@aptest.example.com", "password": "Correct-horse-9",
+                                           "name": tag.title(), "account_type": "seeker"})
+    assert r.status_code == 201, r.text
+    d = r.json(); uid = d["user"]["id"]
+    with SessionLocal() as s:
+        us = s.get(User, uid); us.plan = plan; us.work_auth = list(auth); us.headline = "Senior SDET"
+        for k in skills: s.add(UserSkill(user_id=uid, skill=k))
+        if position:
+            s.add(Position(user_id=uid, company="Acme", role="SDET", started_on=dt.date(2020, 1, 1),
+                           bullets=["Built Cypress suites", "Cut regression time in half"]))
+        s.commit()
+    return uid, {"Authorization": "Bearer " + d["access_token"]}
+
+def mkjob(fp, title="Senior SDET", skills=("Cypress",), **kw):
+    kw.setdefault("apply_url", f"https://x.test/{fp}")
+    j = Job(fingerprint=fp, source="aptest", company=f"Co-{fp}", title=title, required_skills=list(skills),
+            active=True, first_seen=now, posted_at=now, **kw)
+    db.add(j); db.commit(); return j
+
+def addj(h, fp):
+    r = _cl.post("/api/autopilot/add-job", json={"fingerprint": fp}, headers=h)
+    try: return r.status_code, r.json()
+    except Exception: return r.status_code, {}
+
+def cfg_of(uid):
+    with SessionLocal() as s:
+        c = s.get(AutopilotConfig, uid)
+        return int(c.free_used or 0) if c else 0
+def apps_of(uid):
+    with SessionLocal() as s:
+        return s.query(Application).filter(Application.user_id == uid).all()
+def used_credits(uid):
+    with SessionLocal() as s: return s.get(User, uid).credits_used or 0
+
+for i in range(1, 12): mkjob(f"nj{i}", title=f"SDET Level {chr(64+i)}")
+mkjob("njdead", link_status="dead"); mkjob("njoff"); db.query(Job).filter(Job.fingerprint == "njoff").update({"active": False})
+mkjob("njhttp", apply_url="http://insecure.test/x"); mkjob("njnourl"); db.query(Job).filter(Job.fingerprint == "njnourl").update({"apply_url": ""})
+mkjob("njvisa", visa_h1b="n"); mkjob("njlow", title="Registered Nurse", skills=("Patient care", "Triage")); db.commit()
+
+FA, HA = mkuser("fa")
+s, r = addj(HA, "nj1")
+ok("free add: 200 with the queue item", s == 200 and r["item"]["fingerprint"] == "nj1" and r["alreadyQueued"] is False, (s, r))
+ok("  item carries the real fit + reasons", isinstance(r["item"]["fit"], int) and r["item"]["matched_skills"] == ["Cypress"] and "visa" in r["item"], r.get("item"))
+ok("  allowance: 1 used, 4 left of 5", (r["freeAllowance"], r["freeUsed"], r["freeLeft"]) == (5, 1, 4), r)
+q = [a for a in apps_of(FA) if a.fingerprint == "nj1"]
+ok("  same queue as scheduled runs: origin autopilot, status ready, tailored content stored",
+   len(q) == 1 and q[0].origin == "autopilot" and q[0].status == "ready" and q[0].cover_letter == LETTER
+   and q[0].tailored_resume["highlights"] == ["a", "b"] and q[0].form_fields["subject"] == "S")
+ok("  a FREE preparation does not spend a generation credit", used_credits(FA) == 0, used_credits(FA))
+st = _cl.get("/api/autopilot", headers=HA).json()
+ok("GET /api/autopilot: plan + allowance + the item in the queue",
+   st["plan"] == "free" and st["freeAllowance"] == 5 and st["freeUsed"] == 1 and st["freeLeft"] == 4
+   and [x["fingerprint"] for x in st["queue"]] == ["nj1"] and st["dailyCap"] == 0 and st["scheduledAvailable"] is False, {k: st[k] for k in ("plan", "freeUsed", "freeLeft", "dailyCap")})
+ok("  the on-demand bookkeeping row is not shown as a run", st["runs"] == [], st["runs"])
+ok("  ...and is not the 'latest run' the progress card shows", _cl.get("/api/autopilot/progress", headers=HA).json()["run"] is None)
+before = FAKE_CALLS["n"]
+s, r = addj(HA, "nj1")
+ok("idempotent: adding the same job again returns the SAME item, spends nothing, no AI call",
+   s == 200 and r["alreadyQueued"] is True and r["freeUsed"] == 1 and FAKE_CALLS["n"] == before and len([a for a in apps_of(FA) if a.fingerprint == "nj1"]) == 1, (s, r))
+ok("  ...same queue item id", r["item"]["id"] == q[0].id)
+
+for fp in ("nj2", "nj3", "nj4", "nj5"):
+    s, r = addj(HA, fp); ok(f"free add {fp}", s == 200, (s, r))
+ok("5 preparations used, 0 left", (r["freeUsed"], r["freeLeft"]) == (5, 0) and cfg_of(FA) == 5, r)
+before = FAKE_CALLS["n"]
+s, r = addj(HA, "nj6")
+ok("the 6th is refused with 402 and an upgrade message", s == 402 and "Upgrade" in r["detail"] and "5" in r["detail"], (s, r))
+ok("  the AI was not even called, and nothing was queued or spent", FAKE_CALLS["n"] == before and cfg_of(FA) == 5 and not [a for a in apps_of(FA) if a.fingerprint == "nj6"])
+
+# no gaming: the counter is lifetime, not "items currently in the queue"
+ids = [a.id for a in sorted(apps_of(FA), key=lambda a: a.fingerprint)]      # nj1..nj5, in a fixed order on every database
+for aid in ids[:2]:
+    ok("skip works for a free user (queue stays usable)", _cl.delete(f"/api/autopilot/queue/{aid}", headers=HA).status_code == 200)
+ok("skipping items does not give preparations back", addj(HA, "nj6")[0] == 402 and cfg_of(FA) == 5)
+with SessionLocal() as s_:                                                   # even deleting the rows outright
+    s_.query(Application).filter(Application.user_id == FA, Application.id.in_(ids[2:4])).delete(synchronize_session=False); s_.commit()
+ok("deleting queue rows does not give preparations back", addj(HA, "nj7")[0] == 402 and cfg_of(FA) == 5)
+ok("re-adding a job you skipped also needs a preparation (blocked at 0)", addj(HA, "nj1")[0] == 402 and cfg_of(FA) == 5)
+ap_id = [a for a in apps_of(FA) if a.fingerprint == "nj5"][0].id
+ar = _cl.post(f"/api/autopilot/queue/{ap_id}/approve", headers=HA)
+ok("Approve still just hands back the apply_url (free users too)", ar.status_code == 200 and ar.json()["apply_url"].startswith("https://x.test/"), ar.text)
+ok("approving gives nothing back either", addj(HA, "nj8")[0] == 402 and cfg_of(FA) == 5)
+ok("scheduled Autopilot is still Pro-only for free users", _cl.put("/api/autopilot", json={"on": True}, headers=HA).status_code == 402
+   and "Pro" in _cl.put("/api/autopilot", json={"on": True}, headers=HA).json()["detail"])
+ok("  and a free config never prepares on a schedule", AP.prepare_for(db, db.get(User, FA), AP._config(db, db.get(User, FA))).prepared == 0)
+
+# AI failure / rejected draft costs nothing
+FD, HD = mkuser("fd")
+AI._call = down
+s, r = addj(HD, "nj1")
+ok("AI down: 503 that says nothing was used", s == 503 and "Nothing was used" in r["detail"], (s, r))
+ok("  no counter spent, nothing queued, no credit spent", cfg_of(FD) == 0 and not apps_of(FD) and used_credits(FD) == 0)
+s, r = addj(HD, "nj2")
+ok("second failure: same, and it opens the breaker", s == 503 and cfg_of(FD) == 0)
+n_calls = {"n": 0}
+def counting_ok(prompt, max_tokens=1400, label="", fast=False):
+    n_calls["n"] += 1; return {"subject": "S", "summary": "sum", "highlights": ["a", "b"], "cover_letter": LETTER}
+AI._call = counting_ok
+s, r = addj(HD, "nj3")
+ok("breaker open: answers 503 at once WITHOUT calling the AI", s == 503 and n_calls["n"] == 0 and cfg_of(FD) == 0, (s, r, n_calls))
+AP.reset_breaker()
+def bad_ph(prompt, max_tokens=1400, label="", fast=False):
+    return {"subject": "S", "summary": "s", "highlights": ["Led a team of [NUMBER] engineers"], "cover_letter": LETTER}
+def bad_fig(prompt, max_tokens=1400, label="", fast=False):
+    return {"subject": "S", "summary": "Cut costs by 73%", "highlights": ["a"], "cover_letter": LETTER}
+for nm, fn in (("placeholder", bad_ph), ("invented figure", bad_fig)):
+    AI._call = fn
+    s, r = addj(HD, "nj4")
+    ok(f"rejected draft ({nm}): 422, costs nothing", s == 422 and "Nothing was used" in r["detail"] and cfg_of(FD) == 0 and not apps_of(FD), (s, r))
+AI._call = counting_ok; AP.reset_breaker()
+s, r = addj(HD, "nj4")
+ok("after failures, a good draft works and costs exactly 1", s == 200 and cfg_of(FD) == 1 and r["freeLeft"] == 4, (s, r))
+
+# job / profile validation: each refusal is plain English and costs nothing
+FV, HV = mkuser("fv")
+cases = [("nope-not-a-job", 404, "isn't on the board"), ("njdead", 409, "closed"), ("njoff", 409, "closed"),
+         ("njhttp", 400, "https"), ("njnourl", 400, "https"), ("njvisa", 400, "H-1B")]
+for fp, code, word in cases:
+    s, r = addj(HV, fp)
+    ok(f"{fp}: {code} '{word}'", s == code and word in r["detail"], (s, r))
+ok("  none of those cost anything", cfg_of(FV) == 0 and not apps_of(FV))
+s, r = addj(HV, "njlow")
+ok("a below-minimum-fit job CAN be added on purpose (the user chose it), flagged as such",
+   s == 200 and r["belowMinFit"] is True and r["item"]["fit"] is not None and r["item"]["fit"] < 60, (s, r.get("item"), r.get("belowMinFit")))
+NS, HN = mkuser("ns", skills=(), position=False)
+s, r = addj(HN, "nj1")
+ok("no skills: 400 'Add your skills first', nothing spent", s == 400 and r["detail"].startswith("Add your skills first") and cfg_of(NS) == 0 and not apps_of(NS), (s, r))
+ok("signed-out is refused", _cl.post("/api/autopilot/add-job", json={"fingerprint": "nj1"}, headers={"Authorization": "Bearer nonsense"}).status_code == 401)
+ok("bad body is a 422", _cl.post("/api/autopilot/add-job", json={}, headers=HV).status_code == 422)
+RC, HR = mkuser("rc")
+with SessionLocal() as s_: s_.get(User, RC).account_type = "recruiter"; s_.commit()
+ok("recruiter accounts can't use it (403)", addj(HR, "nj1")[0] == 403)
+
+# already applied / re-listing
+FR, HRL = mkuser("fr")
+with SessionLocal() as s_:
+    s_.add(Application(user_id=FR, fingerprint="nj9", company="Co-nj9", title="SDET Level I", status="submitted", origin="manual")); s_.commit()
+s, r = addj(HRL, "nj9")
+ok("already applied: 409 'already have this job', nothing spent", s == 409 and "already" in r["detail"] and cfg_of(FR) == 0, (s, r))
+mkjob("nj9b", title="SDET Level I"); db.query(Job).filter(Job.fingerprint == "nj9b").update({"company": "Co-nj9"}); db.commit()
+s, r = addj(HRL, "nj9b")
+ok("a re-listing of something already applied to is refused too", s == 409 and cfg_of(FR) == 0, (s, r))
+
+# queue size
+FQ, HQ = mkuser("fq")
+_mq = AP.MAX_QUEUE; AP.MAX_QUEUE = 1
+try:
+    addj(HQ, "nj1")
+    s, r = addj(HQ, "nj2")
+    ok("queue full: 409, nothing spent", s == 409 and "queue is full" in r["detail"] and cfg_of(FQ) == 1, (s, r))
+finally:
+    AP.MAX_QUEUE = _mq
+
+# skipped-by-you can be re-added deliberately (uses one preparation)
+s0 = _cl.delete(f"/api/autopilot/queue/{[a for a in apps_of(FQ)][0].id}", headers=HQ)
+s, r = addj(HQ, "nj1")
+ok("a job you skipped can be added again on purpose, as ONE fresh item, and it costs a preparation",
+   s == 200 and cfg_of(FQ) == 2 and len([a for a in apps_of(FQ) if a.fingerprint == "nj1"]) == 1
+   and [a for a in apps_of(FQ) if a.fingerprint == "nj1"][0].status == "ready", (s, r))
+
+# concurrency
+FC, HC = mkuser("fcn")
+res = []
+def click(h, fp):
+    with SessionLocal() as s_:
+        u_ = s_.get(User, FC)
+        try: res.append(("ok", AP.add_job(AP.AddJobIn(fingerprint=fp), u_, s_)))
+        except HTTPException as e: res.append((e.status_code, e.detail))
+FAKE_CALLS["n"] = 0; AI._call = slow_ok
+ts = [threading.Thread(target=click, args=(HC, "nj1")) for _ in range(6)]
+[t.start() for t in ts]; [t.join() for t in ts]
+ok("6 simultaneous clicks on ONE job: all succeed with the same item, one draft, one preparation",
+   all(k == "ok" for k, _ in res) and len({v["item"]["id"] for _, v in res}) == 1 and cfg_of(FC) == 1
+   and len(apps_of(FC)) == 1 and FAKE_CALLS["n"] == 1, ([k for k, _ in res], cfg_of(FC), FAKE_CALLS["n"]))
+with SessionLocal() as s_: s_.get(AutopilotConfig, FC).free_used = 4; s_.commit()
+res.clear()
+ts = [threading.Thread(target=click, args=(HC, fp)) for fp in ("nj2", "nj3", "nj4", "nj5")]
+[t.start() for t in ts]; [t.join() for t in ts]
+oks = [k for k, _ in res if k == "ok"]
+ok("4 simultaneous clicks on DIFFERENT jobs with 1 left: exactly one wins, the rest get 402", len(oks) == 1 and sorted(k for k, _ in res if k != "ok") == [402, 402, 402], [k for k, _ in res])
+ok("  counter is exactly 5, exactly one new item", cfg_of(FC) == 5 and len(apps_of(FC)) == 2, (cfg_of(FC), len(apps_of(FC))))
+# the conditional UPDATE itself (what protects a multi-process deployment): bypass the in-process lock
+with SessionLocal() as s_: s_.get(AutopilotConfig, FC).free_used = 4; s_.commit(); s_.query(Application).filter(Application.user_id == FC).delete(); s_.commit()
+res2 = []
+def raw(fp):
+    with SessionLocal() as s_:
+        u_ = s_.get(User, FC); j_ = s_.get(Job, fp)
+        a, why = AP._prepare_one(s_, u_, j_, "Skills: Cypress\n", charge="free", manual=True)
+        res2.append(why or "ok")
+ts = [threading.Thread(target=raw, args=(fp,)) for fp in ("nj6", "nj7", "nj8")]
+[t.start() for t in ts]; [t.join() for t in ts]
+ok("without the lock, the conditional UPDATE still lets exactly one take the last preparation",
+   sorted(res2) == ["free_exhausted", "free_exhausted", "ok"] and cfg_of(FC) == 5 and len(apps_of(FC)) == 1, (res2, cfg_of(FC), len(apps_of(FC))))
+
+# isolation between users
+FX, HX = mkuser("fx")
+s, r = addj(HX, "nj1")
+ok("another user adding the same job gets their own item and their own counter", s == 200 and r["item"]["id"] != q[0].id and r["freeUsed"] == 1 and cfg_of(FA) == 5)
+ok("  and cannot read or act on someone else's item", _cl.get(f"/api/autopilot/queue/{q[0].id}", headers=HX).status_code == 404
+   and _cl.post(f"/api/autopilot/queue/{q[0].id}/approve", headers=HX).status_code == 404)
+ok("  their queue lists only their own", [x["fingerprint"] for x in _cl.get("/api/autopilot", headers=HX).json()["queue"]] == ["nj1"])
+
+# Pro
+PA, HP = mkuser("pa", plan="pro")
+AI._call = slow_ok
+for i in range(1, 8):
+    s, r = addj(HP, f"nj{i}")
+ok("Pro: adds are not limited to 5, use credits (1 each), and never touch the free counter",
+   s == 200 and used_credits(PA) == 7 and cfg_of(PA) == 0 and r["plan"] == "pro" and r["freeLeft"] is None, (s, used_credits(PA), cfg_of(PA), r))
+stp = _cl.get("/api/autopilot", headers=HP).json()
+ok("  Pro state: cap 60, scheduled available, no free counter", stp["dailyCap"] == 60 and stp["scheduledAvailable"] is True and stp["freeLeft"] is None, stp["freeLeft"])
+with SessionLocal() as s_:
+    s_.add(AutopilotRun(user_id=PA, found=60, prepared=60, skipped=0, note="x")); s_.commit()
+s, r = addj(HP, "nj8")
+ok("Pro: the daily cap applies to on-demand adds too (429)", s == 429 and "Daily limit" in r["detail"], (s, r))
+with SessionLocal() as s_: s_.query(AutopilotRun).filter(AutopilotRun.user_id == PA, AutopilotRun.note == "x").delete(); s_.commit()
+with SessionLocal() as s_: s_.get(User, PA).credits_used = 400; s_.commit()
+s, r = addj(HP, "nj8")
+ok("Pro: out of generations -> 402 with a clear message, nothing queued", s == 402 and "generations" in r["detail"] and not [a for a in apps_of(PA) if a.fingerprint == "nj8"], (s, r))
+with SessionLocal() as s_: s_.get(User, PA).credits_used = 0; s_.commit()
+_mq = AP.MAX_QUEUE; AP.MAX_QUEUE = 7
+s, r = addj(HP, "nj8")
+ok("Pro: MAX_QUEUE applies", s == 409 and "queue is full" in r["detail"], (s, r))
+AP.MAX_QUEUE = _mq
+ok("Pro: scheduled Autopilot toggle still works (resume confirmed)", _cl.post("/api/autopilot/confirm-resume", headers=HP).status_code == 200
+   and _cl.put("/api/autopilot", json={"on": True}, headers=HP).json()["on"] is True)
+
+# the jobs list tells the UI each job's Autopilot state without extra calls
+lst = _cl.get("/api/jobs?limit=100&sort=new", headers=HA).json()["jobs"]
+by = {j["fingerprint"]: j for j in lst}
+ok("jobs list: every job has an `autopilot` key", all("autopilot" in j for j in lst) and len(lst) >= 10)
+lx = {j["fingerprint"]: j["autopilot"] for j in _cl.get("/api/jobs?limit=100&sort=new", headers=HX).json()["jobs"]}
+ok("  queued -> 'queued'; approved -> 'approved'; skipped, deleted or never added -> null",
+   lx["nj1"] == "queued" and by["nj5"]["autopilot"] == "approved"
+   and by["nj1"]["autopilot"] is None and by["nj2"]["autopilot"] is None and by["nj8"]["autopilot"] is None,
+   ({k: v["autopilot"] for k, v in by.items() if k.startswith("nj")}, lx.get("nj1")))
+_so = _cl.get("/api/jobs?limit=100&sort=new")      # dev mode signs an anonymous caller in, so probe with no header at all only for shape
+ok("  a bad/expired token is treated as signed out: null everywhere", all(j["autopilot"] is None for j in _cl.get("/api/jobs?limit=100&sort=new", headers={"Authorization": "Bearer nonsense"}).json()["jobs"]))
+ok("  one user's state never shows on another's list", all(j["autopilot"] is None for j in _cl.get("/api/jobs?limit=100&sort=new", headers=HD).json()["jobs"] if j["fingerprint"] not in ("nj1", "nj4")))
+ok("  the single-job endpoint carries it too", _cl.get("/api/jobs/nj5", headers=HA).json()["autopilot"] == "approved"
+   and _cl.get("/api/jobs/nj1", headers=HX).json()["autopilot"] == "queued")
+stmts = []
+def _cap_sql(conn, cur, statement, *a): stmts.append(statement)
+_ev.listen(_engine, "before_cursor_execute", _cap_sql)
+_cl.get("/api/jobs?limit=100&sort=new", headers=HA)
+_ev.remove(_engine, "before_cursor_execute", _cap_sql)
+apq = [x for x in stmts if "FROM applications" in x]
+ok("  computed with ONE applications query for the whole page (no N+1)", len(apq) == 1, len(apq))
+
+# rate limit
+settings.RATE_LIMIT_ENABLED = True; _RL.reset()
+settings.RATE_AUTOPILOT_ADD = 3
+RL_U, HRLU = mkuser("rl", plan="pro")
+codes = [addj(HRLU, "nj1")[0] for _ in range(5)]
+r_ = _cl.post("/api/autopilot/add-job", json={"fingerprint": "nj1"}, headers=HRLU)
+ok("rate limit: per-user cap on add-job -> 429 with Retry-After", codes[:3] == [200, 200, 200] and codes[3:] == [429, 429] and r_.headers.get("retry-after"), (codes, r_.headers))
+ok("  another user is not affected", addj(HX, "nj2")[0] == 200)
+settings.RATE_AUTOPILOT_ADD = 12; settings.RATE_AUTOPILOT_ADD_PER_IP = 2; _RL.reset()
+codes = [addj(HX, "nj1")[0] for _ in range(4)]
+ok("  and a per-IP ceiling across accounts", codes.count(429) >= 1, codes)
+settings.RATE_AUTOPILOT_ADD_PER_IP = 40; settings.RATE_LIMIT_ENABLED = False; _RL.reset()
+
+# migration: the counter column is added to a live table by add_missing_columns; existing rows read 0.
+# Done in a fresh process: SQLite connections that have already cached the table's schema can't be
+# trusted to see a DROP/ADD of the same column made under them.
+import subprocess as _sp
+db.rollback()
+_mig = """
+import os, sys
+sys.path.insert(0, os.getcwd())
+from sqlalchemy import text, inspect
+from api.db import engine, init_db, SessionLocal
+from api.models import AutopilotConfig, User
+from api.routers import autopilot as AP
+with engine.begin() as c:
+    c.execute(text("ALTER TABLE autopilot_configs DROP COLUMN free_used"))
+assert "free_used" not in {c["name"] for c in inspect(engine).get_columns("autopilot_configs")}
+init_db()
+assert "free_used" in {c["name"] for c in inspect(engine).get_columns("autopilot_configs")}, "column not added"
+with SessionLocal() as s:
+    rows = s.query(AutopilotConfig).all()
+    assert rows and all(int(r.free_used or 0) == 0 for r in rows), "existing rows must read 0"
+    u = s.get(User, rows[0].user_id)
+    assert AP._allowance(u, rows[0])["freeUsed"] == 0
+    assert AP._spend_free(s, u) is True, "conditional spend on a migrated row"
+    s.refresh(rows[0]); assert rows[0].free_used == 1
+    for _ in range(4): assert AP._spend_free(s, u) is True
+    assert AP._spend_free(s, u) is False, "6th spend must fail"
+    rows[0].free_used = 0; s.commit()
+init_db()   # idempotent
+print("MIGRATION-OK")
+"""
+_r = _sp.run([sys.executable, "-c", _mig], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
+ok("migration: free_used is added to a live table, existing rows read 0, conditional spend works, re-run is a no-op",
+   "MIGRATION-OK" in _r.stdout, (_r.stdout + _r.stderr)[-600:])
+AI._call = fake_call
+db.expire_all()
+
 # ── production guard ──
 saved = (settings.ENV, settings.FRONTEND_URL, settings.AUTH_SECRET, settings.DATABASE_URL,
          settings.AI_API_KEY, settings.AI_BASE_URL)

@@ -30,7 +30,7 @@ PRODUCT = {
     "name": "careerpilot.ai Pro",
     "description": (
         "400 applications a month — tailored resume and cover letter for "
-        "each — plus Autopilot, pre-filled answers, and the browser extension."
+        "each — plus scheduled Autopilot, pre-filled answers, and the browser extension."
     ),
 }
 

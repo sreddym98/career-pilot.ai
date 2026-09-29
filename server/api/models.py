@@ -293,6 +293,11 @@ class AutopilotConfig(Base):
     last_digest_on = Column(String)        # local "YYYY-MM-DD" of the last digest actually sent
     last_run_key = Column(String)          # "YYYY-MM-DDTHH" of the last slot served
     last_run_at = Column(DateTime(timezone=True))
+    # Lifetime count of the free-plan starter allowance spent (autopilot.FREE_ALLOWANCE).
+    # Only ever incremented, atomically, in the same commit that queues a draft;
+    # deleting or skipping queue items never lowers it. Nullable + defaulted so
+    # add_missing_columns can add it to a live table (NULL is read as 0).
+    free_used = Column(Integer, default=0)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 

@@ -5,7 +5,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from api.db import get_db
 from api.auth import optional_user
-from api.models import Job, Connection
+from api.models import Job, Connection, Application
 from api.matching import load_profile, score_job
 from ingest.quality import ATS_SOURCES
 
@@ -87,9 +87,11 @@ def list_jobs(
         for c in db.query(Connection).filter(Connection.user_id == user.id).all():
             refs.setdefault(c.company, []).append({"name": c.name, "role": c.role, "degree": c.degree})
 
+    aps = autopilot_states(db, user, [j.fingerprint for j in rows])
     return {"total": total, "offset": offset, "limit": limit,
             "fit_available": prof is not None,
-            "jobs": [_shape(j, refs.get(j.company, []), fits.get(j.fingerprint)) for j in rows]}
+            "jobs": [_shape(j, refs.get(j.company, []), fits.get(j.fingerprint), aps.get(j.fingerprint))
+                     for j in rows]}
 
 
 @router.get("/{fingerprint}")
@@ -103,7 +105,7 @@ def get_job(fingerprint: str, db: Session = Depends(get_db), user=Depends(option
                 for c in db.query(Connection).filter(
                     Connection.user_id == user.id, Connection.company == j.company).all()]
     prof = load_profile(db, user)
-    d = _shape(j, refs, score_job(prof, j))
+    d = _shape(j, refs, score_job(prof, j), autopilot_states(db, user, [j.fingerprint]).get(j.fingerprint))
     d["description"] = j.description
     return d
 
@@ -116,7 +118,21 @@ def _aware(d):
     return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
 
 
-def _shape(j: Job, refs, fit=None):
+def autopilot_states(db: Session, user, fingerprints) -> dict:
+    """{fingerprint: 'queued'|'approved'} for this viewer's Autopilot items among
+    `fingerprints`: ONE indexed query for the whole page (no per-job lookups).
+    Empty for signed-out viewers and non-seekers; a job with no Autopilot item
+    is simply absent (null in the response)."""
+    fps = [f for f in fingerprints if f]
+    if not user or getattr(user, "account_type", "seeker") != "seeker" or not fps:
+        return {}
+    rows = db.query(Application.fingerprint, Application.status).filter(
+        Application.user_id == user.id, Application.origin == "autopilot",
+        Application.status.in_(("ready", "opened")), Application.fingerprint.in_(fps)).all()
+    return {fp: ("queued" if st == "ready" else "approved") for fp, st in rows}
+
+
+def _shape(j: Job, refs, fit=None, ap=None):
     # Competition is ESTIMATED from age + repost breadth. No board publishes
     # exact applicant counts — inventing one is the fastest way to lose trust.
     import datetime as dt
@@ -135,6 +151,8 @@ def _shape(j: Job, refs, fit=None):
         "skills": j.required_skills or [],
         "days_live": age, "seen_count": j.seen_count, "relisted": j.relisted,
         "competition": comp, "referrals": refs,
+        # This viewer's Autopilot state for the job: null | 'queued' | 'approved'.
+        "autopilot": ap,
         # Per-viewer fit: null (no percentage anywhere) when signed out / no skills.
         "fit": fit["fit"] if fit else None,
         "fit_reasons": fit["fit_reasons"] if fit else None,

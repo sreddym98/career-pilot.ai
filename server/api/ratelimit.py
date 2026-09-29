@@ -149,3 +149,10 @@ def ai_limit(request: Request, authorization: str = Header(None)):
     w = settings.RATE_AI_WINDOW_S
     _enforce([(f"ai:{user_key(request, authorization)}", settings.RATE_AI_PER_USER, w),
               (f"aiip:{client_ip(request)}", settings.RATE_AI_PER_IP, w)])
+
+
+def autopilot_add_limit(request: Request, authorization: str = Header(None)):
+    """POST /api/autopilot/add-job: each call can cost an AI generation."""
+    w = settings.RATE_AUTOPILOT_ADD_WINDOW_S
+    _enforce([(f"apadd:{user_key(request, authorization)}", settings.RATE_AUTOPILOT_ADD, w),
+              (f"apaddip:{client_ip(request)}", settings.RATE_AUTOPILOT_ADD_PER_IP, w)])
