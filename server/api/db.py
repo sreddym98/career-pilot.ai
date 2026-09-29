@@ -21,13 +21,20 @@ def _ipv4_connect_args(u: str) -> dict:
     from sqlalchemy.engine import make_url
     if os.environ.get("DB_FORCE_IPV4", "1") == "0":
         return {}
+    host = None
     try:
         host = make_url(u).host
         if not host or host in ("localhost", "127.0.0.1"):
             return {}
-        infos = socket.getaddrinfo(host, None, socket.AF_INET, socket.SOCK_STREAM)
-        return {"hostaddr": infos[0][4][0]} if infos else {}
-    except Exception:
+        v4 = sorted({i[4][0] for i in socket.getaddrinfo(host, 5432, socket.AF_INET, socket.SOCK_STREAM)})
+        print(f"[db] {host}: IPv4 {v4[:3]} -> pinning hostaddr", flush=True)
+        return {"hostaddr": v4[0]} if v4 else {}
+    except Exception as e:
+        try:
+            allv = sorted({i[4][0] for i in socket.getaddrinfo(host, 5432)})
+        except Exception as e2:
+            allv = [f"lookup failed: {e2}"]
+        print(f"[db] no IPv4 for {host} ({type(e).__name__}: {e}); all addresses: {allv[:4]}", flush=True)
         return {}
 
 

@@ -145,7 +145,16 @@ def create_tables():
     problems = production_problems()
     if problems:
         raise RuntimeError("Refusing to start:\n  - " + "\n  - ".join(problems))
-    init_db()
+    import time as _time
+    for attempt in range(1, 6):
+        try:
+            init_db()
+            break
+        except Exception as e:
+            log.error("database not reachable at startup (attempt %s/5): %s", attempt, str(e)[:200])
+            if attempt == 5:
+                raise
+            _time.sleep(3 * attempt)
     if settings.ENV != "dev" and settings.AUTO_INGEST_ON_EMPTY:
         try:
             from api import ingest_job
