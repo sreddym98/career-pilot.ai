@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     # Shared secret for the scheduled autopilot trigger (GitHub Actions cron).
     # Unset = the trigger endpoint stays closed.
     CRON_SECRET: str = ""
+    # Fill an empty jobs table with a background import when the API boots.
+    AUTO_INGEST_ON_EMPTY: bool = True
     # Outbound mail for support tickets and autopilot digests (Resend).
     RESEND_API_KEY: str = ""
     MAIL_FROM: str = "CareerPilot <noreply@careerpilot.ai>"

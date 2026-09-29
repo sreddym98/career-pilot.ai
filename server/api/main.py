@@ -146,6 +146,12 @@ def create_tables():
     if problems:
         raise RuntimeError("Refusing to start:\n  - " + "\n  - ".join(problems))
     init_db()
+    if settings.ENV != "dev" and settings.AUTO_INGEST_ON_EMPTY:
+        try:
+            from api import ingest_job
+            ingest_job.ensure_board_not_empty()
+        except Exception:
+            log.exception("could not start the first job import")
 
 
 @app.get("/health")

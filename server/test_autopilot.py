@@ -194,6 +194,38 @@ settings.AUTH_SECRET, settings.AI_API_KEY, settings.AI_BASE_URL = "x" * 48, "k",
 ok("a fully configured prod passes", production_problems() == [], production_problems())
 settings.ENV, settings.FRONTEND_URL, settings.AUTH_SECRET, settings.DATABASE_URL, settings.AI_API_KEY, settings.AI_BASE_URL = saved
 
+
+# ── in-API job import ──
+from api import ingest_job
+import time as _t
+calls = []
+import ingest.run as _R
+_orig_cycle = _R.cycle
+_R.cycle = lambda db, a, ats=True, agg=True: (calls.append((ats, agg, a.max_seconds, a.workers, a.agg_expire_days)) or 0)
+db.query(Application).delete(); db.query(AutopilotRun).delete(); db.query(Job).delete(); db.commit()
+ok("empty board triggers a background import", ingest_job.ensure_board_not_empty() is True)
+for _ in range(50):
+    if not ingest_job.running(): break
+    _t.sleep(0.1)
+ok("import ran the full pass with a time budget", calls == [(True, True, 600, 4, 21)], calls)
+db.add(Job(fingerprint="live1", source="aptest", company="C", title="SDET", required_skills=[], active=True,
+           first_seen=now, posted_at=now, apply_url="https://x.test/live1")); db.commit()
+ok("a board with jobs is left alone", ingest_job.ensure_board_not_empty() is False and len(calls) == 1)
+settings.CRON_SECRET = "s3cret"
+try:
+    AP.ingest_now("full", "wrong"); ok("ingest endpoint rejects a bad secret", False)
+except HTTPException as e:
+    ok("ingest endpoint rejects a bad secret", e.status_code == 401)
+try:
+    AP.ingest_now("nope", "s3cret"); ok("ingest endpoint rejects a bad mode", False)
+except HTTPException as e:
+    ok("ingest endpoint rejects a bad mode", e.status_code == 400)
+r = AP.ingest_now("fast", "s3cret")
+for _ in range(50):
+    if not ingest_job.running(): break
+    _t.sleep(0.1)
+ok("ingest endpoint starts a fast run", r["started"] is True and calls[-1][:2] == (False, True), (r, calls))
+_R.cycle = _orig_cycle
 db.close()
 print("=" * 48)
 print(f"PASS {P}    FAIL {F}")

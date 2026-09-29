@@ -392,6 +392,19 @@ def tick(background: BackgroundTasks, wait: bool = False,
     return {"scheduled": True}
 
 
+@router.post("/ingest", status_code=202)
+def ingest_now(mode: str = "full", x_cron_secret: str = Header(None)):
+    """Kick off a job import inside the API (same code the GitHub job runs)."""
+    if not settings.CRON_SECRET:
+        raise HTTPException(503, "Scheduler is not configured (CRON_SECRET)")
+    if not x_cron_secret or not hmac.compare_digest(x_cron_secret.encode(), settings.CRON_SECRET.encode()):
+        raise HTTPException(401, "Bad scheduler secret")
+    if mode not in ("full", "fast"):
+        raise HTTPException(400, "mode must be full or fast")
+    from api import ingest_job
+    return {"started": ingest_job.start(mode), "running": ingest_job.running()}
+
+
 @router.post("/diag")
 def diag(x_cron_secret: str = Header(None)):
     """Deployment self-check for the operator (run from GitHub Actions). Says
@@ -417,6 +430,14 @@ def diag(x_cron_secret: str = Header(None)):
         out["ai_live_call"] = f"FAILED: {e.detail}"
     except Exception as e:
         out["ai_live_call"] = f"FAILED: {type(e).__name__}"
+    from api.models import Job
+    from api import ingest_job
+    dbs = SessionLocal()
+    try:
+        out["jobs_live"] = dbs.query(Job).filter(Job.active.is_(True)).count()
+    finally:
+        dbs.close()
+    out["ingest_running"] = ingest_job.running()
     out["configured"] = {
         "stripe_secret": bool(settings.STRIPE_SECRET_KEY),
         "stripe_webhook": bool(settings.STRIPE_WEBHOOK_SECRET),
