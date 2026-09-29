@@ -202,6 +202,51 @@ try:
         ok("gateway: unconfigured -> 503", False)
     except HTTPException as e:
         ok("gateway: unconfigured -> 503", e.status_code == 503, e.status_code)
+
+    print("\n── gateway ladder: JSON mode, then plain, then the main model ──")
+    AI.settings.AI_API_KEY, AI.settings.AI_BASE_URL = "k", "https://gw.example/v1"
+    AI.settings.AI_MODEL, AI.settings.AI_FAST_MODEL = "main-m", "fast-m"
+
+    class _R:
+        def __init__(self, status, body):
+            self.status_code, self._b = status, body
+            self.text = str(body)
+        def json(self): return self._b
+
+    GOOD = {"choices": [{"message": {"content": '{"ok": true}'}}]}
+    def script(*steps):
+        seen = []
+        def post(url, headers=None, json=None, timeout=None):
+            seen.append((json["model"], "response_format" in json))
+            return steps[min(len(seen) - 1, len(steps) - 1)]
+        AI.requests.post = post
+        return seen
+
+    seen = script(_R(500, {"error": "response_format not supported"}), _R(200, GOOD))
+    r = AI._call("x", 100, "t", fast=True)
+    ok("500 in JSON mode then works without it", r == {"ok": True} and seen == [("fast-m", True), ("fast-m", False)], seen)
+
+    seen = script(_R(404, "no such model"), _R(404, "no such model"), _R(200, GOOD))
+    r = AI._call("x", 100, "t", fast=True)
+    ok("refused fast model falls back to the main model",
+       r == {"ok": True} and seen[-1] == ("main-m", False), seen)
+
+    seen = script(_R(401, "bad key"))
+    try:
+        AI._call("x", 100, "t", fast=True); ok("bad key raises", False)
+    except HTTPException as e:
+        ok("bad key is not retried", e.status_code == 503 and len(seen) == 1, (e.status_code, seen))
+    ok("the gateway's own status is kept for the operator", AI.LAST_GATEWAY_ERROR["status"] == 401)
+
+    seen = script(_R(503, "overloaded"))
+    try:
+        AI._call("x", 100, "t", fast=True); ok("all-503 raises", False)
+    except HTTPException as e:
+        ok("persistent 503 is reported as busy", e.status_code == 503 and "busy" in e.detail.lower(), e.detail)
+
+    seen = script(_R(200, GOOD))
+    AI._call("x", 100, "t", fast=False)
+    ok("main-model call uses the main model once", seen == [("main-m", True)], seen)
 finally:
     AI.settings.AI_API_KEY, AI.settings.AI_BASE_URL = _saved
     AI.requests.post = _saved_post

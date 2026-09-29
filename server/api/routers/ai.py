@@ -82,40 +82,75 @@ def _extract_json(text: str) -> dict:
         raise _Transient("response was not valid JSON")
 
 
+LAST_GATEWAY_ERROR = {"at": None, "model": None, "status": None, "body": ""}
+
+
+def _gateway_post(model: str, prompt: str, budget: int, timeout: int, json_mode: bool):
+    body = {"model": model, "max_tokens": budget, "temperature": 0.3,
+            "messages": [
+                {"role": "system", "content": "You are a precise writing assistant. "
+                 "Reply with a single JSON object and nothing else."},
+                {"role": "user", "content": prompt}]}
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    return requests.post(
+        settings.AI_BASE_URL.rstrip("/") + "/chat/completions",
+        headers={"Authorization": f"Bearer {settings.AI_API_KEY}"},
+        json=body, timeout=timeout)
+
+
+def _note_gateway_error(model: str, status, text: str):
+    import datetime as _dt
+    LAST_GATEWAY_ERROR.update(at=_dt.datetime.now(_dt.timezone.utc).isoformat(),
+                              model=model, status=status, body=(text or "")[:300])
+    print(f"[ai] gateway error model={model} status={status} body={(text or '')[:300]!r}")
+
+
 def _call_openai(prompt: str, budget: int, timeout: int, fast: bool) -> dict:
     """OpenAI-compatible /chat/completions (Ashna AI and most gateways).
-    One attempt; the caller's fallback handles failure."""
+
+    Gateways differ in what they accept, and "AI is busy" was hiding real
+    causes (an unsupported response_format, a model name the gateway does not
+    route). So on failure this tries, in order: the same model without JSON
+    mode, then the main model if the fast one was refused. Every failure is
+    logged with the gateway's own status and message."""
     if not (settings.AI_API_KEY and settings.AI_BASE_URL):
         raise HTTPException(503, "AI is not configured on this server (AI_BASE_URL / AI_API_KEY).")
-    model = settings.AI_FAST_MODEL if fast else settings.AI_MODEL
-    try:
-        r = requests.post(
-            settings.AI_BASE_URL.rstrip("/") + "/chat/completions",
-            headers={"Authorization": f"Bearer {settings.AI_API_KEY}"},
-            json={"model": model, "max_tokens": budget, "temperature": 0.3,
-                  "response_format": {"type": "json_object"},
-                  "messages": [
-                      {"role": "system", "content": "You are a precise writing assistant. "
-                       "Reply with a single JSON object and nothing else."},
-                      {"role": "user", "content": prompt}]},
-            timeout=timeout)
-    except requests.Timeout:
-        raise HTTPException(503, "AI is taking too long to respond. Try again in a moment.")
-    except requests.ConnectionError:
-        raise HTTPException(503, "Couldn't reach the AI service. Try again in a moment.")
-    if r.status_code in (401, 403):
-        print(f"[ai] gateway rejected our key: {r.status_code} {r.text[:200]}")
-        raise HTTPException(503, "AI request could not be completed.")
-    if r.status_code == 429 or r.status_code >= 500:
+    primary = settings.AI_FAST_MODEL if fast else settings.AI_MODEL
+    attempts = [(primary, True), (primary, False)]
+    if fast and settings.AI_MODEL and settings.AI_MODEL != primary:
+        attempts.append((settings.AI_MODEL, False))
+
+    last_status = None
+    for n, (model, json_mode) in enumerate(attempts):
+        try:
+            r = _gateway_post(model, prompt, budget, timeout, json_mode)
+        except requests.Timeout:
+            _note_gateway_error(model, "timeout", "")
+            raise HTTPException(503, "AI is taking too long to respond. Try again in a moment.")
+        except requests.ConnectionError as e:
+            _note_gateway_error(model, "connection", str(e))
+            raise HTTPException(503, "Couldn't reach the AI service. Try again in a moment.")
+        if r.status_code in (401, 403):
+            # A bad key will not get better on retry.
+            _note_gateway_error(model, r.status_code, r.text)
+            raise HTTPException(503, "AI request could not be completed.")
+        if r.status_code >= 400:
+            last_status = r.status_code
+            _note_gateway_error(model, r.status_code, r.text)
+            continue
+        try:
+            text = r.json()["choices"][0]["message"]["content"]
+            return _extract_json(text)
+        except (KeyError, IndexError, ValueError, _Transient, TypeError):
+            _note_gateway_error(model, r.status_code, "unreadable: " + (r.text or "")[:200])
+            last_status = "unreadable"
+            continue
+    if last_status == 429 or (isinstance(last_status, int) and last_status >= 500):
         raise HTTPException(503, "AI is busy right now. Retry in a moment.")
-    if r.status_code >= 400:
-        print(f"[ai] gateway 4xx: {r.status_code} {r.text[:200]}")
-        raise HTTPException(400, "AI request could not be completed.")
-    try:
-        text = r.json()["choices"][0]["message"]["content"]
-        return _extract_json(text)
-    except (KeyError, IndexError, ValueError, _Transient):
+    if last_status == "unreadable":
         raise HTTPException(503, "AI returned an unreadable answer. Retry in a moment.")
+    raise HTTPException(400, "AI request could not be completed.")
 
 
 def _call_anthropic(prompt: str, budget: int, timeout: int, fast: bool) -> dict:

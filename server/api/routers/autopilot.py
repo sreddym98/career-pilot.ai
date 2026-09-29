@@ -1132,13 +1132,22 @@ def diag(x_cron_secret: str = Header(None)):
     except Exception as e:
         out["database"] = f"FAILED: {type(e).__name__}"
     out["ai_provider"] = ai.provider()
+    out["ai_models"] = {"main": settings.AI_MODEL, "fast": settings.AI_FAST_MODEL,
+                        "base_url": settings.AI_BASE_URL}
     try:
         r = ai._call('Reply with the JSON {"ok": true}', 40, "diag", fast=True)
         out["ai_live_call"] = "ok" if r else "empty reply"
     except HTTPException as e:
         out["ai_live_call"] = f"FAILED: {e.detail}"
+        out["ai_last_gateway_error"] = dict(ai.LAST_GATEWAY_ERROR)
     except Exception as e:
         out["ai_live_call"] = f"FAILED: {type(e).__name__}"
+    try:
+        rm = ai._call('Reply with the JSON {"ok": true}', 40, "diag", fast=False)
+        out["ai_live_call_main_model"] = "ok" if rm else "empty reply"
+    except HTTPException as e:
+        out["ai_live_call_main_model"] = f"FAILED: {e.detail}"
+        out["ai_last_gateway_error"] = dict(ai.LAST_GATEWAY_ERROR)
     from api.models import Job
     from api import ingest_job
     dbs = SessionLocal()
