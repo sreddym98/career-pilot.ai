@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "CareerPilot Autofill",
-  "version": "1.1.0",
-  "description": "Fills job application forms from your CareerPilot profile. Never submits on your behalf.",
+  "version": "1.2.0",
+  "description": "Fills job application forms from your CareerPilot profile and the answers you reviewed. Never submits: you click Submit yourself.",
   "permissions": [
     "storage",
     "activeTab"
@@ -15,7 +15,10 @@
     "https://jobs.ashbyhq.com/*",
     "https://*.icims.com/*",
     "https://*.smartrecruiters.com/*",
-    "https://api.careerpilot.ai/*"
+    "https://careerpilot-api-rri9.onrender.com/*",
+    "https://career-pilot-ai.mamindlasreddy.workers.dev/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -39,6 +42,17 @@
         "content/overlay.css"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://career-pilot-ai.mamindlasreddy.workers.dev/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": [
+        "content/bridge.js"
+      ],
+      "run_at": "document_start"
     }
   ],
   "action": {
@@ -50,10 +64,8 @@
     "128": "icons/128.png"
   },
   "author": "Santosh Reddy Mamindla",
-  "homepage_url": "https://careerpilot.ai",
+  "homepage_url": "https://career-pilot-ai.mamindlasreddy.workers.dev",
   "optional_host_permissions": [
-    "https://*/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*"
+    "https://*/*"
   ]
 }

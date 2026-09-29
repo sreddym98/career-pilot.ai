@@ -273,6 +273,31 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .md{max-height:calc(100vh - 56px);overflow-y:auto}
 .mh{position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:2}
 
+/* ── Apply page (modal) ── */
+.md.applymd{max-width:760px}
+.applypg .aplready{position:sticky;top:0;z-index:1;background:var(--moss-s);border:1px solid var(--moss-l);border-radius:var(--r2);
+  padding:10px 14px;font-size:14px;color:var(--moss2)}
+.applypg .aplyou{color:var(--clay)}
+.applypg .aplreq{color:var(--clay);font-weight:700}
+.applypg .aplq.aplneeds input,.applypg .aplq.aplneeds textarea,.applypg .aplq.aplneeds select{border-color:var(--clay);background:var(--clay-s)}
+.applypg .aplfile{font-size:13.5px;color:var(--moss2);background:var(--moss-s);border-radius:var(--r2);padding:9px 12px}
+.applypg .aplmulti label{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink);margin:4px 0}
+.applypg .aplmulti input{width:auto}
+.applypg .aplres{border:1px solid var(--line);border-radius:var(--r2);padding:14px}
+.applypg .aplreshead{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.applypg .aplsum{font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:10px}
+.applypg .aplroles{margin-top:10px;font-size:13.5px}
+.applypg .aplroles summary,.applypg .apleeo summary{cursor:pointer;color:var(--moss2);font-weight:500}
+.applypg .aplrole{margin-top:10px}
+.applypg .aplrole ul{padding-left:18px;margin-top:4px;color:var(--ink2)}
+.applypg .apleeo{margin-top:6px;border-top:1px dashed var(--line2);padding-top:10px}
+.applypg .aplsteps{padding-left:20px;margin:8px 0 12px}
+.applypg .aplsteps li{margin:3px 0}
+.applypg code{font:12.5px var(--m);background:var(--sunk);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+.applypg .aplpromise{font-weight:600;margin-top:14px;color:var(--ink)}
+.jdloading{color:var(--ink3);font-style:italic}
+@media(max-width:560px){.applypg .aplres{padding:10px}.md.applymd .mb{padding:16px}}
+
 /* ── rows: align the right-hand column consistently ── */
 .row{align-items:flex-start}
 .row .rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
@@ -1192,7 +1217,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
 
   <div class="apnote">
     <svg viewBox="0 0 20 20" class="apnoteicon"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6v5M10 14h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <p><b>Autopilot never sends anything for you.</b> It finds and scores roles, tailors a cover letter and highlights for each, and holds them here. You read them, then Approve opens the real posting so you submit it yourself — one tap per role, or approve a whole batch at once. Nothing is emailed to an employer, so there is no unattended sending to get an account flagged and no unchecked AI message going out under your name.</p>
+    <p><b>Autopilot never sends anything for you.</b> It finds and scores roles, tailors a cover letter and highlights for each, and holds them here. You read them, then Review &amp; apply opens the Apply page — your tailored resume, cover letter and the employer's questions pre-answered from your profile — and from there the real posting, where you submit it yourself. Or approve a whole batch at once. Nothing is emailed to an employer, so there is no unattended sending to get an account flagged and no unchecked AI message going out under your name.</p>
   </div>
 
   <div class="card" data-sched>
@@ -1256,7 +1281,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
     <div class="ap-explain">
       <div class="apx"><div class="apxi">◆</div><div><b>Scores fresh, open roles</b><span>Recent postings that still have a working link are scored against your profile; only those at or above your minimum fit move on. Roles that exclude your work authorization are never queued.</span></div></div>
       <div class="apx"><div class="apxi">◈</div><div><b>Tailors a cover letter for each</b><span>One AI call per role, using only facts from your profile. Drafts with invented figures or leftover placeholders are rejected, not queued.</span></div></div>
-      <div class="apx"><div class="apxi">✓</div><div><b>Queues it for your approval</b><span>Read the cover letter and highlights, then Approve opens the real posting so you submit it yourself. Nothing is emailed to an employer.</span></div></div>
+      <div class="apx"><div class="apxi">✓</div><div><b>Queues it for your approval</b><span>Read the cover letter and highlights, then Review &amp; apply opens the real posting with everything filled in, and you click Submit yourself. Nothing is emailed to an employer.</span></div></div>
       <div class="apx"><div class="apxi">⊘</div><div><b>Never over your daily cap</b><span>All slots together respect your plan's limit — the total across every run can't exceed it.</span></div></div>
       <div class="apx"><div class="apxi">⊘</div><div><b>Never repeats a role</b><span>Won't queue a role you already applied to, skipped or have waiting — including a re-listing of the same job. Postings that close are dropped from your queue.</span></div></div>
     </div>
@@ -1276,7 +1301,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
       <h2>Ready for review <span class="cnt" id="ap-queue-count"></span></h2>
       <button class="btn btn-p btn-s" id="ap-approveall" onclick="approveAllQueued()">Approve all — one tap</button>
     </div>
-    <p class="apsmall">Preview shows the full cover letter. Approve opens that posting so you can submit it; Approve all marks the whole batch approved without opening the postings.</p>
+    <p class="apsmall">Preview shows the full cover letter. Review &amp; apply opens the Apply page for that job, and from there the employer's form, which you submit yourself; Approve all marks the whole batch approved without opening the postings.</p>
     <div id="ap-queue"></div>
   </div>
 
@@ -2232,6 +2257,8 @@ window.addEventListener("resize", ()=>{
     // Only while Explore Jobs is the page on screen; on any other page a resize
     // (rotating a phone, resizing the window) must not pop the old job open over it.
     if(!$("p-jobs") || !$("p-jobs").classList.contains("on")) return;
+    // The Apply page lives in the modal at every width; never swap it out.
+    if($("md") && $("md").classList.contains("applymd") && $("ov").classList.contains("on")) return;
     const nowSplit = isSplitView();
     if(nowSplit && $("ov").classList.contains("on")){
       closeM(); openJob(SELECTED_JOB);
@@ -2578,7 +2605,8 @@ function saveRole(id){
 
 /* ═══ MODAL ═══ */
 function openM(){$("ov").classList.add("on");document.body.style.overflow="hidden";}
-function closeM(){$("ov").classList.remove("on");document.body.style.overflow="";}
+function closeM(){$("ov").classList.remove("on");document.body.style.overflow="";
+  const md=$("md"); if(md&&md.classList.contains("applymd")){ md.classList.remove("applymd"); if(window.__cpApplyClosed) window.__cpApplyClosed(); }}
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeM();});
 
 /* ═══ JOBS ═══ */
@@ -2884,8 +2912,8 @@ function buildJobDetailHTML(j, closeFn){
 
   return {
     header: `<div class="lg2" style="width:46px;height:46px;font-size:18px">${j.co[0]}</div>
-    <div style="flex:1;min-width:0"><h2>${j.ti}</h2>
-      <p style="color:var(--ink2);font-size:14px;margin-top:3px">${j.co} · ${j.lo} · ${j.md}</p></div>
+    <div style="flex:1;min-width:0"><h2>${esc(j.ti)}</h2>
+      <p style="color:var(--ink2);font-size:14px;margin-top:3px">${esc(j.co)} · ${esc(j.lo)} · ${esc(j.md)}</p></div>
     ${fitBadge(s,58)}
     <button class="mx" onclick="${closeFn}" aria-label="Close">×</button>`,
     body: `
@@ -2904,7 +2932,10 @@ function buildJobDetailHTML(j, closeFn){
       ${MODE==="recruiter"
         ? `<button class="btn btn-p" onclick="pickCandidate('${String(j.id).replace(/'/g,"")}')">Submit someone</button>
            <button class="btn btn-g" onclick="go('bench')">Open bench</button>`
-          : `<button class="btn btn-p" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>
+          : `${apLive()&&j.url&&typeof j.id==="string"
+              ? `<button class="btn btn-p" onclick='openApplyPage(${jid(j)})'>Apply with CareerPilot</button>
+            <button class="btn btn-g" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>`
+              : `<button class="btn btn-p" onclick='applyTo(${jid(j)})'>${applyLabel(j)}</button>`}
             <button class="btn btn-g" onclick='tailorFor(${jid(j)})'>Tailor my resume</button>
             ${apAddHtml(j,"detail")}
             <button class="btn btn-g" onclick='closeM();go("interview");prefillInterviewFromJob(J.find(x=>x.id===${jid(j)}))'>Practice interview</button>`}
@@ -2925,7 +2956,7 @@ function buildJobDetailHTML(j, closeFn){
     </div>
 
     <div class="sec"><h4>${fromEmail?"What they sent" : "The job description"}</h4>
-      <div class="jd" id="jdBox">${jdHtml(j.jd||"No description available for this posting.")}</div>
+      <div class="jd" id="jdBox" data-jid="${escA(j.id)}">${j.jd?jdHtml(j.jd):jdPending(j)?`<p class="jdloading">Loading the full description…</p>`:jdHtml("No description available for this posting.")}</div>
       ${(j.jd||"").length>620?`<button class="jdmore" id="jdMore" onclick="toggleJD()">Read the full description</button>`:""}
     </div>
 
@@ -2961,6 +2992,7 @@ function openJob(id){
     setHtml("md", `<div class="mh">${d.header}</div><div class="mb">${d.body}</div>`);
     openM();
   }
+  if(jdPending(j)) loadJobDescription(j);
 }
 function deselectJob(){
   SELECTED_JOB = null;
@@ -5357,7 +5389,7 @@ function renderAutopilot(){
       <div class="rt" style="display:flex;gap:7px;flex-shrink:0">
         <button class="btn btn-g btn-s" onclick="previewQueued(${i})">Preview</button>
         <button class="btn btn-g btn-s" onclick="skipQueued(${i})">Skip</button>
-        <button class="btn btn-p btn-s" onclick="approveQueued(${i})">Approve</button>
+        <button class="btn btn-p btn-s" onclick="reviewQueued(${i})">Review &amp; apply</button>
       </div>
     </div>`).join("")
     : `<div class="empty" style="padding:30px 20px"><h3>Nothing waiting</h3><p>${free?"Add a job from Explore Jobs and it will be prepared and held here for your approval.":AP.on?"Your next run will prepare fresh matches at your next slot.":"Turn Autopilot on to start preparing applications."}</p></div>`);
@@ -5857,7 +5889,7 @@ async function previewQueued(i){
           ${(d.highlights||[]).length?`<h4>Highlights for this role</h4><ul>${d.highlights.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
           <h4>Cover letter</h4><p style="white-space:pre-wrap">${esc(d.cover_letter||"")}</p>
           <div class="acts" style="margin-top:16px">
-            <button class="btn btn-p" onclick="closeM();approveQueued(${i},'${sid}')">Approve</button>
+            <button class="btn btn-p" onclick="reviewQueued(${i},'${sid}')">Review &amp; apply</button>
             <button class="btn btn-g" onclick="closeM();skipQueued(${i},'${sid}')">Skip this one</button>
             <button class="btn btn-g" onclick="closeM()">Close</button></div>
         </div>`);
@@ -5868,6 +5900,16 @@ async function previewQueued(i){
   const j = J.find(x=>x.id===q.jobId);
   if(j) openJob(j.id);
   else toast("That role is no longer available");
+}
+/* Review & apply: the Apply page for this prepared application (answers,
+   tailored resume, cover letter). Nothing is sent: from there the user opens
+   the employer's form and clicks Submit themselves. Demo mode keeps the old
+   one-tap approve, which just opens the posting. */
+function reviewQueued(i,id){
+  initAP();
+  const q = AP.queue[apIdx(i,id)]; if(!q) return;
+  if(apLive() && q.id) return openApplyPage({application_id:q.id});
+  closeM(); return approveQueued(i,id);
 }
 /* `id` (optional) pins the action to a specific item, for buttons rendered
    earlier than the current list (the preview modal). */
@@ -6683,6 +6725,322 @@ function tailorFor(id){
   toast("Set up for this role — hit Write it");
 }
 
+/* ═══ JOB DESCRIPTION — fetched when a job is opened ═══
+   The list API leaves descriptions out to stay small, so the detail view asks
+   for GET /api/jobs/{fingerprint} once per job and keeps it in memory. The
+   server sends plain text (HTML already stripped); it is still escaped here. */
+const JD_CACHE = {};
+function jdPending(j){ return !!(CP_API && !DEMO && j && typeof j.id==="string" && !j.jd && !JD_CACHE[j.id]?.done); }
+function renderJDInto(j){
+  const box=$("jdBox"); if(!box||box.dataset.jid!==String(j.id)) return;
+  box.innerHTML = j.jd ? jdHtml(j.jd) : (JD_CACHE[j.id]?.failed ? "Couldn't load the description. Open the posting to read it." : "No description available for this posting.");
+  const more=$("jdMore");
+  if(!more && (j.jd||"").length>620) box.insertAdjacentHTML("afterend",`<button class="jdmore" id="jdMore" onclick="toggleJD()">Read the full description</button>`);
+}
+function loadJobDescription(j){
+  if(!jdPending(j)) return Promise.resolve(j&&j.jd);
+  const c = JD_CACHE[j.id] || (JD_CACHE[j.id] = {});
+  if(!c.p){
+    c.p = fetch(CP_API+"/api/jobs/"+encodeURIComponent(j.id), {headers:authHeaders()})
+      .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+      .then(d=>{ c.done=true; c.text=String(d.description||""); J.filter(x=>x.id===j.id).forEach(x=>x.jd=c.text); return c.text; })
+      .catch(e=>{ c.failed=true; c.done=true; c.p=null; return ""; });
+  }
+  return c.p.then(t=>{ if(t) j.jd=t; renderJDInto(j); return t; });
+}
+
+/* ═══ APPLY PAGE ═══
+   One place to apply to a job: the full description, a resume tailored from
+   your real profile (PDF), an editable cover letter, and the employer's own
+   questions pre-answered from your profile. "Send to employer" opens the
+   posting and hands the saved answers to the browser extension, which FILLS
+   the form. It never submits: you click Submit on the employer's page. */
+let APPLY = null;              // the server's view of the open application
+let APPLY_SAVE_T = null, APPLY_PENDING = {}, APPLY_CL_DIRTY = false, APPLY_SAVING = null;
+const EXT = {present:false, connected:false, version:"", code:""};
+const EXT_WAIT = {};
+window.addEventListener("message", e=>{
+  if(e.source!==window || e.origin!==location.origin) return;
+  const m=e.data; if(!m || m.source!=="careerpilot-ext") return;
+  EXT.present=true; EXT.version=m.version||EXT.version;
+  if(m.type==="cp_pong") EXT.connected=!!m.connected;
+  if(m.type==="cp_connected" && m.ok) EXT.connected=true;
+  if(m.type==="cp_disconnected") EXT.connected=false;
+  const w=m.id&&EXT_WAIT[m.id]; if(w){ delete EXT_WAIT[m.id]; w(m); }
+  if(APPLY && $("apl-send")) renderApplySend();
+});
+function extAsk(type, extra={}, ms=600){
+  const id="m"+Math.random().toString(36).slice(2);
+  return new Promise(res=>{
+    const t=setTimeout(()=>{ delete EXT_WAIT[id]; res(null); }, ms);
+    EXT_WAIT[id]=m=>{ clearTimeout(t); res(m); };
+    window.postMessage({source:"careerpilot-web", type, id, ...extra}, location.origin);
+  });
+}
+if(typeof document!=="undefined" && document.documentElement.getAttribute("data-careerpilot-ext")) EXT.present=true;
+
+const escA = s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const applyJobLike = v => {
+  const fp=v.job?.fingerprint||v.application.fingerprint;
+  return J.find(x=>x.id===fp) || {id:fp, co:v.application.company, ti:v.application.title, lo:v.application.location||"—"};
+};
+/* Lever's posting page and its form are two URLs; send people to the form. */
+function applyTarget(url){
+  try{ const u=new URL(url);
+    if(/(^|\.)lever\.co$/.test(u.hostname) && /^\/[^/]+\/[0-9a-f-]{36}\/?$/i.test(u.pathname)) u.pathname=u.pathname.replace(/\/?$/,"/apply");
+    return u.toString(); }catch(_){ return url; }
+}
+
+async function openApplyPage(arg){
+  if(!apLive()){
+    if(!SESSION && CP_API){ openAuth&&openAuth("in"); toast("Sign in to apply with CareerPilot"); return; }
+    const j=typeof arg==="object"&&arg.fingerprint?findJob(arg.fingerprint):findJob(arg);
+    if(j) return applyTo(j.id);
+    return;
+  }
+  const body = typeof arg==="object" ? arg : {fingerprint:String(arg)};
+  setHtml("md",`<div class="mh"><div style="flex:1"><h2>Getting your application ready…</h2></div><button class="mx" onclick="closeApply()" aria-label="Close">×</button></div>
+    <div class="mb"><p style="color:var(--ink2)">Reading the employer's questions and your profile.</p></div>`);
+  $("md").classList.add("applymd"); openM();
+  extAsk("cp_ping").then(m=>{ if(m){ EXT.present=true; EXT.connected=!!m.connected; } if(APPLY&&$("apl-send")) renderApplySend(); });
+  try{
+    APPLY = await CP_API_call("/api/apply/start",{method:"POST", body:JSON.stringify(body)});
+    APPLY_PENDING={}; APPLY_CL_DIRTY=false;
+    renderApply();
+  }catch(e){
+    setHtml("md",`<div class="mh"><div style="flex:1"><h2>Couldn't open the Apply page</h2></div><button class="mx" onclick="closeApply()" aria-label="Close">×</button></div>
+      <div class="mb"><div class="note bad">${esc(e.message||"Something went wrong")}</div></div>`);
+  }
+}
+function closeApply(){ closeM(); }
+window.__cpApplyClosed = () => { flushApplySave(); };
+
+function aplQLabel(q){ return `${esc(q.label||q.id)}${q.required?' <span class="aplreq" title="Required">*</span>':""}`; }
+function aplQInput(q,i){
+  const id=`aplq-${i}`, v=String(q.value||"");
+  if(q.type==="file"){
+    const what=/cover/i.test(q.id+" "+q.label)?"Your cover letter (below) is attached as a file":"Your tailored resume PDF is attached";
+    return `<div class="aplfile" id="${id}">📎 ${what}</div>`;
+  }
+  if(q.type==="textarea") return `<textarea id="${id}" rows="3" data-qi="${i}" oninput="aplAnswer(${i},this.value)">${esc(v)}</textarea>`;
+  if(q.type==="select"||q.type==="boolean"){
+    const opts=(q.options&&q.options.length?q.options:["Yes","No"]);
+    return `<select id="${id}" data-qi="${i}" onchange="aplAnswer(${i},this.value)"><option value="">Choose…</option>${opts.map(o=>`<option value="${escA(o)}"${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  }
+  if(q.type==="multi"){
+    const have=v.split(/\s*;\s*/).filter(Boolean);
+    return `<div class="aplmulti" id="${id}">${(q.options||[]).map((o,k)=>`<label><input type="checkbox" data-qi="${i}" value="${escA(o)}"${have.includes(o)?" checked":""} onchange="aplMulti(${i})"> ${esc(o)}</label>`).join("")}</div>`;
+  }
+  return `<input id="${id}" data-qi="${i}" value="${escA(v)}" oninput="aplAnswer(${i},this.value)">`;
+}
+function aplQNote(q){
+  if(q.type==="file") return "";
+  if(!String(q.value||"").trim()) return `<small class="aplyou">${q.note&&q.note!=="You answer this"?esc(q.note)+" · ":""}You answer this</small>`;
+  const src={profile:"From your profile", derived:q.note||"From your profile", you:"Your answer", decline:q.note||"Voluntary"}[q.source]||"";
+  return src?`<small>${esc(src)}</small>`:"";
+}
+function aplCounts(){
+  const a=(APPLY&&APPLY.answers)||[], core=a.filter(q=>!q.eeo);
+  const done=core.filter(q=>String(q.value||"").trim()).length;
+  const reqOpen=a.filter(q=>q.required&&!String(q.value||"").trim()).length;
+  return {done,total:core.length,reqOpen};
+}
+function renderApplyChecklist(){
+  const c=aplCounts();
+  setHtml("apl-ready",`<b>Ready: ${c.done} of ${c.total} answered</b>${c.reqOpen?` · <span class="aplyou">${c.reqOpen} required left for you</span>`:` · every required question has an answer`}`);
+}
+function resumeBlock(){
+  const r=APPLY.resume;
+  if(!r) return `<p class="apsmall">Add roles to your profile to build a resume.</p>`;
+  const cost=APPLY.resume_cost;
+  return `<div class="aplres">
+    <div class="aplreshead"><b>${r.ai?"Tailored to this job":"Your profile, ordered for this job"}</b>
+      <span class="apsmall">${r.ai?"Rewritten from your own experience. Nothing added that isn't on your profile.":"Most relevant experience and skills first. No AI used."}</span></div>
+    ${r.summary?`<p class="aplsum">${esc(r.summary)}</p>`:""}
+    <div class="tags">${(r.skills||[]).slice(0,14).map(s=>`<span class="tag ${(APPLY.job&&(APPLY.job.description||"").toLowerCase().includes(String(s).toLowerCase()))?"ok":""}">${esc(s)}</span>`).join("")}</div>
+    <details class="aplroles"><summary>Experience (${(r.roles||[]).length} role${(r.roles||[]).length===1?"":"s"})</summary>
+      ${(r.roles||[]).map(x=>`<div class="aplrole"><b>${esc(x.role)} · ${esc(x.company)}</b><div class="apsmall">${esc(x.dates||"")}</div>
+        <ul>${(x.bullets||[]).map(b=>`<li>${esc(b)}</li>`).join("")}</ul></div>`).join("")}</details>
+    <div class="acts" style="margin-top:12px">
+      <button class="btn btn-p btn-s" id="apl-pdf" onclick="downloadApplyPdf()">Download resume PDF</button>
+      <button class="btn btn-g btn-s" id="apl-tailor" onclick="tailorApplyResume()">${r.ai?"Tailor again":"Tailor with AI"} · ${cost?"1 generation":"included with Autopilot"}</button>
+    </div>
+    <div id="apl-resmsg"></div>
+  </div>`;
+}
+function renderApply(){
+  const v=APPLY, j=v.job||{}, co=v.application.company, ti=v.application.title;
+  const qi=v.questions||{};
+  const srcNote = qi.supported
+    ? (qi.partial?`These are ${esc(co)}'s standard ${qi.ats==="lever"?"Lever":"application"} questions. If their form asks anything else, the extension points it out on the page.`
+                 :`Read from ${esc(co)}'s own application form.`)
+    : `We couldn't read ${esc(co)}'s exact form, so these are the questions nearly every application asks. The extension points out anything else on the page.`;
+  const main=v.answers.map((q,i)=>({q,i})).filter(x=>!x.q.eeo);
+  const eeo=v.answers.map((q,i)=>({q,i})).filter(x=>x.q.eeo);
+  const qhtml=({q,i})=>`<div class="fld aplq${!String(q.value||"").trim()&&q.type!=="file"?" aplneeds":""}" data-qid="${escA(q.id)}">
+      <label for="aplq-${i}">${aplQLabel(q)}</label>${aplQInput(q,i)}${aplQNote(q)}</div>`;
+  setHtml("md",`<div class="mh"><div style="flex:1;min-width:0"><h2>Apply: ${esc(ti)}</h2>
+      <p style="color:var(--ink2);font-size:14px;margin-top:3px">${esc(co)}${v.application.location?` · ${esc(v.application.location)}`:""}</p></div>
+      <button class="mx" onclick="closeApply()" aria-label="Close">×</button></div>
+    <div class="mb applypg">
+      <div class="aplready" id="apl-ready"></div>
+      <div class="sec"><h4>The job</h4>
+        ${[j.work_mode,j.employment].filter(x=>x&&x!=="unknown").length?`<p class="apsmall">${[j.work_mode,j.employment].filter(x=>x&&x!=="unknown").map(x=>esc({remote:"Remote",hybrid:"Hybrid",onsite:"On-site",fulltime:"Full-time",contract:"Contract"}[x]||x)).join(" · ")}</p>`:""}
+        <div class="jd" id="aplJd">${j.description?jdHtml(j.description):"No description available for this posting."}</div>
+        ${(j.description||"").length>620?`<button class="jdmore" onclick="this.previousElementSibling.classList.toggle('open');this.textContent=this.previousElementSibling.classList.contains('open')?'Show less':'Read the full description'">Read the full description</button>`:""}
+      </div>
+      <div class="sec"><h4>Your application</h4>
+        <div id="apl-resume">${resumeBlock()}</div>
+        <div class="fld" style="margin-top:16px"><label for="apl-cl">Cover letter</label>
+          <textarea id="apl-cl" rows="10" oninput="aplCover(this.value)">${esc(v.cover_letter||"")}</textarea>
+          <small>Edit anything. It's saved as you type and attached for you.</small></div>
+        <div class="acts" style="margin-top:0">
+          <button class="btn btn-g btn-s" onclick="copyApplyCover(this)">Copy cover letter</button>
+          <button class="btn btn-g btn-s" onclick="downloadApplyCover()">Download cover letter</button></div>
+      </div>
+      <div class="sec"><h4>Employer questions</h4>
+        <p class="apsmall" style="margin-bottom:12px">${srcNote} Answers come only from your profile; blank ones are yours to answer. Change anything.</p>
+        <div id="apl-qs">${main.map(qhtml).join("")}</div>
+        ${eeo.length?`<details class="apleeo"><summary>Voluntary self-identification (${eeo.length}) · set to decline</summary>
+          <p class="apsmall">Optional. We never guess these; they're set to "decline to answer" where the form allows it.</p>${eeo.map(qhtml).join("")}</details>`:""}
+      </div>
+      <div class="sec" id="apl-send"></div>
+    </div>`);
+  renderApplyChecklist(); renderApplySend();
+}
+function renderApplySend(){
+  if(!APPLY) return;
+  const v=APPLY, co=esc(v.application.company), c=aplCounts(), url=v.job&&v.job.apply_url;
+  const closed = v.job && v.job.active===false;
+  const ext = !EXT.present
+    ? `<div class="note"><b>Install the CareerPilot extension to have this filled in for you.</b>
+        <ol class="aplsteps">
+          <li>Download the extension folder (<code>extension/</code> in the CareerPilot download) and keep it somewhere permanent.</li>
+          <li>Go to <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li>
+          <li>Turn on <b>Developer mode</b>, top-right.</li>
+          <li>Click <b>Load unpacked</b> and select the <code>extension</code> folder (the one with <code>manifest.json</code>).</li>
+          <li>Pin the ✈ icon, reload this page, then press <b>Connect extension</b>.</li></ol>
+        <b>Or apply without it:</b>
+        <div class="acts" style="margin-top:8px">
+          <button class="btn btn-g btn-s" onclick="downloadApplyPdf()">Download resume PDF</button>
+          <button class="btn btn-g btn-s" onclick="copyApplyCover(this)">Copy cover letter</button>
+          <button class="btn btn-g btn-s" onclick="copyApplyAnswers(this)">Copy answers</button></div></div>`
+    : !EXT.connected
+      ? `<div class="note"><b>Extension installed. Connect it to your account</b> so it can fill this form with your answers.
+          <div class="acts" style="margin-top:8px"><button class="btn btn-p btn-s" id="apl-connect" onclick="connectExtension()">Connect extension</button></div>
+          ${EXT.code?`<div class="fld" style="margin-top:10px"><label>Didn't connect? Paste this code in the extension's Settings → Connect code</label>
+            <input readonly id="apl-code" value="${escA(EXT.code)}" onclick="this.select()"><button class="btn btn-g btn-s" style="margin-top:6px" onclick="copyText($('apl-code').value,this)">Copy code</button></div>`:""}</div>`
+      : `<div class="note good" id="apl-extok">Extension connected. It will fill ${co}'s form with the answers above and attach your resume and cover letter.</div>`;
+  setHtml("apl-send",`<h4>Send to employer</h4>
+    ${ext}
+    <p class="aplpromise">You'll click Submit on ${co}'s page. We fill it in; we never submit for you.</p>
+    ${c.reqOpen?`<p class="apsmall aplyou">${c.reqOpen} required question${c.reqOpen>1?"s are":" is"} still blank. You can answer ${c.reqOpen>1?"them":"it"} here or on ${co}'s page.</p>`:""}
+    <div class="acts">
+      <button class="btn btn-p" id="apl-go" onclick="sendToEmployer()" ${!url||closed?"disabled":""}>${EXT.present&&EXT.connected?"Send to employer":`Open ${co}'s form`}</button>
+      <button class="btn btn-g" onclick="closeApply()">Done for now</button></div>
+    ${!url?`<p class="apsmall">This posting has no apply link.</p>`:closed?`<p class="apsmall">This posting has closed.</p>`:""}`);
+}
+function aplAnswer(i,val){
+  const q=APPLY&&APPLY.answers[i]; if(!q) return;
+  q.value=val; q.source=val?"you":""; APPLY_PENDING[q.id]=val;
+  const wrap=document.querySelector(`.aplq[data-qid="${CSS&&CSS.escape?CSS.escape(q.id):q.id}"]`);
+  if(wrap) wrap.classList.toggle("aplneeds", !String(val||"").trim());
+  renderApplyChecklist(); queueApplySave();
+  const sendNeeds=$("apl-send"); if(sendNeeds && /required/.test(sendNeeds.textContent)) renderApplySend();
+}
+function aplMulti(i){
+  const vals=[...document.querySelectorAll(`#aplq-${i} input:checked`)].map(x=>x.value);
+  aplAnswer(i, vals.join("; "));
+}
+function aplCover(v){ if(APPLY){ APPLY.cover_letter=v; APPLY_CL_DIRTY=true; queueApplySave(); } }
+function queueApplySave(){ clearTimeout(APPLY_SAVE_T); APPLY_SAVE_T=setTimeout(flushApplySave,700); }
+function flushApplySave(){
+  clearTimeout(APPLY_SAVE_T);
+  if(!APPLY || (!Object.keys(APPLY_PENDING).length && !APPLY_CL_DIRTY)) return APPLY_SAVING||Promise.resolve();
+  const body={};
+  if(Object.keys(APPLY_PENDING).length) body.answers=APPLY_PENDING;
+  if(APPLY_CL_DIRTY) body.cover_letter=APPLY.cover_letter||"";
+  APPLY_PENDING={}; APPLY_CL_DIRTY=false;
+  const id=APPLY.application.id;
+  APPLY_SAVING = CP_API_call(`/api/apply/${encodeURIComponent(id)}`,{method:"PUT", body:JSON.stringify(body)})
+    .catch(e=>toast(e.message||"Couldn't save your answers"));
+  return APPLY_SAVING;
+}
+async function downloadApplyPdf(){
+  if(!APPLY) return;
+  try{
+    await flushApplySave();
+    const r=await fetch(CP_API+`/api/apply/${encodeURIComponent(APPLY.application.id)}/resume.pdf`,{headers:authHeaders()});
+    if(!r.ok) throw new Error("Couldn't build the PDF ("+r.status+")");
+    const blob=await r.blob();
+    const name=((r.headers.get("content-disposition")||"").match(/filename="?([^";]+)"?/)||[])[1]||"Resume.pdf";
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+    document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500);
+    toast("Resume downloaded");
+  }catch(e){ toast(e.message||"Couldn't download the resume"); }
+}
+async function tailorApplyResume(){
+  if(!APPLY) return;
+  const b=$("apl-tailor"); if(b){ b.disabled=true; b.textContent="Tailoring…"; }
+  setHtml("apl-resmsg","");
+  try{
+    await flushApplySave();
+    APPLY=await CP_API_call(`/api/apply/${encodeURIComponent(APPLY.application.id)}/resume`,{method:"POST"});
+    renderApply(); toast("Resume and cover letter tailored to this job");
+  }catch(e){
+    setHtml("apl-resmsg",`<div class="note bad">${esc(e.message||"Couldn't tailor it right now")}</div>`);
+    if(b){ b.disabled=false; b.textContent="Tailor with AI"; }
+  }
+}
+function copyText(t,btn){
+  const done=()=>{ if(btn){ const o=btn.textContent; btn.textContent="Copied"; setTimeout(()=>btn.textContent=o,1400);} };
+  try{ const p=navigator.clipboard&&navigator.clipboard.writeText(t); if(p&&p.then) p.then(done,()=>toast("Copy failed — select and copy it instead")); else done(); }
+  catch(_){ toast("Copy failed — select and copy it instead"); }
+}
+function copyApplyCover(btn){ if(APPLY) copyText(APPLY.cover_letter||"",btn); }
+function applyAnswersText(){
+  if(!APPLY) return "";
+  return APPLY.answers.filter(q=>q.type!=="file").map(q=>`${q.label}\n${String(q.value||"").trim()||"(you answer this)"}`).join("\n\n");
+}
+function copyApplyAnswers(btn){ copyText(applyAnswersText(),btn); }
+function downloadApplyCover(){
+  if(!APPLY) return;
+  const blob=new Blob([APPLY.cover_letter||""],{type:"text/plain"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=`Cover_Letter_${String(APPLY.application.company||"").replace(/[^\w-]+/g,"_")}.txt`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500);
+}
+async function connectExtension(){
+  const b=$("apl-connect"); if(b){ b.disabled=true; b.textContent="Connecting…"; }
+  try{
+    const r=await CP_API_call("/api/auth/extension-token",{method:"POST"});
+    EXT.code=r.token;
+    const m=await extAsk("cp_connect",{token:r.token, apiBase:CP_API},1500);
+    if(m&&m.ok){ EXT.connected=true; toast("Extension connected"); }
+    else toast("The extension didn't answer. Paste the code into its Settings instead.");
+  }catch(e){ toast(e.message||"Couldn't connect the extension"); }
+  renderApplySend();
+}
+async function sendToEmployer(){
+  if(!APPLY||!APPLY.job||!APPLY.job.apply_url) return;
+  const v=APPLY, url=applyTarget(v.job.apply_url);
+  if(!/^https?:\/\//i.test(url)) return;
+  const viaExt = EXT.present && EXT.connected;
+  // Hand off first so the extension knows this application by the time the
+  // employer's page loads; open the tab inside the click so it isn't blocked.
+  if(viaExt) window.postMessage({source:"careerpilot-web", type:"cp_handoff", applicationId:v.application.id, applyUrl:url, id:"h"+Date.now()}, location.origin);
+  window.open(url,"_blank","noopener");
+  const saved=flushApplySave();
+  const j=applyJobLike(v);
+  mark(j,"opened","Opened the employer's form from the Apply page");
+  PENDING_ASK=j;
+  try{ await saved; await CP_API_call(`/api/apply/${encodeURIComponent(v.application.id)}/handoff`,{method:"POST"}); }catch(_){}
+  if(v.application.origin==="autopilot" && apLive()) syncAP();
+  toast(viaExt?`Opened ${v.application.company}'s form. The extension fills it in; you click Submit.`
+              :`Opened ${v.application.company}'s form. Use your downloaded resume and copied answers.`);
+  closeM(); rn();
+}
+
 /* ═══ INIT ═══ */
 $("f-fam").innerHTML=`<option value="">Any specialization</option>`+
   TAX.map(c=>`<optgroup label="${c.cat}">${c.fams.map(f=>`<option value="${f.id}">${f.n}</option>`).join("")}</optgroup>`).join("");
@@ -6722,7 +7080,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   showMailtoFollowup,copyFullEmail,canShareFiles,
   get EF_FILES(){return EF_FILES},get LAST_DOCX_FILE(){return LAST_DOCX_FILE},
   renderAutopilot,toggleAutopilot,setMinFit,setPause,setDigest,previewNextRun,addSlot,removeSlot,updateSlot,addApTitle,rmApTitle,
-  saveFlightPlan,runAutopilotNow,previewQueued,approveQueued,approveAllQueued,
+  saveFlightPlan,runAutopilotNow,previewQueued,approveQueued,reviewQueued,approveAllQueued,
   skipQueued,syncAP,adoptAP,apLive,confirmAutopilotResume,
   apProgFetch,apProgCheck,apProgReset,apStripText,get APR(){return APR},
   renderSupport,submitSupport,emailSupportDirect,get SUP_TICKETS(){return SUP_TICKETS},
@@ -6743,5 +7101,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   clearAccountData,ACCOUNT_KEYS,get WORK_AUTH_KNOWN(){return WORK_AUTH_KNOWN},
   setMode,candFit,bestFor,jobsFor,visaBlocked,submitTo,pickCandidate,
   renderBench,renderSubs,editCand,saveCand,removeCand,openCand,addCandSkill,
-  get CAND_SKILLS(){return CAND_SKILLS},syncEdit,dropBullet,addBulletTo,dropSkillGroup,redrawDoc,wireEdits,saveState,loadState,clearState,moveRole,delRole,loadJobs,openConnect,mapJob,get LIVE(){return LIVE},get LAST(){return LAST},handleFile,DEMO_EXP,DEMO_SKILLS,PEOPLE,COURSES};
+  get CAND_SKILLS(){return CAND_SKILLS},syncEdit,dropBullet,addBulletTo,dropSkillGroup,redrawDoc,wireEdits,saveState,loadState,clearState,moveRole,delRole,loadJobs,openConnect,mapJob,get LIVE(){return LIVE},get LAST(){return LAST},handleFile,DEMO_EXP,DEMO_SKILLS,PEOPLE,COURSES,
+  get APPLY(){return APPLY},EXT,JD_CACHE,loadJobDescription,openApplyPage,closeApply,renderApply,aplAnswer,flushApplySave,downloadApplyPdf,tailorApplyResume,
+  copyApplyAnswers,applyAnswersText,connectExtension,sendToEmployer,applyTarget};
 </script>

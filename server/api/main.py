@@ -9,7 +9,7 @@ from sqlalchemy import text
 from api.settings import settings, production_problems
 from api.routers import (jobs, profile, ai, billing, referrals, evaluation,
                          support, interview, integrations, accounts,
-                         applications, connections, autopilot, bench)
+                         applications, connections, autopilot, bench, apply)
 from api.db import init_db, engine
 from api import models_events  # noqa: F401  registers processed_events on Base
 from api.ratelimit import ai_limit
@@ -134,7 +134,7 @@ async def unhandled(request: Request, exc: Exception):
 for r in (accounts.router, jobs.router, profile.router, applications.router,
           connections.router, billing.router, referrals.router,
           evaluation.router, support.router, interview.router,
-          integrations.router, autopilot.router, bench.router):
+          integrations.router, autopilot.router, bench.router, apply.router):
     app.include_router(r)
 # AI endpoints cost real money: bounded per user (and per IP) on top of credits.
 app.include_router(ai.router, dependencies=[Depends(ai_limit)])

@@ -7,25 +7,29 @@
 </header>
 
 <main>
+  <div id="conn"></div>
   <div id="state"></div>
   <button id="fill" class="primary" disabled>Fill this form</button>
   <div id="result"></div>
 </main>
 
 <footer>
-  <div class="note">Never submits for you. Salary, sponsorship, and demographic
-  questions are always left for you to answer.</div>
+  <div class="note">Never submits for you: you click Submit on the employer's page.
+  Applications you send from CareerPilot's Apply page are filled with the answers
+  you reviewed there. Salary and demographic questions are left for you.</div>
   <a href="#" id="settings">Settings</a>
 </footer>
 
 <div id="panel" hidden>
+  <label for="code">Connect code</label>
+  <input id="code" type="password" placeholder="paste from CareerPilot → Apply → Connect extension">
+  <div class="note">Easiest: press <b>Connect extension</b> on CareerPilot and it connects by itself. Use this only if that didn't work.</div>
   <label for="apiBase">API address</label>
-  <input id="apiBase" placeholder="https://api.careerpilot.ai (default)">
+  <input id="apiBase" placeholder="https://careerpilot-api-rri9.onrender.com (default)">
   <div class="note" id="apiHint">Leave blank for the default. Saving a new address asks Chrome for permission to contact it.</div>
   <div class="note" id="apiErr" style="color:#B45309" hidden></div>
-  <label for="token">Session token</label>
-  <input id="token" type="password" placeholder="paste from careerpilot.ai → Settings">
   <button id="save" class="primary">Save</button>
+  <button id="disconnect" style="margin-top:6px">Disconnect</button>
 </div>
 <script src="popup.js"></script>
 </body></html>

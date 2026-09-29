@@ -52,3 +52,19 @@ def verify(token: str) -> dict | None:
                           issuer=ISSUER, options={"verify_aud": False})
     except (JWTError, RuntimeError):
         return None
+
+
+EXTENSION_SCOPE = "extension"
+EXTENSION_DAYS = 90
+
+
+def issue_extension(user, jti: str) -> dict:
+    """A key for the browser extension. Same signing secret, but it carries
+    scope=extension and a jti the database can revoke. api/auth.py refuses it
+    everywhere except the handful of apply endpoints that accept it."""
+    now = dt.datetime.now(dt.timezone.utc)
+    expires = now + dt.timedelta(days=EXTENSION_DAYS)
+    claims = {"sub": user.id, "email": user.email, "scope": EXTENSION_SCOPE, "jti": jti,
+              "iss": ISSUER, "iat": int(now.timestamp()), "exp": int(expires.timestamp())}
+    return {"token": jwt.encode(claims, auth_secret(), algorithm=ALGORITHM),
+            "expires_at": expires.isoformat()}

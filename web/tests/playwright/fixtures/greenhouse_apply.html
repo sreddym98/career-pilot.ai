@@ -1,0 +1,52 @@
+<!doctype html>
+<!-- Test fixture: mimics a Greenhouse job-board application form (field ids,
+     labels, required markers, file inputs, EEO section). Served by the E2E test
+     at https://boards.greenhouse.io/acmepay/jobs/4001234 via request
+     interception. The submit handler only COUNTS submissions. -->
+<html><head><meta charset="utf-8"><title>Senior SDET - Acme Pay</title>
+<style>body{font:15px sans-serif;max-width:760px;margin:20px auto;padding:0 12px}.field{margin:12px 0}label{display:block;font-weight:600}
+input[type=text],input[type=email],input[type=tel],textarea,select{width:100%;padding:6px}.asterisk{color:#c00}</style></head>
+<body>
+<h1 class="app-title">Senior SDET</h1><div class="company-name">at Acme Pay</div>
+<div id="content"><p>Own quality for our payments platform.</p></div>
+<form id="application_form" action="https://boards.greenhouse.io/acmepay/jobs/4001234/applications" method="post" enctype="multipart/form-data">
+  <div class="field"><label for="first_name">First Name<span class="asterisk">*</span></label><input type="text" id="first_name" name="first_name" aria-required="true"></div>
+  <div class="field"><label for="last_name">Last Name<span class="asterisk">*</span></label><input type="text" id="last_name" name="last_name" aria-required="true"></div>
+  <div class="field"><label for="email">Email<span class="asterisk">*</span></label><input type="email" id="email" name="email" aria-required="true"></div>
+  <div class="field"><label for="phone">Phone</label><input type="tel" id="phone" name="phone"></div>
+  <div class="field"><label for="resume">Resume/CV<span class="asterisk">*</span></label><input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx,.txt,.rtf" aria-required="true">
+    <label for="resume_text">Or enter manually</label><textarea id="resume_text" name="resume_text"></textarea></div>
+  <div class="field"><label for="cover_letter">Cover Letter</label><input type="file" id="cover_letter" name="cover_letter" accept=".pdf,.doc,.docx,.txt,.rtf">
+    <label for="cover_letter_text">Or enter manually</label><textarea id="cover_letter_text" name="cover_letter_text"></textarea></div>
+  <div class="field"><label for="question_30001">LinkedIn Profile</label><input type="text" id="question_30001" name="question_30001"></div>
+  <div class="field"><label for="question_30002">Are you legally authorized to work in the United States?<span class="asterisk">*</span></label>
+    <select id="question_30002" name="question_30002" aria-required="true"><option value="">Select...</option><option value="1">Yes</option><option value="0">No</option></select></div>
+  <div class="field"><label for="question_30003">Will you now or in the future require sponsorship for employment visa status (e.g., H-1B visa status)?<span class="asterisk">*</span></label>
+    <select id="question_30003" name="question_30003" aria-required="true"><option value="">Select...</option><option value="1">Yes</option><option value="0">No</option></select></div>
+  <div class="field"><label for="question_30004">Why do you want to work at Acme Pay?<span class="asterisk">*</span></label><textarea id="question_30004" name="question_30004" aria-required="true"></textarea></div>
+  <div class="field"><label for="question_30005">How many years of professional QA automation experience do you have?</label>
+    <select id="question_30005" name="question_30005"><option value="">Select...</option><option value="11">0-2 years</option><option value="12">3-5 years</option><option value="13">6-9 years</option><option value="14">10+ years</option></select></div>
+  <div class="field"><label for="question_30006">What are your salary expectations?</label><input type="text" id="question_30006" name="question_30006"></div>
+  <fieldset class="field"><legend>Which of these tools have you used?</legend>
+    <label><input type="checkbox" name="question_30007[]" value="21"> Cypress</label>
+    <label><input type="checkbox" name="question_30007[]" value="22"> Playwright</label>
+    <label><input type="checkbox" name="question_30007[]" value="23"> Selenium</label></fieldset>
+  <div class="field"><label for="question_39999">How did you hear about us?<span class="asterisk">*</span></label><input type="text" id="question_39999" name="question_39999" required></div>
+  <h3>Voluntary Self-Identification</h3>
+  <div class="field"><label for="gender">Gender</label><select id="gender" name="gender"><option value="">Select...</option><option value="1">Male</option><option value="2">Female</option><option value="3">Decline To Self Identify</option></select></div>
+  <div class="field"><label for="veteran_status">Veteran Status</label><select id="veteran_status" name="veteran_status"><option value="">Select...</option><option value="1">I am not a protected veteran</option><option value="2">I identify as one or more of the classifications of protected veteran</option><option value="3">I don't wish to answer</option></select></div>
+  <fieldset class="field"><legend>How would you describe your racial/ethnic background?</legend>
+    <label><input type="checkbox" name="demographic_7001[]" value="1"> Asian</label>
+    <label><input type="checkbox" name="demographic_7001[]" value="2"> White</label>
+    <label><input type="checkbox" name="demographic_7001[]" value="3"> I prefer not to answer</label></fieldset>
+  <button type="submit" id="submit_app">Submit Application</button>
+</form>
+<script>
+  window.__submits = 0; window.__submitClicks = 0;
+  document.getElementById("application_form").addEventListener("submit", function (e) { window.__submits++; e.preventDefault(); });
+  document.getElementById("submit_app").addEventListener("click", function () { window.__submitClicks++; });
+  var _rs = HTMLFormElement.prototype.requestSubmit, _s = HTMLFormElement.prototype.submit;
+  HTMLFormElement.prototype.requestSubmit = function () { window.__submits++; };
+  HTMLFormElement.prototype.submit = function () { window.__submits++; };
+</script>
+</body></html>

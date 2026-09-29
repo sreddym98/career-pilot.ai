@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- Test fixture: mimics a Lever application form (/apply). Served by the E2E
+     test at https://jobs.lever.co/brightlane/<id>/apply via request
+     interception. The submit handler only COUNTS submissions. -->
+<html><head><meta charset="utf-8"><title>Brightlane - QA Automation Engineer</title></head>
+<body>
+<div class="posting-headline"><h2>QA Automation Engineer</h2></div>
+<form class="application-form" id="application-form" method="POST" action="/brightlane/5b0c2d4e-8f1a-4c3b-9d2e-7a6f5e4d3c2b/apply" enctype="multipart/form-data">
+  <h4>Submit your application</h4>
+  <ul>
+    <li class="application-question resume"><label class="application-label">Resume/CV<span class="required">✱</span></label>
+      <div class="application-field"><input type="file" name="resume" id="resume-upload-input" required></div></li>
+    <li class="application-question"><label><div class="application-label">Full name<span class="required">✱</span></div>
+      <div class="application-field"><input type="text" name="name" required></div></label></li>
+    <li class="application-question"><label><div class="application-label">Email<span class="required">✱</span></div>
+      <div class="application-field"><input type="email" name="email" required></div></label></li>
+    <li class="application-question"><label><div class="application-label">Phone</div><div class="application-field"><input type="text" name="phone"></div></label></li>
+    <li class="application-question"><label><div class="application-label">Current location</div><div class="application-field"><input type="text" name="location"></div></label></li>
+    <li class="application-question"><label><div class="application-label">Current company</div><div class="application-field"><input type="text" name="org"></div></label></li>
+    <li class="application-question"><label><div class="application-label">LinkedIn URL</div><div class="application-field"><input type="text" name="urls[LinkedIn]"></div></label></li>
+    <li class="application-question"><label><div class="application-label">GitHub URL</div><div class="application-field"><input type="text" name="urls[GitHub]"></div></label></li>
+  </ul>
+  <div class="application-additional"><label><div class="application-label">Additional information</div>
+    <textarea name="comments" placeholder="Add a cover letter or anything else you want to share."></textarea></label></div>
+  <fieldset class="custom-question"><legend>Are you legally authorized to work in the United States?<span class="required">✱</span></legend>
+    <label><input type="radio" name="cards[abc][field0]" value="Yes" required> Yes</label>
+    <label><input type="radio" name="cards[abc][field0]" value="No"> No</label></fieldset>
+  <button type="submit" class="postings-btn template-btn-submit" id="btn-submit">Submit application</button>
+</form>
+<script>
+  window.__submits = 0; window.__submitClicks = 0;
+  document.getElementById("application-form").addEventListener("submit", function (e) { window.__submits++; e.preventDefault(); });
+  document.getElementById("btn-submit").addEventListener("click", function () { window.__submitClicks++; });
+  HTMLFormElement.prototype.requestSubmit = function () { window.__submits++; };
+  HTMLFormElement.prototype.submit = function () { window.__submits++; };
+</script>
+</body></html>

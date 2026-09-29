@@ -403,8 +403,8 @@ def _profile_block(db: Session, user: User) -> tuple[str, list[str]]:
     positions.sort(key=lambda p: p.started_on, reverse=True)
     lines = [f"Name: {user.name or ''}", f"Headline: {user.headline or ''}",
              f"Summary: {(user.summary or '')[:500]}"]
-    for p in positions[:3]:
-        lines.append(f"- {p.role} at {p.company} ({p.duration_label})")
+    for i, p in enumerate(positions[:3], 1):
+        lines.append(f"- P{i}: {p.role} at {p.company} ({p.duration_label})")
         lines += [f"    • {b[:180]}" for b in (p.bullets or [])[:4]]
     lines.append("Skills: " + ", ".join(skills[:40]))
     return "\n".join(lines), skills
@@ -515,6 +515,8 @@ def _prepare_one(db: Session, user: User, job: Job, profile: str, charge: str = 
     cached = ai._cached(db, key)
     if cached is not None:
         clean = _clean_ai(cached, source, job, user)
+        if clean is not None and isinstance(cached.get("resume"), dict):
+            clean["resume"] = cached["resume"]          # validated before it was cached
     if clean is None:
         try:
             got = ai._call(f"""Prepare a job application. Return ONLY minified JSON.
@@ -525,15 +527,17 @@ CANDIDATE
 ROLE: {job.title} at {job.company} ({job.location or 'location not stated'})
 JD: {(job.description or '')[:1500]}
 
-SCHEMA {{"subject":"","summary":"","highlights":[""],"cover_letter":""}}
+SCHEMA {{"subject":"","summary":"","highlights":[""],"cover_letter":"","resume":{{"roles":[{{"id":"P1","bullets":[""]}}],"skills":[""]}}}}
 
 RULES
 - Use ONLY facts from the candidate block. NEVER invent metrics, employers, tools or dates.
+- resume.roles: for each P id, that role's own bullets reworded and reordered for this JD (most relevant first).
+- resume.skills: the candidate's skills, most relevant to this JD first. Only from the Skills line.
 - subject: "<Job title> — <Candidate name>", under 90 characters.
 - summary: 2-3 sentences aimed at this role.
 - highlights: 4-6 items, each a reworded bullet from the candidate's own experience that best fits this JD.
 - cover_letter: 3 short paragraphs, specific to this role. No "I am writing to express interest".
-- If the posting doesn't state pay, don't mention a number.""", 1100, "autopilot", fast=True)
+- If the posting doesn't state pay, don't mention a number.""", 1800, "autopilot", fast=True)
         except HTTPException as e:
             print(f"[autopilot] {user.email} / {job.company}: AI skipped ({e.detail})")
             return None, "ai_unavailable"
@@ -544,6 +548,9 @@ RULES
         if clean is None:
             print(f"[autopilot] {user.email} / {job.company}: draft rejected by validation")
             return None, "ai_invalid"
+        tailored = _tailored_resume(db, user, job, got, clean)
+        if tailored:
+            clean["resume"] = tailored
         ai._store(db, key, clean)
 
     # Re-check right before writing: two overlapping runs must not double-queue.
@@ -558,8 +565,10 @@ RULES
     app = Application(
         user_id=user.id, fingerprint=job.fingerprint, company=job.company, title=job.title,
         location=job.location, status="ready", origin="autopilot",
-        tailored_resume={"summary": clean["summary"], "highlights": clean["highlights"]},
-        cover_letter=clean["cover_letter"], form_fields={"subject": clean["subject"]})
+        tailored_resume={"summary": clean["summary"], "highlights": clean["highlights"],
+                         **({"resume": clean["resume"]} if isinstance(clean.get("resume"), dict) else {})},
+        cover_letter=clean["cover_letter"],
+        form_fields={"subject": clean["subject"], **({"ai_resume_done": True} if isinstance(clean.get("resume"), dict) else {})})
     db.add(app)
     if manual:                          # bookkeeping so DAILY_CAP counts on-demand adds too
         db.add(AutopilotRun(user_id=user.id, found=1, prepared=1, skipped=0, note=MANUAL_NOTE,
@@ -573,6 +582,33 @@ RULES
         credits.spend(db, user, 1)      # one commit: the queued item and its generation
     db.refresh(app)
     return app, None
+
+
+def _tailored_resume(db: Session, user: User, job: Job, got, clean: dict) -> dict | None:
+    """The tailored resume from the same AI call, held to the Apply page's
+    rules (api/resume.py): only the profile's employers, titles, dates, skills
+    and numbers. Optional: a draft without one (or with an invalid one) is
+    still queued, and the Apply page falls back to the profile ordered for
+    this job."""
+    from api import resume as R
+    r = got.get("resume") if isinstance(got, dict) else None
+    if not isinstance(r, dict):
+        return None
+    positions = db.query(Position).filter(Position.user_id == user.id).all()
+    ordered = sorted(positions, key=lambda p: p.started_on, reverse=True)
+    res, why = R.check_ai({"summary": clean["summary"], "roles": r.get("roles"), "skills": r.get("skills") or [],
+                           "cover_letter": ""}, user, ordered[:3], _skills_of(db, user), job)
+    if res is None:
+        print(f"[autopilot] {user.email} / {job.company}: tailored resume dropped ({why})")
+        return None
+    resume, _ = res
+    # check_ai only saw the three roles the prompt showed; keep the rest as written.
+    shown = {x["id"] for x in resume["roles"]}
+    for p in ordered[3:]:
+        if p.id not in shown:
+            resume["roles"].append({"id": p.id, "company": p.company, "role": p.role, "dates": R._dates(p),
+                                    "location": p.location or "", "bullets": list(p.bullets or [])[:R.MAX_BULLETS]})
+    return resume
 
 
 def _spend_free(db: Session, user: User) -> bool:

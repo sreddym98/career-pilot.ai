@@ -280,10 +280,14 @@ def run_flow():
         ok("Preview shows the tailored cover letter", "Dear" in pg.inner_text("#md .mb") and "Cover letter" in pg.inner_text("#md .mb"))
         pg.keyboard.press("Escape"); pg.evaluate("closeM()"); pg.wait_for_timeout(200)
         first_title = pg.locator("#ap-queue .apqueue b").first.inner_text()
+        pg.locator("#ap-queue .apqueue").first.locator("button", has_text="Review & apply").click()
+        pg.wait_for_selector("#apl-go", timeout=15000)
+        ok("Review & apply opens the Apply page with the prepared cover letter", "Apply:" in pg.inner_text("#md .mh")
+           and "Dear" in pg.input_value("#apl-cl"))
         with ctx.expect_page(timeout=8000) as popup:
-            pg.locator("#ap-queue .apqueue").first.locator("button", has_text="Approve").click()
+            pg.click("#apl-go")
         url = popup.value.url
-        ok("Approve just opens the real apply_url (nothing is sent)", url.startswith("https://") and "/jobs/" in url, url)
+        ok("Send just opens the real apply_url (nothing is sent)", url.startswith("https://") and "/jobs/" in url, url)
         popup.value.close(); pg.wait_for_timeout(800)
         ok("  approved item left the queue; 4 remain", pg.locator("#ap-queue .apqueue").count() == 4)
         approved_co = [c[0] for c in VISIBLE() if c[1] == first_title][0]

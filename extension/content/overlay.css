@@ -14,3 +14,8 @@
   color:#B45309;background:#FEF3C7;border:1px solid #FCD34D;
   border-radius:5px;padding:4px 8px;margin-top:4px;display:block;
 }
+.cp-needs{
+  outline:2px solid #DC2626 !important;
+  outline-offset:1px;
+  background:#FEF2F2 !important;
+}

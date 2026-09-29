@@ -203,12 +203,38 @@ class Application(Base):
     tailored_resume = Column(JSONish())
     cover_letter = Column(Text)
     form_fields = Column(JSONish())
+    # The employer's questions for this posting with the user's answers, as the
+    # Apply page shows them: [{id,label,type,required,options,value,source,eeo}].
+    # Only ever filled from real profile data or typed by the user.
+    answers = Column(JSONish())
     # 'manual' = the user tracked it; 'autopilot' = prepared by a scheduled run
     # and waiting for approval. Kept apart so approving a batch never touches
     # anything the user added by hand.
     origin = Column(String, default="manual")
     applied_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ATSQuestions(Base):
+    """An employer's public application-form schema for one posting, already
+    normalised (api/ats.py). Cached 24h so opening the Apply page doesn't hit
+    the employer's ATS every time."""
+    __tablename__ = "ats_questions"
+    fingerprint = Column(String, primary_key=True)
+    result = Column(JSONish(), nullable=False)
+    fetched_at = Column(DateTime(timezone=True), nullable=False)
+
+
+class ExtensionToken(Base):
+    """A scoped key the browser extension uses. It can only read the apply
+    packet, download the tailored resume and report fill/applied status; every
+    other endpoint refuses it (api/auth.py). Deleting/revoking the row kills it."""
+    __tablename__ = "extension_tokens"
+    jti = Column(String, primary_key=True)
+    user_id = Column(UUIDStr(), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_used_at = Column(DateTime(timezone=True))
+    revoked_at = Column(DateTime(timezone=True))
 
 
 class SupportTicket(Base):

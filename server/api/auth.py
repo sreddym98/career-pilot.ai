@@ -39,6 +39,10 @@ def current_user(authorization: str = Header(None),
     claims = hosted or tokens.verify(token)
     if not claims:
         raise HTTPException(401, "Invalid or expired session")
+    if not hosted and claims.get("scope"):
+        # A scoped key (the browser extension's) is not a session. It only
+        # works on the endpoints that ask for extension_or_user below.
+        raise HTTPException(401, "This key only works in the CareerPilot extension")
 
     email = claims.get("email")
     if not email:
@@ -62,6 +66,27 @@ def current_user(authorization: str = Header(None),
     user.last_active_at = dt.datetime.now(dt.timezone.utc)
     db.commit()
     return user
+
+
+def extension_or_user(authorization: str = Header(None),
+                      db: Session = Depends(get_db)) -> User:
+    """A normal session, or the extension's scoped key (revocable, checked
+    against extension_tokens on every request). Only the apply packet, the
+    tailored-resume download and the fill/applied report use this."""
+    token = _bearer(authorization)
+    claims = tokens.verify(token) if token else None
+    if claims and claims.get("scope") == tokens.EXTENSION_SCOPE:
+        from api.models import ExtensionToken
+        row = db.get(ExtensionToken, claims.get("jti") or "")
+        if not row or row.revoked_at is not None or row.user_id != claims.get("sub"):
+            raise HTTPException(401, "This extension key was disconnected. Connect the extension again.")
+        user = db.get(User, row.user_id)
+        if not user:
+            raise HTTPException(401, "Invalid or expired session")
+        row.last_used_at = dt.datetime.now(dt.timezone.utc)
+        db.commit()
+        return user
+    return current_user(authorization, db)
 
 
 def optional_user(authorization: str = Header(None),

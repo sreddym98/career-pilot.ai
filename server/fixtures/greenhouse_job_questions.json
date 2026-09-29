@@ -1,0 +1,73 @@
+{
+  "id": 4001234,
+  "internal_job_id": 3001234,
+  "title": "Senior SDET",
+  "updated_at": "2026-09-20T10:00:00-04:00",
+  "requisition_id": "QA-114",
+  "location": {"name": "Remote - US"},
+  "absolute_url": "https://boards.greenhouse.io/acmepay/jobs/4001234",
+  "content": "&lt;p&gt;Own quality for our payments platform.&lt;/p&gt;",
+  "questions": [
+    {"required": true, "private": false, "label": "First Name", "description": null,
+     "fields": [{"name": "first_name", "type": "input_text", "values": []}]},
+    {"required": true, "private": false, "label": "Last Name", "description": null,
+     "fields": [{"name": "last_name", "type": "input_text", "values": []}]},
+    {"required": true, "private": false, "label": "Email", "description": null,
+     "fields": [{"name": "email", "type": "input_text", "values": []}]},
+    {"required": false, "private": false, "label": "Phone", "description": null,
+     "fields": [{"name": "phone", "type": "input_text", "values": []}]},
+    {"required": true, "private": false, "label": "Resume/CV", "description": null,
+     "fields": [{"name": "resume", "type": "input_file", "values": []},
+                {"name": "resume_text", "type": "textarea", "values": []}]},
+    {"required": false, "private": false, "label": "Cover Letter", "description": null,
+     "fields": [{"name": "cover_letter", "type": "input_file", "values": []},
+                {"name": "cover_letter_text", "type": "textarea", "values": []}]},
+    {"required": false, "private": false, "label": "LinkedIn Profile", "description": null,
+     "fields": [{"name": "question_30001", "type": "input_text", "values": []}]},
+    {"required": true, "private": false, "label": "Are you legally authorized to work in the United States?", "description": null,
+     "fields": [{"name": "question_30002", "type": "multi_value_single_select",
+                 "values": [{"label": "Yes", "value": 1}, {"label": "No", "value": 0}]}]},
+    {"required": true, "private": false, "label": "Will you now or in the future require sponsorship for employment visa status (e.g., H-1B visa status)?", "description": null,
+     "fields": [{"name": "question_30003", "type": "multi_value_single_select",
+                 "values": [{"label": "Yes", "value": 1}, {"label": "No", "value": 0}]}]},
+    {"required": true, "private": false, "label": "Why do you want to work at Acme Pay?", "description": null,
+     "fields": [{"name": "question_30004", "type": "textarea", "values": []}]},
+    {"required": false, "private": false, "label": "How many years of professional QA automation experience do you have?", "description": null,
+     "fields": [{"name": "question_30005", "type": "multi_value_single_select",
+                 "values": [{"label": "0-2 years", "value": 11}, {"label": "3-5 years", "value": 12},
+                            {"label": "6-9 years", "value": 13}, {"label": "10+ years", "value": 14}]}]},
+    {"required": false, "private": false, "label": "What are your salary expectations?", "description": null,
+     "fields": [{"name": "question_30006", "type": "input_text", "values": []}]},
+    {"required": false, "private": false, "label": "Which of these tools have you used?", "description": null,
+     "fields": [{"name": "question_30007", "type": "multi_value_multi_select",
+                 "values": [{"label": "Cypress", "value": 21}, {"label": "Playwright", "value": 22}, {"label": "Selenium", "value": 23}]}]},
+    {"required": false, "private": false, "label": "Hidden tracking", "description": null,
+     "fields": [{"name": "question_30008", "type": "input_hidden", "values": []}]}
+  ],
+  "location_questions": [],
+  "compliance": [
+    {"type": "eeoc", "description": "&lt;p&gt;Voluntary self-identification&lt;/p&gt;",
+     "questions": [
+       {"required": false, "label": "Gender", "description": null,
+        "fields": [{"name": "gender", "type": "multi_value_single_select",
+                    "values": [{"label": "Male", "value": 1}, {"label": "Female", "value": 2},
+                               {"label": "Decline To Self Identify", "value": 3}]}]},
+       {"required": false, "label": "Veteran Status", "description": null,
+        "fields": [{"name": "veteran_status", "type": "multi_value_single_select",
+                    "values": [{"label": "I am not a protected veteran", "value": 1},
+                               {"label": "I identify as one or more of the classifications of protected veteran", "value": 2},
+                               {"label": "I don't wish to answer", "value": 3}]}]}
+     ]}
+  ],
+  "demographic_questions": {
+    "header": "Our commitment to diversity",
+    "description": "Voluntary",
+    "questions": [
+      {"id": 7001, "label": "How would you describe your racial/ethnic background?", "required": false,
+       "type": "multi_value_multi_select",
+       "answer_options": [{"id": 1, "label": "Asian", "free_form": false},
+                          {"id": 2, "label": "White", "free_form": false},
+                          {"id": 3, "label": "I prefer not to answer", "free_form": false}]}
+    ]
+  }
+}

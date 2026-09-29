@@ -35,7 +35,7 @@ ok("  marked NEW in the sidebar",qa(".sbbadge.new").some(b=>b.textContent==="NEW
 console.log("── The honest note is present and prominent ──");
 const noteText = $("p-autopilot").querySelector(".apnote").textContent;
 ok("says plainly that Autopilot never sends anything",/never sends anything/i.test(noteText));
-ok("  explains that Approve opens the posting for you to submit",/Approve opens the real posting/i.test(noteText)&&/Nothing is emailed/i.test(noteText));
+ok("  explains that Review & apply leads to the posting for you to submit",/Review & apply opens the Apply page/i.test(noteText)&&/submit it yourself/i.test(noteText)&&/Nothing is emailed/i.test(noteText));
 ok("  it's the first thing on the page, not buried",$("p-autopilot").innerHTML.indexOf("apnote") < $("p-autopilot").innerHTML.indexOf("ap-checklist"));
 
 console.log("── Setup checklist ──");

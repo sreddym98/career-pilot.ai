@@ -26,6 +26,7 @@ function makeServer(over={}){
     const u=new URL(url), p=u.pathname, m=(opts.method||"GET").toUpperCase();
     const body=opts.body?JSON.parse(opts.body):null;
     const auth=(opts.headers||{}).Authorization;
+    if(p.startsWith("/api/apply/")){ S.calls.push({m,p,body,auth}); return res(503,{detail:"apply page not mocked here"}); }
     if(!p.startsWith("/api/autopilot")&&p!=="/api/integrations/status") return res(404,{detail:"Not found"});
     S.calls.push({m,p,body,auth});
     if(p==="/api/integrations/status") return res(200,{gmail:{connected:S.gmailConnected},phone:{verified:S.phoneVerified}});
@@ -151,9 +152,16 @@ ok("  shows the cover letter",$("md").textContent.includes("would love to join")
 ok("  hostile title stays inert in the modal",!$("md").querySelector("img")&&!w.__xss);
 w.closeM();
 
-console.log("── Approve ──");
+console.log("── Review & apply ──");
 const firstId=S.queue[0].id;
-click(qa("#ap-queue button").find(b=>b.textContent==="Approve")); await sleep(150);
+ok("queue rows offer Review & apply, not a bare Approve",qa("#ap-queue button").some(b=>b.textContent==="Review & apply")&&!qa("#ap-queue button").some(b=>b.textContent==="Approve"));
+click(qa("#ap-queue button").find(b=>b.textContent==="Review & apply")); await sleep(150);
+ok("  opens the Apply page for that item",calls("POST","/api/apply/start").length===1&&calls("POST","/api/apply/start")[0].body.application_id===firstId);
+ok("  nothing approved or opened by that click",calls("POST",/\/approve$/).length===0&&w.__o.length===0);
+w.closeM();
+
+console.log("── Approve (one-tap, still available) ──");
+await w.approveQueued(0); await sleep(150);
 ok("approve endpoint called for that item",calls("POST",`/api/autopilot/queue/${firstId}/approve`).length===1);
 ok("  posting opened in a new tab",w.__o.includes(S.queue[0].apply_url),w.__o.join());
 ok("  queue re-synced to 1",qa("#ap-queue .apqueue").length===1);

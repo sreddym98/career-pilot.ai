@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from api.db import get_db
-from api.auth import optional_user
+from api.auth import optional_user, current_user
 from api.models import Job, Connection, Application
 from api.matching import load_profile, score_job
 from ingest.quality import ATS_SOURCES
@@ -106,8 +106,65 @@ def get_job(fingerprint: str, db: Session = Depends(get_db), user=Depends(option
                     Connection.user_id == user.id, Connection.company == j.company).all()]
     prof = load_profile(db, user)
     d = _shape(j, refs, score_job(prof, j), autopilot_states(db, user, [j.fingerprint]).get(j.fingerprint))
-    d["description"] = j.description
+    # Plain text, whatever the source sent. Some boards hand us HTML (Greenhouse
+    # content arrives entity-escaped, so it survives ingest as real tags); the
+    # browser renders this as text, never as markup.
+    d["description"] = description_text(j.description)
     return d
+
+
+@router.get("/{fingerprint}/questions")
+def job_questions(fingerprint: str, db: Session = Depends(get_db), user=Depends(current_user)):
+    """The employer's own application questions for this posting, normalised
+    (see api/ats.py). {supported: false} when the ATS doesn't publish them.
+    Signed-in only: a miss makes an outbound request to the employer's ATS."""
+    from api import ats
+    j = db.get(Job, fingerprint)
+    if not j:
+        raise HTTPException(404, "Job not found")
+    return ats.questions_for(db, j)
+
+
+_BLOCK = {"p", "div", "br", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "section", "article"}
+
+
+def description_text(desc: str | None) -> str:
+    """HTML -> readable plain text (paragraphs, '• ' bullets). Scripts, styles
+    and every attribute are dropped. Plain text passes through unchanged."""
+    import html as _html, re as _re
+    from html.parser import HTMLParser
+    s = desc or ""
+    if "&lt;" in s and "<" not in s:
+        s = _html.unescape(s)                 # double-escaped HTML
+    if not _re.search(r"<\s*/?\s*[a-zA-Z][^>]*>", s):
+        return s.strip()
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True); self.out = []; self.skip = 0
+        def handle_starttag(self, tag, attrs):
+            if tag in ("script", "style", "noscript", "template"): self.skip += 1
+            elif tag == "li": self.out.append("\n• ")
+            elif tag in _BLOCK: self.out.append("\n\n" if tag in ("p", "div", "ul", "ol", "section") or tag[0] == "h" else "\n")
+        def handle_endtag(self, tag):
+            if tag in ("script", "style", "noscript", "template"): self.skip = max(0, self.skip - 1)
+            elif tag in _BLOCK: self.out.append("\n")
+        def handle_data(self, data):
+            if not self.skip: self.out.append(data)
+    p = P()
+    try:
+        p.feed(s); p.close()
+    except Exception:
+        return _re.sub(r"<[^>]+>", " ", s).strip()
+    t = "".join(p.out).replace("\xa0", " ")
+    t = _re.sub(r"[ \t]+", " ", t)
+    t = _re.sub(r" *\n *", "\n", t)
+    t = _re.sub(r"\n{3,}", "\n\n", t)
+    while True:                               # consecutive bullets stay one list
+        t2 = _re.sub(r"(\n• [^\n]*)\n\n(?=• )", r"\1\n", t)
+        if t2 == t: break
+        t = t2
+    return t.strip()
 
 
 def _aware(d):

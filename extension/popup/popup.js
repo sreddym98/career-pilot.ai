@@ -11,9 +11,12 @@ async function activeTab() {
 }
 
 async function init() {
-  const { apiBase, token } = await chrome.storage.local.get(["apiBase","token"]);
+  const { apiBase, extToken, token } = await chrome.storage.local.get(["apiBase","extToken","token"]);
   $("apiBase").value = apiBase || "";
-  $("token").value = token || "";
+  $("code").value = "";
+  $("conn").innerHTML = (extToken || token)
+    ? `<span class="pill ok">CONNECTED</span>to your CareerPilot account`
+    : `<span class="pill warn">NOT CONNECTED</span>Open CareerPilot and press Connect extension.`;
 
   const tab = await activeTab();
   let probe = null;
@@ -34,7 +37,7 @@ async function init() {
   }
   PROFILE = res.profile;
   $("state").innerHTML =
-    `<span class="pill ok">READY</span>Profile loaded — ${PROFILE._meta.total}, ${PROFILE._meta.positions} roles.`;
+    `<span class="pill ok">READY</span>Profile loaded for ${PROFILE.full_name || PROFILE.email || "you"}.`;
   $("fill").disabled = false;
 }
 
@@ -65,7 +68,9 @@ $("settings").onclick = (e) => { e.preventDefault(); $("panel").hidden = !$("pan
 $("save").onclick = async () => {
   const err = $("apiErr"); err.hidden = true;
   const raw = $("apiBase").value.trim().replace(/\/+$/, "");
-  const token = $("token").value.trim();
+  const code = $("code").value.trim();
+  if (code && code.split(".").length !== 3) { err.textContent = "That connect code doesn't look right. Copy it again from CareerPilot."; err.hidden = false; return; }
+  const token = code ? { extToken: code } : {};
   if (raw) {
     let u;
     try { u = new URL(raw); } catch (_) { err.textContent = "Enter a full address, e.g. https://api.example.com"; err.hidden = false; return; }
@@ -80,11 +85,17 @@ $("save").onclick = async () => {
       const ok = has || await chrome.permissions.request({ origins });
       if (!ok) { err.textContent = "Permission to contact that address was declined, so it was not saved."; err.hidden = false; return; }
     } catch (e) { err.textContent = "Could not request permission: " + e.message; err.hidden = false; return; }
-    await chrome.storage.local.set({ apiBase: u.origin, token });
+    await chrome.storage.local.set({ apiBase: u.origin, ...token });
   } else {
     await chrome.storage.local.remove("apiBase");
-    await chrome.storage.local.set({ token });
+    await chrome.storage.local.set(token);
   }
+  $("panel").hidden = true;
+  init();
+};
+
+$("disconnect").onclick = async () => {
+  await chrome.storage.local.remove(["extToken", "token", "pending"]);
   $("panel").hidden = true;
   init();
 };
