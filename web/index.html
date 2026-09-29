@@ -4176,26 +4176,35 @@ async function pushSeekerData(){
   }
 }
 
+/* What the server last accepted. saveState() runs on every render (filters,
+   job loads, …) and used to push the whole profile each time, which with the
+   post-push loadJobs() became a request loop every ~2s that kept the database
+   awake around the clock. Now a push only happens when the data really changed. */
+let LAST_PUSHED = null;
 async function pushSeekerDataOnce(){
+  const profile = {
+    name:  ($("p-name")?.value||"").trim() || SESSION.name || SESSION.email,
+    phone: ($("p-phone")?.value||"").trim(),
+    location: ($("p-loc")?.value||"").trim(),
+    linkedin: ($("p-li")?.value||"").trim(),
+  };
+  // Omitted unless it's really been established — the API treats an absent
+  // field as "leave it alone", which is what we want here.
+  if(WORK_AUTH_KNOWN && $("p-auth")?.value) profile.work_auth = [$("p-auth").value];
+  const fingerprint = JSON.stringify([profile, SKILLS.slice(0,60),
+    EXP.map(e=>[e.id,e.co,e.role,e.from,e.to,e.loc,e.b])]);
+  if(fingerprint === LAST_PUSHED) return;          // nothing new to save
   syncBadge("saving");
   try{
-    const profile = {
-      name:  ($("p-name")?.value||"").trim() || SESSION.name || SESSION.email,
-      phone: ($("p-phone")?.value||"").trim(),
-      location: ($("p-loc")?.value||"").trim(),
-      linkedin: ($("p-li")?.value||"").trim(),
-    };
-    // Omitted unless it's really been established — the API treats an absent
-    // field as "leave it alone", which is what we want here.
-    if(WORK_AUTH_KNOWN && $("p-auth")?.value) profile.work_auth = [$("p-auth").value];
     await apiTry("/api/profile", {method:"PUT", body:JSON.stringify(profile)});
 
     await apiTry("/api/profile/skills",
                  {method:"PUT", body:JSON.stringify({skills:SKILLS.slice(0,60)})});
 
     await pushPositions();
+    LAST_PUSHED = fingerprint;
     syncBadge("saved");
-    if(LIVE) loadJobs();      // skills/titles may have changed, so fit has too
+    if(LIVE) loadJobs();      // skills/titles changed, so fit has too
   }catch(e){
     syncBadge("error");
   }
