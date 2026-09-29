@@ -10,6 +10,27 @@ from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker
 from api.settings import settings
 
+def _ipv4_connect_args(u: str) -> dict:
+    """Render's free instances have no IPv6 route. If the database host also
+    resolves to IPv6, libpq may try that first and fail with "Network is
+    unreachable". Pin an IPv4 address with `hostaddr` while keeping `host`,
+    which libpq still uses for TLS verification and SNI (Neon routes on it).
+    Resolved once per process, at connect time, so a changed address is
+    picked up on the next restart. Any failure leaves libpq to resolve normally."""
+    import os, socket
+    from sqlalchemy.engine import make_url
+    if os.environ.get("DB_FORCE_IPV4", "1") == "0":
+        return {}
+    try:
+        host = make_url(u).host
+        if not host or host in ("localhost", "127.0.0.1"):
+            return {}
+        infos = socket.getaddrinfo(host, None, socket.AF_INET, socket.SOCK_STREAM)
+        return {"hostaddr": infos[0][4][0]} if infos else {}
+    except Exception:
+        return {}
+
+
 url = settings.DATABASE_URL
 IS_SQLITE = url.startswith("sqlite")
 
@@ -30,7 +51,7 @@ else:
     # Small pool: one free Render instance talking to Neon, which also closes idle
     # connections when it scales to zero — hence pre_ping and a short recycle.
     engine = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=5,
-                           pool_recycle=300)
+                           pool_recycle=300, connect_args=_ipv4_connect_args(url))
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
