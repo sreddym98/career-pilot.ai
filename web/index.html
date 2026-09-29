@@ -716,6 +716,44 @@ select.sel:focus{border-color:var(--moss);outline:none}
 .apx span{font-size:12.5px;color:var(--ink2);line-height:1.5}
 .apqueue{align-items:center}
 
+/* ── autopilot live progress ── */
+.approg[hidden]{display:none}
+.approg{border-color:var(--moss-l);background:linear-gradient(180deg,var(--moss-s),var(--card) 70%)}
+.approg-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
+.approg-head h2{margin:0}
+.approg-time{font:500 13px var(--m);color:var(--ink2);white-space:nowrap}
+.approg-stage{font-size:15px;font-weight:600;color:var(--ink);line-height:1.45;margin:2px 0 10px;overflow-wrap:anywhere}
+.approg-barrow{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.approg-barrow[hidden]{display:none}
+.approg progress{flex:1;height:10px;border:0;border-radius:6px;overflow:hidden;background:var(--line);accent-color:var(--moss);min-width:0}
+.approg progress::-webkit-progress-bar{background:var(--line);border-radius:6px}
+.approg progress::-webkit-progress-value{background:var(--moss);border-radius:6px;transition:width .4s}
+.approg progress::-moz-progress-bar{background:var(--moss);border-radius:6px}
+.approg-count{font-size:12.5px;color:var(--ink2);white-space:nowrap}
+.approg-items{list-style:none;margin:0 0 6px;padding:0}
+.approg-items li{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;min-width:0}
+.approg-items li:first-child{border-top:0}
+.approg-items .aic{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-size:12px;font-weight:700;margin-top:1px;background:var(--sunk);color:var(--ink3);border:1px solid var(--line2)}
+.approg-items li.ready .aic{background:var(--moss);border-color:var(--moss);color:#fff}
+.approg-items li.skipped .aic{background:var(--gold-s);border-color:var(--gold-l);color:var(--gold)}
+.approg-items li.preparing .aic{border:2px solid var(--moss-l);border-top-color:var(--moss);background:transparent;animation:apspin .8s linear infinite}
+@keyframes apspin{to{transform:rotate(360deg)}}
+.approg-items .ait{flex:1;min-width:0;overflow-wrap:anywhere}
+.approg-items .ait b{font-weight:600}
+.approg-items .ais{display:block;font-size:12px;color:var(--ink3);margin-top:1px}
+.approg-items .aif{font-size:12px;color:var(--ink2);white-space:nowrap;flex-shrink:0}
+.approg-sum{font-size:13.5px;color:var(--ink2);line-height:1.55}
+.approg-sum p{margin:0 0 6px}
+.approg-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.approg.bad{border-color:var(--gold-l);background:var(--gold-s)}
+.apstrip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:13.5px}
+.apstrip .apdot{margin-right:0;flex-shrink:0}
+.apstrip .apdot.run{background:var(--gold);box-shadow:0 0 0 4px var(--gold-s);animation:appulse 1.4s ease-in-out infinite}
+@keyframes appulse{50%{box-shadow:0 0 0 7px transparent}}
+.apstrip .btn[hidden]{display:none}
+.apstrip-t{flex:1;min-width:0;font-weight:600;color:var(--ink)}
+@media(max-width:520px){.approg-items li{flex-wrap:wrap}.approg-items .aif{margin-left:30px}.approg-acts .btn{flex:1}.apstrip .btn{width:100%}}
+
 .apqueuehead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
 .apqueuesubject{font-size:12px;color:var(--ink3);margin-top:4px;font-family:var(--m);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1115,6 +1153,15 @@ select.sel:focus{border-color:var(--moss);outline:none}
     <div class="apbadge" id="ap-status"></div>
   </div>
 
+  <div class="card approg" id="ap-prog" hidden>
+    <div class="approg-head"><h2 id="ap-prog-title">Autopilot run</h2><span class="approg-time" id="ap-prog-time"></span></div>
+    <p class="approg-stage" id="ap-prog-stage" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div class="approg-barrow" id="ap-prog-barrow"><progress id="ap-prog-bar" max="100" aria-label="Applications prepared in this run"></progress><span class="approg-count" id="ap-prog-count"></span></div>
+    <ul class="approg-items" id="ap-prog-items" aria-label="Roles in this run"></ul>
+    <div class="approg-sum" id="ap-prog-sum"></div>
+    <div class="approg-acts" id="ap-prog-acts"></div>
+  </div>
+
   <div class="apnote">
     <svg viewBox="0 0 20 20" class="apnoteicon"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6v5M10 14h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     <p><b>Autopilot never sends anything for you.</b> It finds and scores roles, tailors a cover letter and highlights for each, and holds them here. You read them, then Approve opens the real posting so you submit it yourself — one tap per role, or approve a whole batch at once. Nothing is emailed to an employer, so there is no unattended sending to get an account flagged and no unchecked AI message going out under your name.</p>
@@ -1172,6 +1219,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
       <label class="apswitch"><input type="checkbox" id="ap-on" onchange="toggleAutopilot()"><span class="apslider"></span></label>
       <div><b id="ap-toggle-label">Autopilot is off</b><span>Turn it on to start preparing applications automatically.</span></div>
     </div>
+    <div class="apstrip" id="ap-strip"><span class="apdot" id="ap-strip-dot"></span><span class="apstrip-t" id="ap-strip-text" role="status" aria-live="polite">Off</span><button class="btn btn-g btn-s" id="ap-strip-run" onclick="runAutopilotNow()" hidden>Run now</button></div>
     <button class="btn btn-p" style="width:100%;margin-top:12px" onclick="saveFlightPlan()">Save flight plan</button>
   </div>
 
@@ -1195,7 +1243,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
     <div id="ap-preview"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="ap-queuecard">
     <div class="apqueuehead">
       <h2>Ready for review <span class="cnt" id="ap-queue-count"></span></h2>
       <button class="btn btn-p btn-s" id="ap-approveall" onclick="approveAllQueued()">Approve all — one tap</button>
@@ -2183,7 +2231,7 @@ function go(p){
   if(p==="people")renderPeople();
   if(p==="refer")renderRefer();
   if(p==="apps")renderApps();
-  if(p==="autopilot"){renderAutopilot();refreshAutopilotIntegrations();syncAP();}
+  if(p==="autopilot"){renderAutopilot();refreshAutopilotIntegrations();syncAP();apProgCheck();}
   if(p==="support"){renderSupport();loadSupportHistory();}
   if(p==="interview")renderInterviewPage();
 }
@@ -5042,6 +5090,7 @@ function apScope(){
   if(have === want) return;
   if(!want && store.get("cp_token","")) return;   // session still resolving on boot
   AP = apBlank(); AP.owner = want; saveAP();
+  if(typeof apProgReset==="function") apProgReset();
 }
 function initAP(){ apScope(); }
 function saveAP(){ store.set("cp_autopilot", AP); }
@@ -5094,9 +5143,8 @@ function apReasons(d){
 
 function renderAutopilot(){
   initAP();
-  setHtml("ap-status", AP.on
-    ? `<span class="apdot on"></span>Running`
-    : `<span class="apdot"></span>Off`);
+  const stripT = apStripText();
+  apRenderStrip(stripT);
 
   const steps = [
     {k:"resumeConfirmed", label:"Confirm your resume", sub:"Autopilot uses the roles and bullets in your profile.", cta:"Confirm resume", fn:"confirmAutopilotResume"},
@@ -5383,16 +5431,223 @@ function saveFlightPlan(){
   toast("Flight plan saved");
 }
 
+
+/* ── Live progress ─────────────────────────────────────────────────────
+   Everything drawn here comes from GET /api/autopilot/progress, which reads
+   the run row the server itself keeps updating as it works (stage, counts,
+   one row per role). Nothing is estimated in the browser. One timer chain
+   (never two), paused while the tab is hidden or the page isn't open,
+   backing off when the server can't be reached. */
+const AP_POLL_MS=2000, AP_POLL_MAX_MS=30000, AP_SHOW_DONE_MS=30*60*1000;
+const APR={run:null, timer:null, tick:null, inflight:false, again:false, errs:0, skew:0,
+           starting:false, startedMs:0, prevId:null, wasActive:false, err:"", offline:false};
+const apPageOpen = () => { const p=$("p-autopilot"); return !!(p && p.classList.contains("on")); };
+const apRunning = r => !!r && r.state==="running";
+const apStopped = r => !!r && ["stale","stopped","failed"].includes(r.state);
+const apServerNow = () => Date.now()+APR.skew;
+const apMs = t => { const d=new Date(/(Z|[+-]\d\d:?\d\d)$/.test(t||"")?t:(t||"")+"Z"); return d.getTime(); };
+const apDur = ms => { const s=Math.max(0,Math.round(ms/1000)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`; };
+const apDismissed = () => store.get("cp_ap_dismissed","");
+
+function apProgReset(){
+  clearTimeout(APR.timer); clearInterval(APR.tick);
+  Object.assign(APR,{run:null,timer:null,tick:null,inflight:false,again:false,errs:0,starting:false,prevId:null,wasActive:false,err:"",offline:false});
+  const el=$("ap-prog"); if(el) el.hidden=true;
+}
+function apProgSchedule(ms){
+  clearTimeout(APR.timer); APR.timer=null;
+  if(document.hidden || !apPageOpen() || !apLive()) return;       // resumes on visibility / navigation
+  APR.timer=setTimeout(apProgFetch, ms);
+}
+/* Entry point on page open, tab return and after any action that may start a run. */
+function apProgCheck(){ if(apLive() && apPageOpen()) apProgFetch(); }
+
+async function apProgFetch(){
+  clearTimeout(APR.timer); APR.timer=null;
+  if(!apLive()) return;
+  if(APR.inflight){ APR.again=true; return; }                      // never two requests at once
+  APR.inflight=true; APR.again=false;
+  initAP(); const owner=AP.owner;
+  let d=null, failed=null;
+  try{ d=await CP_API_call("/api/autopilot/progress"); }catch(e){ failed=e; }
+  APR.inflight=false;
+  if(AP.owner!==owner) return;                                     // account changed while in flight
+  if(failed){
+    APR.errs++; APR.offline = APR.starting || apRunning(APR.run);
+    if(APR.offline){ apRenderProg(); apProgSchedule(Math.min(AP_POLL_MS*Math.pow(2,APR.errs), AP_POLL_MAX_MS)); }
+    return;                                                        // idle + failing (e.g. older server): stay quiet
+  }
+  APR.errs=0; APR.offline=false;
+  if(d && d.now) APR.skew = apMs(d.now)-Date.now();
+  if(d && typeof d.nextRunAt==="string" && d.on===AP.on){ AP.nextRunAt=d.nextRunAt; }
+  let run=d && d.run || null;
+  // Right after a click the server may still show the PREVIOUS run for a moment.
+  if(APR.starting && run && run.state!=="running" && (run.id===APR.prevId || apMs(run.startedAt) < APR.startedMs+APR.skew-3000)) run=null;
+  else if(APR.starting && run) APR.starting=false;
+  const wasActive=APR.wasActive;
+  if(run){ APR.run=run; APR.err=""; }
+  else if(!APR.starting){ APR.run=null; }
+  APR.wasActive = apRunning(APR.run) || APR.starting;
+  apRenderProg();
+  apRenderStrip(apStripText());
+  if(APR.wasActive){ apProgSchedule(AP_POLL_MS); }
+  else if(wasActive){ await syncAP(); }                            // run just ended: refresh queue + history
+  if(APR.again){ APR.again=false; apProgFetch(); }
+}
+
+const apSkippedWhy = run => {
+  const c={}; (run.items||[]).filter(i=>i.state==="skipped"&&i.reason).forEach(i=>{c[i.reason]=(c[i.reason]||0)+1;});
+  return Object.entries(c).map(([r,n])=>`${n} × ${r}`).join(" · ");
+};
+/* The honest final line: what was queued, or the actual reason nothing was. */
+function apOutcome(run){
+  const n=run.prepared||0, f=run.filtered||{}, plural=(k,w)=>`${k} ${w}${k===1?"":"s"}`;
+  const filt=Object.entries(f).filter(([k,v])=>v&&AP_FILTERED[k]).map(([k,v])=>`${v} ${AP_FILTERED[k]}`).join(" · ");
+  if(n>0){
+    const extra=[];
+    if(run.skipped) extra.push(`${plural(run.skipped,"role")} couldn't be prepared (${apSkippedWhy(run)||"see below"}).`);
+    if(run.note) extra.push(run.note+".");
+    return {head:`${plural(n,"application")} ready for your approval`, detail:extra.join(" "), go:"queue"};
+  }
+  switch(run.outcome){
+    case "needs_skills": return {head:"Nothing queued — your profile has no skills", detail:"Autopilot scores every role against your skills. With none saved it can't tell a good match from a bad one, so it queues nothing rather than guessing.", go:"profile"};
+    case "below_min_fit": return {head:`Nothing queued — no new roles at or above your ${run.minFit||60}% minimum fit`, detail:`${f.below_min_fit||0} scored lower. Lowering the minimum widens the net.`, go:"minfit"};
+    case "no_matches": return {head:"No new matching roles this time", detail:filt?`Left out: ${filt}.`:"Nothing new has been posted that fits your settings yet.", go:null};
+    case "daily_cap": return {head:"Nothing queued — you've reached today's limit", detail:(run.note||"")+" Roles you already have are unaffected.", go:null};
+    case "queue_full": return {head:"Nothing queued — your approval queue is full", detail:"Approve or skip some of the waiting applications and the next run will continue.", go:"queue"};
+    case "ai_busy": return {head:"Nothing queued — the AI service was busy", detail:"No generations were used. It will retry at your next slot, or you can retry now.", go:"retry"};
+    case "ai_invalid": return {head:"Nothing queued — the drafts failed our checks", detail:"The AI's drafts contained invented figures or leftover placeholders, so none were queued.", go:"retry"};
+    case "out_of_credits": return {head:"Nothing queued — you're out of generations this month", detail:run.note||"", go:null};
+    case "out_of_time": return {head:"Stopped early to stay within the time limit", detail:"The rest will be prepared on the next run.", go:"retry"};
+    case "not_pro": return {head:"Autopilot is part of Pro", detail:"", go:null};
+    default: return {head:"Run finished — nothing new was prepared", detail:run.note||"", go:null};
+  }
+}
+function apStopText(run){
+  const n=run.prepared||0;
+  if(run.state==="failed") return {head:"This run hit an error and stopped", detail:(n?`${n} application${n===1?" was":"s were"} prepared before that — ${n===1?"it is":"they are"} in your queue below. `:"")+"Nothing was sent to any employer."};
+  return {head:"This run stopped early", detail:(n?`${n} application${n===1?" was":"s were"} prepared before it stopped — ${n===1?"it is":"they are"} in your queue below. `:"")+"Nothing was sent to any employer. You can retry now."};
+}
+
+function apRenderProg(){
+  const card=$("ap-prog"); if(!card) return;
+  const run=APR.run, starting=APR.starting && !apRunning(run);
+  const showDone = !!run && !starting && !apRunning(run) && apDismissed()!==run.id
+    && apServerNow()-apMs(run.finishedAt||run.updatedAt) < AP_SHOW_DONE_MS;     // recent runs only; older ones live in Recent runs
+  if(!starting && !apRunning(run) && !showDone && !APR.err){ card.hidden=true; card.classList.remove("bad"); clearInterval(APR.tick); APR.tick=null; return; }
+  card.hidden=false;
+  const running = starting || apRunning(run);
+  const stopped = !running && apStopped(run);
+  card.classList.toggle("bad", stopped || (!running && !!APR.err));
+  card.setAttribute("aria-busy", running?"true":"false");
+  const items = running && !apRunning(run) ? [] : (run&&run.items)||[];
+  let stage, sumHtml="", acts="";
+  if(APR.err && !running){ stage=APR.err; acts=`<button class="btn btn-p btn-s" onclick="apProgRetry()">Retry</button>`; }
+  else if(starting){ stage="Starting your run…"; }
+  else if(running){ stage=run.stage||"Working…";
+    if(APR.offline) sumHtml=`<p>Can't reach the server right now — still trying. The run keeps going on the server.</p>`; }
+  else if(stopped){ const t=apStopText(run); stage=t.head; sumHtml=`<p>${esc(t.detail)}</p>`;
+    acts=`<button class="btn btn-p btn-s" onclick="apProgRetry()">Retry</button>`+(run.prepared?`<button class="btn btn-g btn-s" onclick="apJump('queue')">See what's ready</button>`:"")+`<button class="btn btn-g btn-s" onclick="apProgDismiss()">Dismiss</button>`; }
+  else { const o=apOutcome(run); stage=o.head; if(o.detail) sumHtml=`<p>${esc(o.detail.trim())}</p>`;
+    const label={queue:o.head.startsWith("Nothing")?"Open the queue":"Review them now",profile:"Open your profile",minfit:"Change minimum fit",retry:"Retry now"}[o.go];
+    if(o.go) acts=`<button class="btn btn-p btn-s" onclick="${o.go==="retry"?"apProgRetry()":`apJump('${o.go}')`}">${label}</button>`;
+    acts+=`<button class="btn btn-g btn-s" onclick="apProgDismiss()">Dismiss</button>`; }
+  setTxt("ap-prog-title", running ? "Autopilot is working" : "Autopilot run");
+  if($("ap-prog-stage").textContent!==stage) setTxt("ap-prog-stage", stage);     // live region: only speak on change
+
+  const bar=$("ap-prog-bar"), row=$("ap-prog-barrow"), total=run&&run.total>0?run.total:0;
+  row.hidden=!running;
+  if(running){
+    if(total && apRunning(run)){ const v=Math.min(run.prepared||0,total);
+      bar.max=total; bar.value=v; bar.setAttribute("aria-valuemin","0"); bar.setAttribute("aria-valuemax",String(total)); bar.setAttribute("aria-valuenow",String(v));
+      bar.setAttribute("aria-valuetext",`${v} of ${total} applications ready`);
+      setTxt("ap-prog-count",`${v} of ${total} ready`); }
+    else { bar.removeAttribute("value"); ["aria-valuenow","aria-valuemin","aria-valuemax","aria-valuetext"].forEach(a=>bar.removeAttribute(a));
+      setTxt("ap-prog-count", starting?"":"Working…"); }
+  }
+  const ICON={ready:"✓",skipped:"!",preparing:"",queued:""}, LBL={ready:"Ready",preparing:"Preparing…",queued:"Waiting",skipped:"Skipped"};
+  // A run that is no longer running has nothing "preparing" or "waiting": whatever wasn't finished says so.
+  const shown = running ? items : items.map(i=>(i.state==="preparing"||i.state==="queued") ? {...i,state:"skipped",reason:i.reason||"Not finished"} : i);
+  setHtml("ap-prog-items", shown.map(i=>`<li class="${esc(i.state)}"><span class="aic" aria-hidden="true">${ICON[i.state]||""}</span>
+    <span class="ait"><b>${esc(i.company||"")}</b> — ${esc(i.title||"")}<span class="ais">${esc(LBL[i.state]||i.state)}${i.state==="skipped"&&i.reason?`: ${esc(i.reason)}`:""}</span></span>
+    ${Number.isFinite(i.fit)?`<span class="aif">${i.fit}% fit</span>`:""}</li>`).join(""));
+  setHtml("ap-prog-sum", sumHtml); setHtml("ap-prog-acts", acts);
+  apRenderElapsed();
+  if(running && !APR.tick) APR.tick=setInterval(apRenderElapsed,1000);
+  if(!running && APR.tick){ clearInterval(APR.tick); APR.tick=null; }
+}
+function apRenderElapsed(){
+  const run=APR.run, running=APR.starting||apRunning(run);
+  if(running){
+    const from = apRunning(run) ? apMs(run.startedAt) : APR.startedMs+APR.skew;
+    setTxt("ap-prog-time", `Elapsed ${apDur(apServerNow()-from)}`);
+  } else if(run && run.state==="done" && run.startedAt && (run.finishedAt||run.updatedAt)) setTxt("ap-prog-time", `Took ${apDur(apMs(run.finishedAt||run.updatedAt)-apMs(run.startedAt))}`);
+  else setTxt("ap-prog-time","");
+}
+function apProgDismiss(){ if(APR.run) store.set("cp_ap_dismissed", APR.run.id); APR.err=""; apRenderProg(); }
+function apProgRetry(){ APR.err=""; runAutopilotNow(); }
+function apJump(where){
+  const t = where==="queue" ? $("ap-queuecard") : where==="minfit" ? $("ap-minfit") : null;
+  if(where==="profile"){ go("me"); return; }
+  if(t && t.scrollIntoView) t.scrollIntoView({behavior:"smooth",block:"start"});
+  if(where==="minfit" && t && t.focus) t.focus({preventScroll:true});
+}
+/* A click that should start a run: show it at once (honestly: "Starting…"),
+   begin polling, and let the server's own row take over as soon as it exists. */
+function apProgBegin(){
+  APR.prevId = APR.run ? APR.run.id : null;
+  APR.starting=true; APR.startedMs=Date.now(); APR.wasActive=true; APR.err=""; APR.errs=0; APR.offline=false;
+  apRenderProg(); apRenderStrip(apStripText());
+  const c=$("ap-prog"); if(c && c.scrollIntoView && !apInView(c)) c.scrollIntoView({behavior:"smooth",block:"start"});
+  apProgSchedule(700);
+}
+const apInView = el => { const r=el.getBoundingClientRect(); return r.top>=0 && r.top<(window.innerHeight||800)*0.6; };
+
+/* The status strip under the toggle. */
+const apShortDay = iso => { const d=new Date(String(iso)+"T12:00:00"); return isNaN(d)?String(iso):d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); };
+function apStripText(){
+  const running = APR.starting || apRunning(APR.run);
+  if(running) return {text:"Running now", running:true};
+  if(!AP.on) return {text:"Off"};
+  if(AP.pausedUntil) return {text:`Paused until ${apShortDay(AP.pausedUntil)}`, on:true, paused:true};
+  if(apLive() && AP.nextRunAt){
+    const t=new Date(AP.nextRunAt).toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit"}).replace(",","");
+    return {text:`On - next run ${t}`, on:true};
+  }
+  return {text:"On", on:true};
+}
+function apRenderStrip(t){
+  t=t||apStripText();
+  const el=$("ap-strip-text"); if(el && el.textContent!==t.text) el.textContent=t.text;
+  const dot=$("ap-strip-dot"); if(dot) dot.className="apdot"+(t.running?" run":t.on?" on":"");
+  const badge=t.running ? `<span class="apdot run"></span>Running now` : t.on ? `<span class="apdot on"></span>${t.paused?"Paused":"On"}` : `<span class="apdot"></span>Off`;
+  const bd=$("ap-status"); if(bd && bd.innerHTML!==badge) bd.innerHTML=badge;
+  const b=$("ap-strip-run"); if(b){ b.hidden = !(apLive() && AP.on && !t.running); }
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){ clearTimeout(APR.timer); APR.timer=null; }
+  else if(apLive() && apPageOpen() && (APR.wasActive || APR.starting)) apProgFetch();
+});
+
 /* Live: asks the server to run this account's slot now. Demo: simulates one
    run against the sample roles (no AI involved), and never sends anything. */
 async function apRunLive(){
+  apProgBegin();
   try{
+    // The request itself lasts as long as the run; the progress poll above is what the user watches.
     adoptAP(await CP_API_call("/api/autopilot/run",{method:"POST"}));
     renderAutopilot();
+    APR.starting=false; await apProgFetch();
     const last=AP.runs[0];
     if(last && last.prepared) toast(`${last.prepared} application${last.prepared>1?"s":""} ready for your approval`);
     else if(last && last.note) toast(last.note);
-  }catch(e){ if(AP.on) toast(e.message||"Couldn't run Autopilot"); await syncAP(); }   // switched off mid-flight: nothing to report
+  }catch(e){
+    if(e && e.status===409){ APR.starting=false; apProgFetch(); return; }          // a run is already going: just watch it
+    if(e && e.status){ APR.starting=false; APR.wasActive=false; APR.err = AP.on ? (e.message||"Couldn't start the run") : ""; apRenderProg(); apRenderStrip(); }
+    else { apProgFetch(); }        // connection dropped mid-request: the server row says what really happened
+    if(AP.on && e && e.status!==409) toast(e.message||"Couldn't run Autopilot");
+    await syncAP();
+  }
 }
 async function runAutopilotNow(){
   initAP();
@@ -6314,6 +6569,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   renderAutopilot,toggleAutopilot,setMinFit,setPause,setDigest,previewNextRun,addSlot,removeSlot,updateSlot,addApTitle,rmApTitle,
   saveFlightPlan,runAutopilotNow,previewQueued,approveQueued,approveAllQueued,
   skipQueued,syncAP,adoptAP,apLive,confirmAutopilotResume,
+  apProgFetch,apProgCheck,apProgReset,apStripText,get APR(){return APR},
   renderSupport,submitSupport,emailSupportDirect,get SUP_TICKETS(){return SUP_TICKETS},
   generateInterview,toggleReveal,renderInterviewPage,prefillInterviewFromJob,demoInterview,
   get IV_LAST(){return IV_LAST},get IV_REVEALED(){return IV_REVEALED},

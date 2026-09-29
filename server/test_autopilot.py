@@ -360,6 +360,120 @@ for hdr in (None, "wrong"):
 bg = BG()
 ok("tick accepts the secret and schedules", AP.tick(bg, False, "s3cret") == {"scheduled": True} and bg.ran)
 
+# ── live progress: what the page polls while a run is going ──
+db.query(Application).filter(Application.user_id.in_([u.id, free.id])).delete(); db.commit()
+pg = User(email="prog@aptest.example.com", name="Prog Tester", plan="pro", account_type="seeker", referral_code="aptestprog")
+other = User(email="other@aptest.example.com", name="Other", plan="pro", account_type="seeker", referral_code="aptestother")
+db.add_all([pg, other]); db.commit()
+db.add(Position(user_id=pg.id, company="Acme", role="SDET", started_on=dt.date(2020, 1, 1), bullets=["Built Cypress suites"]))
+db.add(UserSkill(user_id=pg.id, skill="Cypress"))
+pcfg = AutopilotConfig(user_id=pg.id, on=True, slots=[9], tz="America/Chicago", titles=["progrole"], resume_confirmed=True)
+ocfg = AutopilotConfig(user_id=other.id, on=True, slots=[9], titles=[], resume_confirmed=True)
+db.add_all([pcfg, ocfg])
+for i in range(3):
+    job(f"pg{i}", f"ProgRole SDET {i}", ["Cypress"])
+db.commit()
+none_yet = AP.progress(pg, db)
+ok("progress: no run yet -> run is null, still says on/off", none_yet["run"] is None and none_yet["on"] is True and "now" in none_yet)
+
+seen = []
+def watch_call(prompt, max_tokens=1400, label="", fast=False):
+    s2 = SessionLocal()
+    try:
+        v = AP.progress(pg, s2)["run"]; seen.append(v)
+        o = AP.progress(other, s2)["run"]
+        ok("progress: another user never sees this run", o is None, o)
+    finally:
+        s2.close()
+    return fake_call(prompt, max_tokens, label, fast)
+AI._call = watch_call
+run_p = AP.prepare_for(db, pg, pcfg)
+ok("progress: polled once per role while preparing", len(seen) == 3 and all(v and v["state"] == "running" for v in seen), [v and v["state"] for v in seen])
+ok("progress: stage names the role being prepared", seen[0]["stage"].startswith("Preparing application 1 of 3: Co-pg") and "ProgRole SDET" in seen[0]["stage"], seen[0]["stage"])
+ok("progress: total is known up front", all(v["total"] == 3 for v in seen), [v["total"] for v in seen])
+ok("progress: counts advance only as roles land", [v["prepared"] for v in seen] == [0, 1, 2], [v["prepared"] for v in seen])
+st0 = [i["state"] for i in seen[0]["items"]]; st2 = [i["state"] for i in seen[2]["items"]]
+ok("progress: items go queued -> preparing -> ready", st0 == ["preparing", "queued", "queued"] and st2 == ["ready", "ready", "preparing"], (st0, st2))
+ok("progress: items carry company, role and fit", all(i["company"] and i["title"] and isinstance(i["fit"], int) for i in seen[0]["items"]), seen[0]["items"])
+ok("progress: running run has no finish time or note", seen[1]["finishedAt"] is None and seen[1]["note"] is None and seen[1]["startedAt"])
+fin = AP.progress(pg, db)["run"]
+ok("progress: finished run is Done with every role ready", fin["state"] == "done" and fin["stage"] == "Done" and fin["outcome"] == "ready"
+   and fin["prepared"] == 3 and [i["state"] for i in fin["items"]] == ["ready"] * 3 and fin["finishedAt"], fin)
+ok("progress: the same run is what the run row says", fin["id"] == run_p.id and run_p.note is None)
+
+# every role's AI call fails -> skipped with a reason, outcome says why
+def reset_pg():
+    db.query(Application).filter(Application.user_id == pg.id).delete(); db.query(AutopilotRun).filter(AutopilotRun.user_id == pg.id).delete(); db.query(AICache).delete(); db.commit()
+reset_pg()
+AI._call = down
+rd = AP.prepare_for(db, pg, pcfg)
+fd = AP.progress(pg, db)["run"]
+ok("progress: AI outage -> outcome ai_busy, roles skipped with a reason",
+   fd["state"] == "done" and fd["outcome"] == "ai_busy" and fd["prepared"] == 0
+   and all(i["state"] == "skipped" and i["reason"] for i in fd["items"]) and "busy" in fd["items"][0]["reason"].lower(), fd)
+ok("progress: roles the run gave up before trying say so, not 'ready'",
+   any("retry" in (i["reason"] or "") or "AI busy" in (i["reason"] or "") for i in fd["items"]))
+
+# honest reasons for an empty run
+reset_pg()
+pcfg.min_fit = 100; db.commit()
+AP.prepare_for(db, pg, pcfg)
+fm = AP.progress(pg, db)["run"]
+ok("progress: nothing above minimum fit -> below_min_fit with counts", fm["outcome"] == "below_min_fit" and fm["minFit"] == 100
+   and fm["filtered"].get("below_min_fit", 0) >= 1 and fm["items"] == [] and fm["total"] is None, fm)
+pcfg.min_fit = 60; db.commit()
+db.add(AutopilotRun(user_id=pg.id, found=60, prepared=60, skipped=0)); db.commit()
+AP.prepare_for(db, pg, pcfg)
+ok("progress: daily cap outcome", AP.progress(pg, db)["run"]["outcome"] == "daily_cap")
+reset_pg()
+db.query(UserSkill).filter(UserSkill.user_id == pg.id).delete(); pcfg.skills = []; db.commit()
+AP.prepare_for(db, pg, pcfg)
+ok("progress: no skills outcome", AP.progress(pg, db)["run"]["outcome"] == "needs_skills")
+db.add(UserSkill(user_id=pg.id, skill="Cypress")); db.commit()
+
+# a crash mid-run is reported as failed, not left running
+reset_pg()
+def boom(*a, **k): raise RuntimeError("kaboom")
+_pp = AP._prepare_one; AP._prepare_one = boom
+AP.prepare_for(db, pg, pcfg); AP._prepare_one = _pp
+fe = AP.progress(pg, db)["run"]
+ok("progress: unexpected error -> failed with outcome error", fe["state"] == "failed" and fe["outcome"] == "error" and fe["note"], fe)
+
+# stale / interrupted runs never spin forever
+reset_pg()
+fresh_beat = dt.datetime.now(dt.timezone.utc)
+live = AutopilotRun(user_id=pg.id, note=AP.RUNNING_NOTE, ran_at=fresh_beat - dt.timedelta(minutes=5),
+                    details={"stage": "Preparing application 1 of 3: X — Y", "heartbeat": (fresh_beat - dt.timedelta(seconds=20)).isoformat(),
+                             "total": 3, "items": [{"company": "X", "title": "Y", "fit": 80, "state": "preparing", "reason": None}]})
+db.add(live); db.commit()
+ok("progress: a long run that keeps reporting is still running", AP.progress(pg, db)["run"]["state"] == "running")
+d = dict(live.details); d["heartbeat"] = (fresh_beat - dt.timedelta(seconds=AP.STALE_PROGRESS_S + 30)).isoformat(); live.details = d; db.commit()
+sv = AP.progress(pg, db)["run"]
+ok("progress: no progress for 3+ minutes -> stale (not running), no finish time", sv["state"] == "stale" and sv["finishedAt"] is None, sv)
+ok("progress: stale view keeps what was already prepared", sv["items"][0]["state"] == "preparing" and sv["total"] == 3)
+AP._settle_runs(db, pg, AP.STALE_PROGRESS_S)
+db.refresh(live)
+ok("progress: settling marks it interrupted", (live.note or "").startswith("Interrupted") and live.details["outcome"] == "interrupted")
+ok("progress: interrupted settle leaves no item preparing", all(i["state"] == "skipped" for i in AP.progress(pg, db)["run"]["items"]), AP.progress(pg, db)["run"]["items"])
+ok("progress: interrupted run is 'stopped' with a finish time", AP.progress(pg, db)["run"]["state"] == "stopped" and AP.progress(pg, db)["run"]["finishedAt"])
+# a retry (new run) settles a stale row it finds, and shows the new run
+reset_pg()
+old_run = AutopilotRun(user_id=pg.id, note=AP.RUNNING_NOTE, ran_at=fresh_beat - dt.timedelta(minutes=6), details={})
+db.add(old_run); db.commit()
+AI._call = fake_call
+rr = AP.prepare_for(db, pg, pcfg)
+db.refresh(old_run)
+ok("progress: retry settles the dead run and reports the new one", (old_run.note or "").startswith("Interrupted")
+   and AP.progress(pg, db)["run"]["id"] == rr.id and AP.progress(pg, db)["run"]["state"] == "done")
+ok("progress: /api/autopilot state still lists runs with items", AP._state(db, pg)["runs"][0]["details"].get("items") is not None)
+# a scheduled (tick) run leaves the same row the page reads
+reset_pg()
+pcfg.last_run_key = None; db.commit()
+db.query(AutopilotConfig).filter(AutopilotConfig.user_id != pg.id).update({"on": False}, synchronize_session=False); db.commit()
+AP.run_due(tue_9am_ct)
+ok("progress: a tick-driven run is visible the same way", AP.progress(pg, db)["run"]["state"] == "done" and AP.progress(pg, db)["run"]["prepared"] >= 1)
+db.query(Application).filter(Application.user_id.in_([pg.id, other.id])).delete(); db.commit()
+
 # ── production guard ──
 saved = (settings.ENV, settings.FRONTEND_URL, settings.AUTH_SECRET, settings.DATABASE_URL,
          settings.AI_API_KEY, settings.AI_BASE_URL)

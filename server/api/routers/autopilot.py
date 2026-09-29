@@ -15,6 +15,7 @@ hosts sleep, so the schedule is driven from outside: a cron (GitHub Actions)
 POSTs /api/autopilot/tick with the shared CRON_SECRET, which also wakes the
 host. The tick answers immediately and does the work in the background.
 """
+import copy
 import datetime as dt
 import hashlib
 import hmac
@@ -53,6 +54,9 @@ TICK_AI_DOWN_USERS = 3     # consecutive users whose run hit an AI outage before
 INTERACTIVE_BUDGET_S = 70  # "Run now" is an HTTP request; stay under typical 100s proxy timeouts
 STALE_RUN_MIN = 15         # a run still "Running" after this long was cut off (host restart)
 RUNNING_NOTE = "Running…"
+STALE_PROGRESS_S = 180     # a run that hasn't reported progress for this long is shown as stopped early
+ITEM_REASONS = {"ai_unavailable": "AI busy — try again later", "ai_invalid": "Draft failed our checks",
+                "duplicate": "Already in your list"}
 MAX_PAUSE_DAYS = 90
 
 _active: set[str] = set()          # users with a run in flight in THIS process
@@ -188,16 +192,33 @@ def _drop_closed(db: Session, user: User) -> int:
     return n
 
 
-def _settle_runs(db: Session, user: User):
-    """A run row still saying "Running…" long after it started was cut off
-    (free hosts restart). Say so, rather than leave it spinning forever."""
-    if user.id in _active:
+def _beat_of(r: AutopilotRun) -> dt.datetime | None:
+    """When this run last reported progress: its heartbeat, else when it started."""
+    hb = (r.details or {}).get("heartbeat")
+    try:
+        return _aware(dt.datetime.fromisoformat(hb)) if hb else _aware(r.ran_at)
+    except (TypeError, ValueError):
+        return _aware(r.ran_at)
+
+
+def _settle_runs(db: Session, user: User, after_s: float = STALE_RUN_MIN * 60, force: bool = False):
+    """A run row still saying "Running…" long after it last reported progress
+    was cut off (free hosts restart). Say so, rather than leave it spinning
+    forever. `force` is for a caller that already holds this user's run lock:
+    any other "Running…" row is then by definition dead."""
+    if user.id in _active and not force:
         return
-    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=STALE_RUN_MIN)
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=after_s)
     n = 0
     for r in db.query(AutopilotRun).filter(AutopilotRun.user_id == user.id, AutopilotRun.note == RUNNING_NOTE):
-        if _aware(r.ran_at) and _aware(r.ran_at) < cutoff:
+        beat = _beat_of(r)
+        if beat and beat < cutoff:
             r.note = "Interrupted — the server stopped mid-run. Anything prepared before that is in your queue."
+            d = copy.deepcopy(r.details or {}); d["stage"] = "Stopped early"; d["outcome"] = "interrupted"
+            for it in d.get("items") or []:          # nothing is still "preparing" on a dead run
+                if it.get("state") in ("queued", "preparing"):
+                    it["state"], it["reason"] = "skipped", "Stopped before this one finished"
+            r.details = d
             n += 1
     if n:
         db.commit()
@@ -356,7 +377,7 @@ def _profile_block(db: Session, user: User) -> tuple[str, list[str]]:
     return "\n".join(lines), skills
 
 
-def _candidates(db: Session, user: User, cfg: AutopilotConfig, prof) -> tuple[list[tuple[int, dict, Job]], Counter]:
+def _candidates(db: Session, user: User, cfg: AutopilotConfig, prof, on_rows=None) -> tuple[list[tuple[int, dict, Job]], Counter]:
     """Roles worth preparing, best first, plus a count of what was filtered out
     and why (the run history shows these — no silent drops).
 
@@ -380,6 +401,8 @@ def _candidates(db: Session, user: User, cfg: AutopilotConfig, prof) -> tuple[li
     if cfg.work_style:
         q = q.filter(Job.work_mode == cfg.work_style)
     rows = q.order_by(Job.first_seen.desc()).limit(300).all()
+    if on_rows:
+        on_rows(len(rows))
 
     floor, old = _min_fit(cfg), now - dt.timedelta(days=MAX_POSTING_AGE_DAYS)
     out = []
@@ -539,15 +562,29 @@ def prepare_for(db: Session, user: User, cfg: AutopilotConfig, budget_s: float |
     row exists from the start (so a cut-off run is visible) and its counts are
     updated as each item lands."""
     t0 = time.monotonic()
-    _settle_runs(db, user)
-    run = AutopilotRun(user_id=user.id, found=0, prepared=0, skipped=0, note=RUNNING_NOTE, details={},
-                       ran_at=dt.datetime.now(dt.timezone.utc))
+    _settle_runs(db, user, STALE_PROGRESS_S, force=True)
+    stamp = lambda: dt.datetime.now(dt.timezone.utc).isoformat()
+    details: dict = {"stage": "Checking your profile and open roles", "heartbeat": stamp(), "items": []}
+    run = AutopilotRun(user_id=user.id, found=0, prepared=0, skipped=0, note=RUNNING_NOTE,
+                       details=copy.deepcopy(details), ran_at=dt.datetime.now(dt.timezone.utc))
     db.add(run); db.commit(); db.refresh(run)
-    details: dict = {}
 
-    def finish(note=None):
+    def beat(stage=None):
+        """Record what the run is doing right now. Committed immediately so the
+        progress endpoint (another request) sees exactly this, nothing invented."""
+        if stage:
+            details["stage"] = stage
+        details["heartbeat"] = stamp()
+        run.details = copy.deepcopy(details)      # reassign: in-place JSON edits aren't tracked
+        db.commit()
+
+    def finish(note=None, outcome="none"):
+        for it in details["items"]:                # anything never attempted is said so
+            if it["state"] in ("queued", "preparing"):
+                it["state"], it["reason"] = "skipped", it.get("reason") or "Not attempted this run"
+        details.update({"stage": "Done", "outcome": outcome, "finished_at": stamp(), "heartbeat": stamp()})
         run.note = note
-        run.details = dict(details)      # reassign: in-place JSON edits aren't tracked
+        run.details = copy.deepcopy(details)
         cfg.last_run_at = dt.datetime.now(dt.timezone.utc)
         db.commit(); db.refresh(run)
         return run
@@ -557,24 +594,27 @@ def prepare_for(db: Session, user: User, cfg: AutopilotConfig, budget_s: float |
         if dropped:
             details["dropped_closed"] = dropped
         if _cap(user) == 0:
-            return finish("Autopilot is part of Pro")
+            return finish("Autopilot is part of Pro", "not_pro")
         queue_len = len(_queue(db, user))
         if queue_len >= MAX_QUEUE:
-            return finish("Your approval queue is full — approve or clear some items")
+            return finish("Your approval queue is full — approve or clear some items", "queue_full")
 
         profile, skills = _profile_block(db, user)
         prof = _matcher(db, user, cfg, skills)
         if prof is None:
             details["needs_skills"] = True
-            return finish("Add skills to your profile — Autopilot needs them to score how well each role fits you")
+            return finish("Add skills to your profile — Autopilot needs them to score how well each role fits you", "needs_skills")
 
-        eligible, counts = _candidates(db, user, cfg, prof)
+        beat("Looking for fresh roles")
+        eligible, counts = _candidates(db, user, cfg, prof,
+                                       on_rows=lambda n: beat(f"Scoring {_plural(n, 'job')} against your profile"))
         run.found = len(eligible)
         details["filtered"] = dict(counts)
         details["min_fit"] = _min_fit(cfg)
         if not eligible:
             return finish(f"Nothing new at or above your {_min_fit(cfg)}% minimum fit" if counts.get("below_min_fit")
-                          else "No new matching roles this time")
+                          else "No new matching roles this time",
+                          "below_min_fit" if counts.get("below_min_fit") else "no_matches")
 
         per_slot = max(1, min(MAX_PER_RUN, _cap(user) // max(1, len(cfg.slots or [1]))))
         prepared_today = sum(r.prepared or 0 for r in db.query(AutopilotRun).filter(
@@ -582,29 +622,49 @@ def prepare_for(db: Session, user: User, cfg: AutopilotConfig, budget_s: float |
             AutopilotRun.ran_at >= dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=24)))
         room = max(0, _cap(user) - prepared_today)
         if room == 0:
-            return finish(f"Daily limit reached ({_cap(user)}/day) — more will be prepared tomorrow")
+            return finish(f"Daily limit reached ({_cap(user)}/day) — more will be prepared tomorrow", "daily_cap")
         limit = min(per_slot, room, MAX_QUEUE - queue_len)
+
+        total = min(limit, len(eligible))
+        details["total"] = total
+        details["items"] = [{"company": j.company, "title": j.title, "fit": f, "state": "queued", "reason": None}
+                            for f, _r, j in eligible[:total]]
+        beat(f"Found {_plural(len(eligible), 'role')} at or above {_min_fit(cfg)}% — preparing up to {total}")
 
         why: Counter = Counter()
         strikes, out_of_credits, out_of_time = 0, False, False
-        for _fit, _reasons, job in eligible:
+        for idx, (_fit, _reasons, job) in enumerate(eligible):
             if run.prepared >= limit:
                 break
             if budget_s and time.monotonic() - t0 > budget_s:
                 out_of_time = True; break
             if credits.remaining(db, user) < 1:
                 out_of_credits = True; break
+            if idx >= len(details["items"]):           # earlier ones failed, so the next in line steps up
+                details["items"].append({"company": job.company, "title": job.title, "fit": _fit, "state": "queued", "reason": None})
+            item = details["items"][idx]
+            item["state"] = "preparing"
+            beat(f"Preparing application {min(run.prepared + 1, total)} of {total}: {job.company} — {job.title}")
             app, reason = _prepare_one(db, user, job, profile)
             if app:
                 run.prepared += 1; strikes = 0
+                item["state"] = "ready"
             else:
                 run.skipped += 1; why[reason] += 1
                 strikes = strikes + 1 if reason == "ai_unavailable" else 0
-            db.commit()                                   # progress survives a cut-off
+                item["state"], item["reason"] = "skipped", ITEM_REASONS.get(reason, "Could not be prepared")
+            beat()                                        # progress survives a cut-off
             if strikes >= AI_STRIKES:
                 break
         details.update({k: v for k, v in why.items()})
         details["not_attempted"] = max(0, run.found - run.prepared - run.skipped)
+        stop_reason = ("Out of generations this month" if out_of_credits
+                       else "Stopped to stay within the time limit — next run" if out_of_time
+                       else "AI busy — will retry next run" if strikes >= AI_STRIKES else None)
+        if stop_reason:
+            for it in details["items"]:
+                if it["state"] == "queued":
+                    it["reason"] = stop_reason
 
         note = None
         if out_of_credits:
@@ -616,18 +676,20 @@ def prepare_for(db: Session, user: User, cfg: AutopilotConfig, budget_s: float |
                 note = "The AI service was busy or unavailable; will retry at your next slot"
             elif why["ai_invalid"]:
                 note = "The AI's drafts failed our checks (invented figures or leftover placeholders), so nothing was queued"
+        outcome = ("ready" if run.prepared else "out_of_credits" if out_of_credits else "out_of_time" if out_of_time
+                   else "ai_busy" if why["ai_unavailable"] else "ai_invalid" if why["ai_invalid"] else "none")
         if slot_key:
             d = _send_digest(db, user, cfg, slot_key)
             if d:
                 details["digest"] = d
-        return finish(note)
+        return finish(note, outcome)
     except Exception as e:
         db.rollback()
         print(f"[autopilot] run error for {user.email}: {type(e).__name__}: {e}")
         details["error"] = True
         try:
             run = db.get(AutopilotRun, run.id) or run
-            return finish("Stopped by an unexpected error — nothing was sent. Anything prepared before that is in your queue.")
+            return finish("Stopped by an unexpected error — nothing was sent. Anything prepared before that is in your queue.", "error")
         except Exception:
             db.rollback()
             return run
@@ -650,6 +712,54 @@ def run_now(user: User = Depends(require_seeker), db: Session = Depends(get_db))
     finally:
         _release(user.id)
     return _state(db, user)
+
+
+def _iso(d):
+    d = _aware(d)
+    return d.isoformat() if d else None
+
+
+def _run_view(r: AutopilotRun, now: dt.datetime) -> dict:
+    """One run as the progress card needs it. Everything here is read from the
+    row the run itself keeps updating; nothing is estimated."""
+    d = r.details or {}
+    beat = _beat_of(r)
+    if r.note == RUNNING_NOTE:
+        state = "stale" if beat and (now - beat).total_seconds() > STALE_PROGRESS_S else "running"
+    elif d.get("error"):
+        state = "failed"
+    elif (r.note or "").startswith("Interrupted"):
+        state = "stopped"
+    else:
+        state = "done"
+    items = d.get("items") or []
+    return {
+        "id": r.id, "state": state,
+        "stage": d.get("stage") or ("Starting" if state in ("running", "stale") else "Done"),
+        "startedAt": _iso(r.ran_at), "updatedAt": _iso(beat),
+        "finishedAt": None if state in ("running", "stale") else (d.get("finished_at") or _iso(beat)),
+        "found": r.found or 0, "prepared": r.prepared or 0, "skipped": r.skipped or 0,
+        "total": d.get("total"), "note": None if r.note == RUNNING_NOTE else r.note,
+        "outcome": d.get("outcome"), "minFit": d.get("min_fit"), "filtered": d.get("filtered") or {},
+        "items": [{"company": i.get("company"), "title": i.get("title"), "fit": i.get("fit"),
+                   "state": i.get("state"), "reason": i.get("reason")} for i in items],
+    }
+
+
+@router.get("/progress")
+def progress(user: User = Depends(require_seeker), db: Session = Depends(get_db)):
+    """The user's most recent run, live: its stage, counts so far and one row per
+    role. Light (one indexed query) so the page can poll it while a run is going.
+    Covers scheduled runs too, since they leave the same row."""
+    cfg = _config(db, user)
+    now = dt.datetime.now(dt.timezone.utc)
+    r = (db.query(AutopilotRun).filter(AutopilotRun.user_id == user.id)
+         .order_by(AutopilotRun.ran_at.desc()).first())
+    nxt = next_run_at(cfg) if cfg.on else None
+    return {"now": now.isoformat(), "on": bool(cfg.on),
+            "nextRunAt": nxt.isoformat() if nxt else None,
+            "pausedUntil": cfg.paused_until.isoformat() if cfg.paused_until else None,
+            "run": _run_view(r, now) if r else None}
 
 
 @router.get("/preview")
