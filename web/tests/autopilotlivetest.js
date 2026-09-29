@@ -10,10 +10,12 @@ function makeServer(over={}){
   const S={
     plan:"pro", on:false, slots:[8,12], tz:null, titles:[], skills:["Playwright"], workStyle:"",
     gmailConnected:false, phoneVerified:false, resumeConfirmed:false,
-    queue:[], runs:[], n:0, calls:[], fail:null, ...over};
+    queue:[], runs:[], n:0, calls:[], fail:null,
+    minFit:60, pausedUntil:null, emailDigest:true, emailConfigured:false, needsSkills:false, nextRunAt:null, ...over};
   const state=()=>({on:S.on,slots:[...S.slots].sort((a,b)=>a-b),tz:S.tz,titles:S.titles,skills:S.skills,
     workStyle:S.workStyle,dailyCap:S.plan==="free"?0:60,plan:S.plan,gmailConnected:S.gmailConnected,
     phoneVerified:S.phoneVerified,resumeConfirmed:S.resumeConfirmed,
+    minFit:S.minFit,pausedUntil:S.pausedUntil,emailDigest:S.emailDigest,emailConfigured:S.emailConfigured,needsSkills:S.needsSkills,nextRunAt:S.nextRunAt,
     queue:S.queue.filter(q=>q.status==="ready").map(({status,cover,...q})=>q),runs:S.runs,credits_remaining:10});
   const res=(status,body)=>({ok:status<400,status,json:async()=>body});
   const mkItem=(co,ti)=>{const id="app-"+(++S.n);
@@ -34,6 +36,9 @@ function makeServer(over={}){
       if(body.tz) S.tz=body.tz;
       if(body.titles) S.titles=body.titles;
       if(body.workStyle!==undefined&&body.workStyle!==null) S.workStyle=body.workStyle;
+      if(body.minFit!==undefined&&body.minFit!==null) S.minFit=body.minFit;
+      if(body.pausedUntil!==undefined&&body.pausedUntil!==null) S.pausedUntil=body.pausedUntil||null;
+      if(body.emailDigest!==undefined&&body.emailDigest!==null) S.emailDigest=body.emailDigest;
       if(body.on===true){
         if(S.plan==="free") return res(402,{detail:"Autopilot is part of Pro. Upgrade to turn it on."});
         if(!(S.gmailConnected&&S.phoneVerified&&S.resumeConfirmed)) return res(400,{detail:"Finish setup first"});
@@ -47,6 +52,9 @@ function makeServer(over={}){
       S.runs.unshift({at:new Date().toISOString(),found:2,prepared:2,skipped:0,note:null});
       return res(200,state());
     }
+    if(p==="/api/autopilot/preview") return res(200,{minFit:S.minFit,needsSkills:S.needsSkills,eligible:2,perRun:5,queueFull:false,
+      filtered:{below_min_fit:4,dead_link:1},roles:[{fingerprint:"f1",company:"Prev <b>Co</b>",title:"Lead SDET",location:"Remote",fit:91,verified:true,matched_skills:["Cypress"],missing_skills:["Go"],thisRun:true},
+      {fingerprint:"f2",company:"Second Co",title:"QA Engineer",location:null,fit:64,verified:false,matched_skills:[],missing_skills:[],thisRun:true}]});
     if(p==="/api/autopilot/queue/approve-all"){
       const items=S.queue.filter(q=>q.status==="ready"); items.forEach(q=>q.status="opened");
       return res(200,{approved:items.length,state:state()});
@@ -173,6 +181,47 @@ ok("approve-all endpoint called once",calls("POST","/api/autopilot/queue/approve
 ok("  queue cleared",qa("#ap-queue .apqueue").length===0&&S.queue.every(q=>q.status!=="ready"));
 ok("  toast reports the server's count",$("toast").textContent.includes(String(cnt)),$("toast").textContent);
 ok("  nothing opened by approve-all",w.__o.length===2,w.__o.length+"");
+
+console.log("── Why it matched, honest history, new controls ──");
+S.queue.push({id:"w1",fingerprint:"fw1",company:"Fit Co",title:"Lead SDET",location:"Remote",subject:"Lead SDET — Sam",apply_url:"https://boards.qa-hiring.dev/w1",
+  matched_at:new Date().toISOString(),status:"ready",cover:"Dear Fit Co",summary:"S",highlights:["h"],fit:87,matched_skills:["Cypress","Java"],missing_skills:["Go"],verified:true,work_mode:"matches your preference"});
+S.runs.unshift({at:new Date().toISOString(),found:9,prepared:2,skipped:1,note:"The AI service was busy or unavailable; will retry at your next slot",
+  details:{filtered:{below_min_fit:12,already_handled:3,dead_link:2,visa_blocked:1},ai_unavailable:1,ai_invalid:1,not_attempted:4,dropped_closed:1,digest:"failed"}});
+S.nextRunAt=new Date(Date.now()+3600e3).toISOString();
+await w.syncAP(); await sleep(80);
+const fitRow=qa("#ap-queue .apqueue").find(r=>r.textContent.includes("Fit Co"));
+ok("queue card shows the fit percentage",!!fitRow&&fitRow.textContent.includes("87% fit"),fitRow&&fitRow.textContent);
+ok("  and the matched skills",fitRow.textContent.includes("Cypress")&&fitRow.textContent.includes("Java"));
+ok("  and what is missing",fitRow.textContent.includes("missing: Go"));
+ok("  and that the link was verified",fitRow.textContent.includes("link verified"));
+const runsTxt=$("ap-runs").textContent;
+ok("run history lists why roles were skipped",runsTxt.includes("12 below your minimum fit")&&runsTxt.includes("3 already applied, queued or skipped")&&runsTxt.includes("2 had a dead link")&&runsTxt.includes("1 exclude your work authorization"),runsTxt);
+ok("  AI busy, rejected drafts, deferred, dropped are all reported",runsTxt.includes("not prepared: AI busy")&&runsTxt.includes("rejected by our checks")&&runsTxt.includes("4 more waiting")&&runsTxt.includes("1 closed posting"),runsTxt);
+ok("  a failed summary email is reported as failed, never as sent",runsTxt.includes("summary email could not be sent")&&!/summary email sent/.test(runsTxt));
+ok("next run time is shown",/Next run:/.test($("ap-next").textContent),$("ap-next").textContent);
+ok("min-fit select reflects the server",$("ap-minfit").value==="60");
+$("ap-minfit").value="80"; $("ap-minfit").dispatchEvent(new w.Event("change",{bubbles:true})); await sleep(120);
+ok("changing minimum fit PUTs minFit:80",calls("PUT","/api/autopilot").pop().body.minFit===80&&S.minFit===80);
+$("ap-pause").value="2026-10-12"; $("ap-pause").dispatchEvent(new w.Event("change",{bubbles:true})); await sleep(120);
+ok("picking a pause date PUTs it",S.pausedUntil==="2026-10-12"&&calls("PUT","/api/autopilot").pop().body.pausedUntil==="2026-10-12");
+ok("  and says so",$("ap-pause-note").textContent.includes("Paused")&&$("ap-next").textContent.includes("Paused until"),$("ap-next").textContent);
+click($("ap-pause-clear")); await sleep(120);
+ok("clearing the pause PUTs an empty date",S.pausedUntil===null);
+ok("summary email checkbox is disabled when the server can't send mail",$("ap-digest").disabled===true&&$("ap-digest-note").textContent.includes("isn't set up"),$("ap-digest-note").textContent);
+S.emailConfigured=true; await w.syncAP(); await sleep(60);
+ok("  enabled once the server can send mail",$("ap-digest").disabled===false&&$("ap-digest").checked===true);
+$("ap-digest").checked=false; $("ap-digest").dispatchEvent(new w.Event("change",{bubbles:true})); await sleep(100);
+ok("  opting out PUTs emailDigest:false",S.emailDigest===false);
+click($("ap-previewbtn")); await sleep(150);
+ok("dry-run preview calls /preview (no run)",calls("GET","/api/autopilot/preview").length===1&&calls("POST","/api/autopilot/run").length===calls("POST","/api/autopilot/run").length);
+ok("  lists the roles with their fit",$("ap-preview").textContent.includes("Lead SDET")&&$("ap-preview").textContent.includes("91% fit"));
+ok("  says how many clear the minimum and what was left out",$("ap-preview").textContent.includes("clear your 80% minimum")&&$("ap-preview").textContent.includes("4 below your minimum fit"),$("ap-preview").textContent);
+ok("  server text is escaped",$("ap-preview").textContent.includes("Prev <b>Co</b>")&&!$("ap-preview").querySelector("b b"));
+S.needsSkills=true; await w.syncAP(); await sleep(60);
+ok("no skills: page tells the user to add skills",$("ap-needskills").textContent.includes("Add skills to your profile"));
+S.needsSkills=false; await w.syncAP(); await sleep(60);
+ok("  banner disappears once skills exist",$("ap-needskills").textContent.trim()==="");
+S.queue.forEach(q=>{ if(q.status==="ready") q.status="skipped"; }); S.runs.shift(); await w.syncAP();
 
 console.log("── Server errors surface and the UI re-syncs ──");
 S.plan="free"; S.fail=(m)=>m==="PUT";

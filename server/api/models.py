@@ -287,6 +287,10 @@ class AutopilotConfig(Base):
     skills = Column(JSONish(), default=list)
     work_style = Column(String, default="")                     # '' | remote | hybrid | onsite
     daily_cap = Column(Integer, default=60)
+    min_fit = Column(Integer, default=60)  # 0-100: never queue a role that scores lower
+    paused_until = Column(Date)            # vacation: no runs while the user's local date is before this
+    email_digest = Column(Boolean, default=True)   # one summary email a day, only if the server can send mail
+    last_digest_on = Column(String)        # local "YYYY-MM-DD" of the last digest actually sent
     last_run_key = Column(String)          # "YYYY-MM-DDTHH" of the last slot served
     last_run_at = Column(DateTime(timezone=True))
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -301,6 +305,10 @@ class AutopilotRun(Base):
     prepared = Column(Integer, default=0)
     skipped = Column(Integer, default=0)
     note = Column(String)                  # why a run prepared nothing
+    # found = roles that passed every filter; prepared = queued; skipped = tried but
+    # not queued (AI failed / bad output). details holds the rest: how many roles
+    # were filtered out and why, how many were left for the next run, etc.
+    details = Column(JSONish())
 
 
 class Course(Base):

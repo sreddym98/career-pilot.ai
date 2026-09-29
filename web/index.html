@@ -1117,18 +1117,13 @@ select.sel:focus{border-color:var(--moss);outline:none}
 
   <div class="apnote">
     <svg viewBox="0 0 20 20" class="apnoteicon"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6v5M10 14h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <p><b>One tap sends the whole batch — not fully unattended.</b> Fully unattended sending from your own Gmail on a timer is what gets real accounts flagged as spam by Google's abuse detection, and an AI-written email nobody checked first is a mistake you can't take back. So Autopilot does everything up to that last step by itself, then hands you every prepared application in one list — approve all of them in one tap, or open any single one first if something looks off.</p>
+    <p><b>Autopilot never sends anything for you.</b> It finds and scores roles, tailors a cover letter and highlights for each, and holds them here. You read them, then Approve opens the real posting so you submit it yourself — one tap per role, or approve a whole batch at once. Nothing is emailed to an employer, so there is no unattended sending to get an account flagged and no unchecked AI message going out under your name.</p>
   </div>
 
   <div class="card">
     <h2>Setup <span class="cnt" id="ap-setup-count"></span></h2>
     <div id="ap-checklist"></div>
-  </div>
-
-  <div class="card">
-    <h2>Auto Reply</h2>
-    <p>Automatic reply drafting isn't available yet. Until it is, keep your work authorization and contact details current in your profile so you can answer vendors quickly.</p>
-    <button class="btn btn-g btn-s" onclick="go('me')">Open profile</button>
+    <div id="ap-needskills"></div>
   </div>
 
   <div class="card" id="ap-flightplan">
@@ -1155,6 +1150,24 @@ select.sel:focus{border-color:var(--moss);outline:none}
         <option value="hybrid">Hybrid</option><option value="onsite">On-site</option>
       </select></div>
 
+    <div class="sec" data-live><h4>Minimum fit</h4>
+      <p class="apsmall">Autopilot only prepares roles that score at least this on your skills, title, experience and work style. Higher means fewer, closer matches.</p>
+      <select class="sel" id="ap-minfit" style="width:100%" onchange="setMinFit(this.value)">
+        <option value="40">40% — wide net</option><option value="50">50%</option><option value="60">60% — recommended</option>
+        <option value="70">70%</option><option value="80">80% — strong matches only</option><option value="90">90% — near-perfect only</option>
+      </select></div>
+
+    <div class="sec" data-live><h4>Pause <span style="color:var(--ink3);font-weight:400">— vacation or a break</span></h4>
+      <p class="apsmall" id="ap-pause-note">No runs happen until the date you pick.</p>
+      <div class="addrow"><input type="date" id="ap-pause" onchange="setPause(this.value)">
+        <button class="btn btn-g btn-s" id="ap-pause-clear" onclick="setPause('')">Clear</button></div></div>
+
+    <div class="sec" data-live><h4>Daily summary email</h4>
+      <label class="apsmall" style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="ap-digest" onchange="setDigest(this.checked)"> Email me once a day when applications are waiting for review</label>
+      <p class="apsmall" id="ap-digest-note"></p></div>
+
+    <div class="ap-cap" id="ap-next" data-live></div>
+
     <div class="ap-toggle">
       <label class="apswitch"><input type="checkbox" id="ap-on" onchange="toggleAutopilot()"><span class="apslider"></span></label>
       <div><b id="ap-toggle-label">Autopilot is off</b><span>Turn it on to start preparing applications automatically.</span></div>
@@ -1165,20 +1178,29 @@ select.sel:focus{border-color:var(--moss);outline:none}
   <div class="card">
     <h2>What each run does</h2>
     <div class="ap-explain">
-      <div class="apx"><div class="apxi">◆</div><div><b>Finds fresh matches</b><span>Scans for roles matching your titles and skills, posted since the last run.</span></div></div>
-      <div class="apx"><div class="apxi">◈</div><div><b>Tailors a resume for each</b><span>One AI call per role — same engine as the Resume Builder.</span></div></div>
-      <div class="apx"><div class="apxi">✓</div><div><b>Queues it for your approval</b><span>You see the exact email before anything sends — one tap to approve, one to skip.</span></div></div>
+      <div class="apx"><div class="apxi">◆</div><div><b>Scores fresh, open roles</b><span>Recent postings that still have a working link are scored against your profile; only those at or above your minimum fit move on. Roles that exclude your work authorization are never queued.</span></div></div>
+      <div class="apx"><div class="apxi">◈</div><div><b>Tailors a cover letter for each</b><span>One AI call per role, using only facts from your profile. Drafts with invented figures or leftover placeholders are rejected, not queued.</span></div></div>
+      <div class="apx"><div class="apxi">✓</div><div><b>Queues it for your approval</b><span>Read the cover letter and highlights, then Approve opens the real posting so you submit it yourself. Nothing is emailed to an employer.</span></div></div>
       <div class="apx"><div class="apxi">⊘</div><div><b>Never over your daily cap</b><span>All slots together respect your plan's limit — the total across every run can't exceed it.</span></div></div>
-      <div class="apx"><div class="apxi">⊘</div><div><b>Never repeats a company</b><span>Won't queue a second application to somewhere you already applied, unless nothing new is left.</span></div></div>
+      <div class="apx"><div class="apxi">⊘</div><div><b>Never repeats a role</b><span>Won't queue a role you already applied to, skipped or have waiting — including a re-listing of the same job. Postings that close are dropped from your queue.</span></div></div>
     </div>
+  </div>
+
+  <div class="card" id="ap-previewcard" data-live>
+    <div class="apqueuehead">
+      <h2>What would run next</h2>
+      <button class="btn btn-g btn-s" id="ap-previewbtn" onclick="previewNextRun()">Check matches</button>
+    </div>
+    <p class="apsmall">A dry run with the same matcher the real run uses. No AI calls, no generations spent, nothing queued.</p>
+    <div id="ap-preview"></div>
   </div>
 
   <div class="card">
     <div class="apqueuehead">
-      <h2>Ready to send <span class="cnt" id="ap-queue-count"></span></h2>
+      <h2>Ready for review <span class="cnt" id="ap-queue-count"></span></h2>
       <button class="btn btn-p btn-s" id="ap-approveall" onclick="approveAllQueued()">Approve all — one tap</button>
     </div>
-    <p class="apsmall">Each one still gets a real glance — subject line and recipient shown right here — but you clear the whole batch in one motion instead of one at a time.</p>
+    <p class="apsmall">Preview shows the full cover letter. Approve opens that posting so you can submit it; Approve all marks the whole batch approved without opening the postings.</p>
     <div id="ap-queue"></div>
   </div>
 
@@ -5003,7 +5025,8 @@ function renderPlanContext(){
    ═══════════════════════════════════════════════════════════════ */
 
 const apBlank = () => ({on:false, gmailConnected:false, resumeConfirmed:false, phoneVerified:false,
-  slots:[9,13,17], titles:[], skills:[], workStyle:"", dailyCap:60, queue:[], runs:[], owner:""});
+  slots:[9,13,17], titles:[], skills:[], workStyle:"", dailyCap:60, queue:[], runs:[], owner:"",
+  minFit:60, pausedUntil:"", emailDigest:true, emailConfigured:false, needsSkills:false, nextRunAt:""});
 let AP = store.get("cp_autopilot", null);
 // A copy that belongs to a signed-in account must not outlive that session:
 // sign-out doesn't clear this key, so the next person on this browser would
@@ -5041,6 +5064,33 @@ const HOUR_LABEL = h => {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:00 ${ampm}`;
 };
+
+const apDay = iso => { const d=new Date(String(iso)+"T12:00:00"); return isNaN(d)?String(iso):d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}); };
+/* Why this role is here: the real fit score and which skills did / didn't match.
+   Nothing is drawn when the server has no score (no skills saved). */
+function apWhy(q){
+  if(!Number.isFinite(q.fit)) return "";
+  const cls = q.fit>=80?"ok":q.fit>=60?"warn":"q";
+  const tags = [`<span class="tag ${cls}">${q.fit}% fit</span>`]
+    .concat((q.matched||[]).slice(0,5).map(s=>`<span class="tag ok">${esc(s)}</span>`))
+    .concat((q.missing||[]).slice(0,3).map(s=>`<span class="tag q" title="Asked for, not on your profile">missing: ${esc(s)}</span>`));
+  if(q.verified) tags.push(`<span class="tag ok" title="We checked this link and it answered">link verified</span>`);
+  if(q.workNote) tags.push(`<span class="tag">${esc(q.workNote)}</span>`);
+  return `<div class="tags" style="margin-top:7px">${tags.join("")}</div>`;
+}
+const AP_FILTERED = {below_min_fit:"below your minimum fit", already_handled:"already applied, queued or skipped", dead_link:"had a dead link",
+  visa_blocked:"exclude your work authorization", stale_posting:"posted too long ago", no_apply_link:"had no apply link", not_scorable:"lacked detail to score"};
+function apReasons(d){
+  d = d||{}; const out=[];
+  Object.entries(d.filtered||{}).forEach(([k,n])=>{ if(n && AP_FILTERED[k]) out.push(`${n} ${AP_FILTERED[k]}`); });
+  if(d.ai_unavailable) out.push(`${d.ai_unavailable} not prepared: AI busy`);
+  if(d.ai_invalid) out.push(`${d.ai_invalid} draft${d.ai_invalid>1?"s":""} rejected by our checks`);
+  if(d.not_attempted) out.push(`${d.not_attempted} more waiting for a later run`);
+  if(d.dropped_closed) out.push(`${d.dropped_closed} closed posting${d.dropped_closed>1?"s":""} removed from the queue`);
+  if(d.digest==="sent") out.push("summary email sent");
+  if(d.digest==="failed") out.push("summary email could not be sent");
+  return out.length ? `<div class="sub">Skipped: ${out.map(esc).join(" · ")}</div>` : "";
+}
 
 function renderAutopilot(){
   initAP();
@@ -5082,6 +5132,15 @@ function renderAutopilot(){
   setHtml("ap-skills", (AP.skills.length?AP.skills:SKILLS.slice(0,8)).map(s=>
     `<span class="tag ok">${esc(s)}</span>`).join("") || `<span style="color:var(--ink3);font-size:13px">Upload your resume to set target skills</span>`);
   const locSel=$("ap-loc"); if(locSel) locSel.value = AP.workStyle;
+  document.querySelectorAll("#p-autopilot [data-live]").forEach(el=>{ el.style.display = apLive() ? "" : "none"; });
+  const mf=$("ap-minfit"); if(mf){ if(!mf.querySelector(`option[value="${AP.minFit}"]`)){ const o=document.createElement("option"); o.value=AP.minFit; o.textContent=AP.minFit+"%"; mf.appendChild(o); } mf.value=String(AP.minFit); }
+  const pz=$("ap-pause"); if(pz){ pz.value=AP.pausedUntil||""; pz.min=new Date().toISOString().slice(0,10); }
+  const pc=$("ap-pause-clear"); if(pc) pc.style.display = AP.pausedUntil ? "" : "none";
+  setTxt("ap-pause-note", AP.pausedUntil ? `Paused — Autopilot resumes on ${apDay(AP.pausedUntil)}. "Run now" still works while paused.` : "No runs happen until the date you pick.");
+  const dg=$("ap-digest"); if(dg){ dg.checked=AP.emailDigest && AP.emailConfigured; dg.disabled=!AP.emailConfigured; }
+  setTxt("ap-digest-note", AP.emailConfigured ? "Sent after your last run of the day, only if something new is waiting. Nothing goes to employers." : "Email isn't set up on this server yet, so no summary emails are sent. Your queue here is always up to date.");
+  setTxt("ap-next", !apLive() ? "" : AP.pausedUntil && AP.on ? `Paused until ${apDay(AP.pausedUntil)}.` : AP.on && AP.nextRunAt ? `Next run: ${new Date(AP.nextRunAt).toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit"})} (${AP.slots.length} slot${AP.slots.length===1?"":"s"}, weekdays).` : "Autopilot is off — no runs are scheduled.");
+  setHtml("ap-needskills", apLive() && AP.needsSkills ? `<div class="apnote" style="margin:14px 0 0"><p><b>Add skills to your profile first.</b> Autopilot scores every role against your skills. With none saved it can't tell a good match from a bad one, so it queues nothing rather than guessing. <a onclick="go('me')" style="color:var(--moss2);font-weight:600;cursor:pointer">Open your profile →</a></p></div>` : "");
 
   const onEl=$("ap-on"); if(onEl) onEl.checked = AP.on;
   setTxt("ap-toggle-label", AP.on ? "Autopilot is on" : "Autopilot is paused");
@@ -5095,6 +5154,7 @@ function renderAutopilot(){
       <div style="flex:1;min-width:0">
         <b>${esc(q.ti)}</b><div class="sub">${esc(q.co)} · matched ${esc(q.matchedAgo)}</div>
         <div class="apqueuesubject">"${esc(q.subject||q.ti+' — application')}" → ${esc(q.to)}</div>
+        ${apWhy(q)}
       </div>
       <div class="rt" style="display:flex;gap:7px;flex-shrink:0">
         <button class="btn btn-g btn-s" onclick="previewQueued(${i})">Preview</button>
@@ -5105,7 +5165,7 @@ function renderAutopilot(){
     : `<div class="empty" style="padding:30px 20px"><h3>Nothing waiting</h3><p>${AP.on?"Your next run will prepare fresh matches at your next slot.":"Turn Autopilot on to start preparing applications."}</p></div>`);
 
   setHtml("ap-runs", AP.runs.length ? AP.runs.map(r=>`
-    <div class="row"><div style="flex:1"><b>${esc(r.when)}</b><div class="sub">${+r.found||0} found · ${+r.prepared||0} prepared · ${+r.skipped||0} skipped${r.note?` · ${esc(r.note)}`:""}</div></div>
+    <div class="row"><div style="flex:1"><b>${esc(r.when)}</b><div class="sub">${+r.found||0} found · ${+r.prepared||0} prepared · ${+r.skipped||0} skipped${r.note?` · ${esc(r.note)}`:""}</div>${apReasons(r.details)}</div>
       <div class="rt"><span class="st ${r.prepared>0?"sent":"skipped"}">${+r.prepared||0} ready</span></div></div>`).join("")
     : `<div class="empty" style="padding:30px 20px"><h3>No runs yet</h3><p>Once Autopilot is on, every weekday run lands here.</p></div>`);
 }
@@ -5180,16 +5240,20 @@ function adoptAP(s){
   AP.on=!!s.on; AP.slots=(s.slots||[]).map(Number).filter(h=>Number.isInteger(h)&&h>=0&&h<=23);
   AP.titles=(s.titles||[]).map(String); AP.skills=(s.skills||[]).map(String);
   AP.workStyle=["remote","hybrid","onsite"].includes(s.workStyle)?s.workStyle:""; AP.dailyCap=+s.dailyCap||0;
+  AP.minFit=Number.isFinite(+s.minFit)?+s.minFit:60; AP.pausedUntil=s.pausedUntil||""; AP.emailDigest=s.emailDigest!==false;
+  AP.emailConfigured=!!s.emailConfigured; AP.needsSkills=!!s.needsSkills; AP.nextRunAt=s.nextRunAt||"";
   AP.gmailConnected=!!s.gmailConnected; AP.resumeConfirmed=!!s.resumeConfirmed; AP.phoneVerified=!!s.phoneVerified; AP.phoneRequired=s.phoneRequired!==false;
   AP.queue=(s.queue||[]).map(q=>{
     let host="the employer's application form";
     try{ if(q.apply_url) host=new URL(q.apply_url).hostname.replace(/^www\./,""); }catch(_){}
     const url=/^https?:\/\//i.test(q.apply_url||"")?q.apply_url:"";   // never open javascript:/data: links
-    return {id:String(q.id), jobId:q.fingerprint, co:String(q.company||""), ti:String(q.title||""), subject:q.subject, to:host, url, matchedAgo:apAgo(q.matched_at)};
+    return {id:String(q.id), jobId:q.fingerprint, co:String(q.company||""), ti:String(q.title||""), subject:q.subject, to:host, url, matchedAgo:apAgo(q.matched_at),
+      fit:Number.isFinite(q.fit)?q.fit:null, matched:(q.matched_skills||[]).map(String), missing:(q.missing_skills||[]).map(String),
+      verified:!!q.verified, workNote:q.work_mode?String(q.work_mode):""};
   });
   AP.runs=(s.runs||[]).map(r=>({
     when:new Date(/(Z|[+-]\d\d:?\d\d)$/.test(r.at)?r.at:r.at+"Z").toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit"}),
-    found:r.found, prepared:r.prepared, skipped:r.skipped, note:r.note}));
+    found:r.found, prepared:r.prepared, skipped:r.skipped, note:r.note, details:r.details||{}}));
   saveAP();
 }
 async function syncAP(){
@@ -5290,6 +5354,26 @@ async function toggleAutopilot(){
   if(AP.on) runAutopilotNow();
 }
 
+function setMinFit(v){ initAP(); if(apLive()) apAct(()=>apPut({minFit:+v}).then(ok=>ok&&toast(`Minimum fit set to ${+v}%`))); }
+function setPause(v){ initAP(); if(apLive()) apAct(()=>apPut({pausedUntil:v||""}).then(ok=>ok&&toast(v?`Paused until ${apDay(v)}`:"Pause cleared"))); }
+function setDigest(on){ initAP(); if(apLive()) apAct(()=>apPut({emailDigest:!!on})); }
+async function previewNextRun(){
+  initAP(); if(!apLive()) return;
+  const btn=$("ap-previewbtn"); if(btn) btn.disabled=true;
+  setHtml("ap-preview", `<p class="apsmall">Checking…</p>`);
+  try{
+    const d=await CP_API_call("/api/autopilot/preview");
+    const why=Object.entries(d.filtered||{}).filter(([k,n])=>n&&AP_FILTERED[k]).map(([k,n])=>`${n} ${AP_FILTERED[k]}`);
+    const head = d.needsSkills ? `<div class="empty" style="padding:22px"><h3>Add skills first</h3><p>Fit can't be scored until your profile has skills.</p></div>`
+      : d.roles.length ? `<p class="apsmall"><b>${d.eligible}</b> role${d.eligible===1?"":"s"} clear your ${d.minFit}% minimum. The first ${Math.min(d.perRun,d.roles.length)} would be prepared${d.queueFull?" — but your queue is full":""}.</p>`
+      : `<div class="empty" style="padding:22px"><h3>Nothing to prepare right now</h3><p>No new roles clear your ${d.minFit}% minimum. Lowering it widens the net.</p></div>`;
+    setHtml("ap-preview", head + d.roles.map(r=>`
+      <div class="row"><div style="flex:1;min-width:0"><b>${esc(r.title)}</b><div class="sub">${esc(r.company)}${r.location?` · ${esc(r.location)}`:""}${r.thisRun?" · next in line":""}</div>
+        ${apWhy({fit:r.fit,matched:r.matched_skills,missing:r.missing_skills,verified:r.verified})}</div></div>`).join("")
+      + (why.length?`<p class="apsmall" style="margin-top:10px">Left out: ${why.map(esc).join(" · ")}</p>`:""));
+  }catch(e){ setHtml("ap-preview", `<p class="apsmall">${esc(e.message||"Couldn't check right now")}</p>`); }
+  finally{ if(btn) btn.disabled=false; }
+}
 function saveFlightPlan(){
   initAP();
   const v=$("ap-loc").value;
@@ -5358,6 +5442,7 @@ async function previewQueued(i){
       setHtml("md",`<div class="mh"><div style="flex:1"><h2>${esc(d.title)} · ${esc(d.company)}</h2>
         <p style="color:var(--ink2);font-size:14px;margin-top:3px">Subject: ${esc(d.subject)}</p></div><button class="mx" onclick="closeM()">×</button></div>
         <div class="mb">
+          ${apWhy({fit:d.fit,matched:d.matched_skills,missing:d.missing_skills,verified:d.verified,workNote:d.work_mode})}
           ${d.summary?`<h4>Summary</h4><p>${esc(d.summary)}</p>`:""}
           ${(d.highlights||[]).length?`<h4>Highlights for this role</h4><ul>${d.highlights.map(h=>`<li>${esc(h)}</li>`).join("")}</ul>`:""}
           <h4>Cover letter</h4><p style="white-space:pre-wrap">${esc(d.cover_letter||"")}</p>
@@ -6226,7 +6311,7 @@ window.CP={get EXP(){return EXP},get SKILLS(){return SKILLS},get UF(){return UF}
   selectTerm,get SELECTED_TERM(){return SELECTED_TERM},
   showMailtoFollowup,copyFullEmail,canShareFiles,
   get EF_FILES(){return EF_FILES},get LAST_DOCX_FILE(){return LAST_DOCX_FILE},
-  renderAutopilot,toggleAutopilot,addSlot,removeSlot,updateSlot,addApTitle,rmApTitle,
+  renderAutopilot,toggleAutopilot,setMinFit,setPause,setDigest,previewNextRun,addSlot,removeSlot,updateSlot,addApTitle,rmApTitle,
   saveFlightPlan,runAutopilotNow,previewQueued,approveQueued,approveAllQueued,
   skipQueued,syncAP,adoptAP,apLive,confirmAutopilotResume,
   renderSupport,submitSupport,emailSupportDirect,get SUP_TICKETS(){return SUP_TICKETS},

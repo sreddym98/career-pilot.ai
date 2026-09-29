@@ -65,8 +65,8 @@ ok("  items still require the tap",w.CP.AP.queue.length>=0);
 
 console.log("── Note explains the one-tap-batch model honestly ──");
 const noteText=$("p-autopilot").querySelector(".apnote").textContent;
-ok("says one tap sends the batch",/one tap sends the whole batch/i.test(noteText));
-ok("  still explains the Gmail-ban risk plainly",/flagged as spam/.test(noteText));
+ok("says Autopilot never sends anything itself",/never sends anything/i.test(noteText));
+ok("  says a batch can be approved at once, but you submit",/approve a whole batch at once/i.test(noteText)&&/submit it yourself/i.test(noteText));
 ok("  doesn't claim to be fully unattended",!/is fully unattended/i.test(noteText));
 
 ok("ZERO uncaught errors",ERR.length===0,ERR.join(" | "));
