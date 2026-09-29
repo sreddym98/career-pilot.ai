@@ -82,6 +82,18 @@ ok("int-array round trip", list(cfg.slots) == [9, 13], cfg.slots)
 ok("str-array round trip", list(cfg.titles) == ["a", "b"] and list(cfg.skills) == [], (cfg.titles, cfg.skills))
 ok("db.get with junk id is None, not an error", db.get(User, "junk") is None)
 
+print("── concurrent skill saves never 500 (duplicate-key race seen in production) ──")
+import threading as _th
+_codes = []
+def _put():
+    _codes.append(c.put("/api/profile/skills", headers=H,
+                        json={"skills": ["Playwright", "Cypress", "Java"], "top": ["Java"]}).status_code)
+_ts = [_th.Thread(target=_put) for _ in range(10)]
+[t.start() for t in _ts]; [t.join() for t in _ts]
+ok("10 simultaneous saves all succeed", _codes.count(200) == 10, _codes)
+ok("no duplicate rows afterwards",
+   sorted(c.get("/api/profile", headers=H).json()["skills"]) == ["Cypress", "Java", "Playwright"])
+
 print("\n" + "=" * 48); print(f"PASS {P}    FAIL {F}")
 if F:
     print("\nFAILURES"); [print("  x", f) for f in fails]; sys.exit(1)

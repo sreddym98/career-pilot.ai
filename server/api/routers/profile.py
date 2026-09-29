@@ -1,6 +1,8 @@
 # careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla.
 # Proprietary and confidential. See LICENSE.
 import datetime as dt
+import threading
+from sqlalchemy.exc import IntegrityError
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -121,6 +123,17 @@ def update_profile(body: ProfileIn, user: User = Depends(require_seeker),
     return me(user, db)
 
 
+_skill_locks: dict = {}
+_skill_locks_guard = threading.Lock()
+
+
+def _skill_lock(user_id):
+    with _skill_locks_guard:
+        if len(_skill_locks) > 5000:
+            _skill_locks.clear()
+        return _skill_locks.setdefault(str(user_id), threading.Lock())
+
+
 # Distinguishes "field absent" from "field explicitly set to None".
 _MISSING = object()
 
@@ -140,10 +153,22 @@ def replace_skills(body: SkillsIn, user: User = Depends(require_seeker),
         raise HTTPException(400, f"That's more than {MAX_SKILLS} skills — trim it to the ones you'd defend in an interview")
 
     top = {t.strip().lower() for t in body.top}
-    db.query(UserSkill).filter(UserSkill.user_id == user.id).delete()
-    for s in cleaned:
-        db.add(UserSkill(user_id=user.id, skill=s, is_top=s.lower() in top))
-    db.commit()
+    # The editor can fire two saves at once (blur + click, or two tabs). Both
+    # would delete then insert the same rows and the second insert hits the
+    # primary key. Serialize per user, and if another PROCESS still wins the
+    # race, redo the replace once: last write wins, which is what a replace means.
+    with _skill_lock(user.id):
+        for attempt in (1, 2, 3):
+            try:
+                db.query(UserSkill).filter(UserSkill.user_id == user.id).delete()
+                for s in cleaned:
+                    db.add(UserSkill(user_id=user.id, skill=s, is_top=s.lower() in top))
+                db.commit()
+                break
+            except IntegrityError:
+                db.rollback()
+                if attempt == 3:
+                    raise HTTPException(409, "Your skills were changed in another window. Reload and try again.")
     return {"skills": cleaned, "top": [s for s in cleaned if s.lower() in top]}
 
 
