@@ -4129,8 +4129,22 @@ function scheduleSync(){
   SYNC_TIMER = setTimeout(pushSeekerData, 1200);
 }
 
+let PUSH_BUSY = false, PUSH_AGAIN = false;
 async function pushSeekerData(){
   if(!SYNC_ARMED || !SESSION || SESSION.account_type !== "seeker") return;
+  // Only one push at a time. Two overlapping pushes both replace the skills and
+  // positions and trip over each other on the server; a change made while one is
+  // in flight just schedules one more push after it, so nothing is lost.
+  if(PUSH_BUSY){ PUSH_AGAIN = true; return; }
+  PUSH_BUSY = true;
+  try{ await pushSeekerDataOnce(); }
+  finally{
+    PUSH_BUSY = false;
+    if(PUSH_AGAIN){ PUSH_AGAIN = false; scheduleSync(); }
+  }
+}
+
+async function pushSeekerDataOnce(){
   syncBadge("saving");
   try{
     const profile = {
