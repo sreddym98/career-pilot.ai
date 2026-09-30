@@ -19,3 +19,5 @@
   Cache-Control: no-cache
 /index.html
   Cache-Control: no-cache
+/welcome.html
+  Cache-Control: no-cache
