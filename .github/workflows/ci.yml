@@ -79,6 +79,10 @@ jobs:
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci_ingest.db", ENV: dev }
         run: python test_ingest.py
+      - name: H-1B sponsors + board discovery (offline)
+        working-directory: server
+        env: { DATABASE_URL: "sqlite:///./ci_sponsors.db", ENV: dev }
+        run: python test_sponsors.py
       - name: API endpoints
         working-directory: server
         env: { DATABASE_URL: "sqlite:///./ci.db", ENV: dev }

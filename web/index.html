@@ -2655,6 +2655,11 @@ function trustBadge(j){
   if(j.direct) return `<span class="tag" title="Read from this company's own applicant-tracking board. We have not checked the apply link ourselves.">Direct from company careers page</span>`;
   return "";
 }
+/* Public USCIS filing history only — never implies this posting sponsors. */
+function sponsorBadge(j){
+  const sp=j.sponsor; if(!sp||!sp.approvals) return "";
+  return `<span class="tag" title="USCIS H-1B Employer Data Hub: ${Number(sp.approvals).toLocaleString()} approvals in FY${sp.fy}. Past filings, not a guarantee for this role.">H-1B filings on record · FY${sp.fy}</span>`;
+}
 const hostOf=u=>{try{return new URL(u).hostname.replace(/^www\./,"")}catch(e){return "the employer's site"}};
 
 let debT;
@@ -2717,7 +2722,7 @@ function mapJob(x,i){
     src:x.apply_url?"board":"board", au:x.visa||{usc:"u",gc:"u",h1b:"u",opt:"u"},
     sk:x.skills||[], hm:"", jd:x.description||"",
     rec:null, fit:Number.isFinite(x.fit)?x.fit:null, fr:x.fit_reasons||null,
-    verified:x.verified===true, vat:x.verified_at||"", direct:x.direct===true, source:x.source||"",
+    sponsor:x.sponsor||null, verified:x.verified===true, vat:x.verified_at||"", direct:x.direct===true, source:x.source||"",
     ap:x.autopilot==="queued"||x.autopilot==="approved"?x.autopilot:null,
     ...fitReasons(x)};
 }
@@ -2813,7 +2818,7 @@ function rn(){
       <div class="tags">
         <span class="tag q">${FAM[j.fm]?.n||j.fm}</span>
         ${j.tp==="staffing"?'<span class="tag">Agency</span>':j.f5?'<span class="tag">Fortune 500</span>':""}
-        ${trustBadge(j)}
+        ${trustBadge(j)}${sponsorBadge(j)}
         ${j.sn>=3?`<span class="tag warn">Posted ${j.sn} times</span>`:""}
         ${j.cp==="lo"?'<span class="tag ok">Freshly posted</span>':""}
       </div>
@@ -2924,7 +2929,7 @@ function buildJobDetailHTML(j, closeFn){
       <span class="si">${fromEmail?"✉":"⌕"}</span>
       <div>${fromEmail
         ? `<b>${j.from}</b> sent you this ${j.received}. Replying to their email is how you apply.`
-        : `Listed on <b>${j.tp==="staffing"?"a job board":hostOf(j.url)}</b>. Nobody has contacted you about it, so this would be you reaching out first. ${trustBadge(j)}`}</div>
+        : `Listed on <b>${j.tp==="staffing"?"a job board":hostOf(j.url)}</b>. Nobody has contacted you about it, so this would be you reaching out first. ${trustBadge(j)}${sponsorBadge(j)}`}</div>
     </div>
     ${j.sample?`<div class="note"><b>Example listing.</b> Applying opens a live search for "${esc(j.ti)}" on ${hostOf(j.url)}, so you'll see their real openings.</div>`:""}
 

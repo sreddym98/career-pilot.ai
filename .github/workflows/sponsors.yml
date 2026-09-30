@@ -1,0 +1,42 @@
+name: H-1B sponsors + board discovery
+
+# Loads the public USCIS H-1B Employer Data Hub into the database and finds public
+# ATS boards for the top sponsors. Needs network, so it runs here, not in the API.
+# Monthly (the data changes yearly; new boards appear often) + on demand.
+on:
+  schedule:
+    - cron: "20 5 1 * *"
+  workflow_dispatch:
+    inputs:
+      csv:
+        description: "USCIS CSV URL (blank = newest file linked from the USCIS archive page)"
+        required: false
+      top:
+        description: "How many top sponsors to probe for boards"
+        default: "600"
+
+concurrency:
+  group: sponsors
+  cancel-in-progress: false
+
+jobs:
+  sponsors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ENV: prod
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check secrets
+        run: '[ -n "$DATABASE_URL" ] || { echo "::error::Missing DATABASE_URL secret"; exit 1; }'
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: server/requirements.txt }
+      - run: pip install -r server/requirements.txt
+      - name: Load USCIS sponsor data
+        working-directory: server
+        run: |
+          if [ -n "${{ github.event.inputs.csv }}" ]; then python ingest/sponsors.py load --csv "${{ github.event.inputs.csv }}"; else python ingest/sponsors.py load; fi
+      - name: Discover boards
+        working-directory: server
+        run: python ingest/sponsors.py discover --top "${{ github.event.inputs.top || '600' }}"

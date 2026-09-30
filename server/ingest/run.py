@@ -157,6 +157,17 @@ def work_mode(loc, text, remote_flag=None):
     return "onsite" if loc else "unknown"
 
 
+def _discovered_extra(db, have_boards):
+    """Boards auto-discovered for H-1B sponsors (ingest/sponsors.py discover);
+    companies.yaml wins on a duplicate (ats, slug)."""
+    try:
+        from ingest.sponsors import discovered_boards
+    except ImportError:
+        from sponsors import discovered_boards
+    have = {(a, s) for a, s, _ in have_boards}
+    return [b for b in discovered_boards(db) if (b[0], b[1]) not in have]
+
+
 def load_boards():
     path = os.path.join(HERE, "companies.yaml")
     out, section = [], None
@@ -641,6 +652,7 @@ def cycle(db, a, ats=True, agg=True):
             results += r
         if ats:
             boards = load_boards()
+            boards += _discovered_extra(db, boards)
             print(f"[ats] {len(boards)} boards…")
             results += run_ats(db, now, boards, a.workers)
     finally:

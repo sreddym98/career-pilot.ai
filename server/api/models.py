@@ -225,6 +225,33 @@ class ATSQuestions(Base):
     fetched_at = Column(DateTime(timezone=True), nullable=False)
 
 
+class H1BSponsor(Base):
+    """One employer brand's H-1B approvals for its latest fiscal year in the
+    public USCIS Employer Data Hub (ingest/sponsors.py). History, not current policy."""
+    __tablename__ = "h1b_sponsors"
+    brand_key = Column(String, primary_key=True)
+    name = Column(String, nullable=False)                # largest filing entity's name
+    approvals = Column(Integer, nullable=False, default=0)
+    fy = Column(Integer, nullable=False)
+    state = Column(String)
+    city = Column(String)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class DiscoveredBoard(Base):
+    """A public ATS job board found for a sponsor employer by ingest/sponsors.py
+    discover. ats='none' rows record 'probed, nothing found' so we don't re-probe
+    every run. Live rows are ingested alongside companies.yaml."""
+    __tablename__ = "discovered_boards"
+    brand_key = Column(String, primary_key=True)
+    ats = Column(String, primary_key=True)
+    slug = Column(String, nullable=False, default="")
+    label = Column(String)
+    approvals = Column(Integer, default=0)
+    jobs = Column(Integer, default=0)
+    checked_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class ExtensionToken(Base):
     """A scoped key the browser extension uses. It can only read the apply
     packet, download the tailored resume and report fill/applied status; every

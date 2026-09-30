@@ -88,9 +88,10 @@ def list_jobs(
             refs.setdefault(c.company, []).append({"name": c.name, "role": c.role, "degree": c.degree})
 
     aps = autopilot_states(db, user, [j.fingerprint for j in rows])
+    sp = _sponsors(db, [j.company for j in rows])
     return {"total": total, "offset": offset, "limit": limit,
             "fit_available": prof is not None,
-            "jobs": [_shape(j, refs.get(j.company, []), fits.get(j.fingerprint), aps.get(j.fingerprint))
+            "jobs": [_shape(j, refs.get(j.company, []), fits.get(j.fingerprint), aps.get(j.fingerprint), sp.get(j.company))
                      for j in rows]}
 
 
@@ -105,7 +106,8 @@ def get_job(fingerprint: str, db: Session = Depends(get_db), user=Depends(option
                 for c in db.query(Connection).filter(
                     Connection.user_id == user.id, Connection.company == j.company).all()]
     prof = load_profile(db, user)
-    d = _shape(j, refs, score_job(prof, j), autopilot_states(db, user, [j.fingerprint]).get(j.fingerprint))
+    d = _shape(j, refs, score_job(prof, j), autopilot_states(db, user, [j.fingerprint]).get(j.fingerprint),
+               _sponsors(db, [j.company]).get(j.company))
     # Plain text, whatever the source sent. Some boards hand us HTML (Greenhouse
     # content arrives entity-escaped, so it survives ingest as real tags); the
     # browser renders this as text, never as markup.
@@ -189,7 +191,17 @@ def autopilot_states(db: Session, user, fingerprints) -> dict:
     return {fp: ("queued" if st == "ready" else "approved") for fp, st in rows}
 
 
-def _shape(j: Job, refs, fit=None, ap=None):
+def _sponsors(db, companies):
+    """Public USCIS H-1B filing history per company; {} if the table is empty/unavailable."""
+    try:
+        from api.sponsors import sponsors_for
+        return sponsors_for(db, companies)
+    except Exception:
+        db.rollback()
+        return {}
+
+
+def _shape(j: Job, refs, fit=None, ap=None, sponsor=None):
     # Competition is ESTIMATED from age + repost breadth. No board publishes
     # exact applicant counts — inventing one is the fastest way to lose trust.
     import datetime as dt
@@ -220,4 +232,7 @@ def _shape(j: Job, refs, fit=None, ap=None):
         "verified_at": j.verified_at.isoformat() if j.verified_at else None,
         "link_status": j.link_status,
         "source": j.source, "direct": j.source in ATS_SOURCES,
+        # USCIS Employer Data Hub: H-1B approvals this employer had in its latest
+        # fiscal year on record. Filing history, not a promise about this job.
+        "sponsor": sponsor,
     }
