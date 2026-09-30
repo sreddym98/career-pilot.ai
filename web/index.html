@@ -7,17 +7,6 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<script>
-/* First-time, signed-out visitors on the bare URL see the welcome page once.
-   Shared links (?job=…), invites, the app itself (?app=1), returning and
-   signed-in users, and automated browsers go straight to the app. */
-(function(){try{
-  if(location.search||location.hash)return;
-  if(localStorage.getItem("cp_token")||localStorage.getItem("cp_seen_welcome"))return;
-  if(navigator.webdriver||/jsdom|HeadlessChrome/i.test(navigator.userAgent))return;
-  location.replace("/welcome.html");
-}catch(e){}})();
-</script>
 <title>careerpilot.ai — jobs that actually fit</title>
 <meta name="description" content="Job search and bench management for US tech. Filters on work authorization, not just keywords.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,6 +47,26 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .card:hover{box-shadow:var(--sh2)}
 button:active:not(:disabled){transform:scale(.98)}
 .authgate.on .authcard{animation:cpRise .34s cubic-bezier(.2,.7,.2,1)}
+
+/* ── Flight motifs: the plane flies only when Autopilot is actually on / running ── */
+@keyframes cpFly{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes cpRing{from{stroke-dashoffset:var(--c)}}
+.fitring .fr{animation:cpRing .8s cubic-bezier(.2,.7,.2,1) backwards}
+.ph.hero{position:relative}
+.ph.hero>div{position:relative;z-index:1}
+.apflight{position:absolute;right:0;top:-14px;width:560px;height:112px;pointer-events:none;z-index:0;opacity:.9}
+.apflight path{fill:none;stroke:var(--moss-l);stroke-width:1.6;stroke-dasharray:3 8}
+.apflight .pl{position:absolute;left:0;top:0;width:22px;height:22px;offset-path:path("M8 92 C110 8 230 118 340 52 S500 14 552 30");offset-rotate:auto 90deg;offset-distance:0%;opacity:.45}
+.apflight .pl svg{display:block;width:22px;height:22px;filter:drop-shadow(0 2px 4px rgba(61,89,64,.3))}
+#p-autopilot.ap-on .apflight .pl{animation:cpFly 16s linear infinite;opacity:1}
+#p-autopilot.ap-run .apflight .pl{animation:cpFly 6s linear infinite;opacity:1}
+@media(max-width:1000px){.apflight{display:none}}
+.approg-track{position:relative;flex:1;min-width:0;display:block}
+.approg-track progress{width:100%;display:block}
+.approg-plane{position:absolute;top:50%;left:calc(var(--p,0)*100%);width:22px;height:22px;margin:-11px 0 0 -11px;transform:rotate(90deg);
+  transition:left .6s cubic-bezier(.2,.7,.2,1);filter:drop-shadow(0 2px 4px rgba(61,89,64,.35));pointer-events:none}
+.approg-barrow.indet .approg-plane{animation:cpSweep 2.4s ease-in-out infinite;transition:none}
+@keyframes cpSweep{0%{left:2%}50%{left:98%}100%{left:2%}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 h1,h2,h3{font-family:var(--d);font-weight:600;letter-spacing:-.015em;line-height:1.25}
 
@@ -1218,6 +1227,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
 <!-- ══ AUTOPILOT ══ -->
 <div class="pg" id="p-autopilot">
   <div class="ph hero">
+    <div class="apflight" aria-hidden="true"><svg viewBox="0 0 560 112" width="560" height="112"><path d="M8 92 C110 8 230 118 340 52 S500 14 552 30"/></svg><span class="pl"><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="apg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7FA87C"/><stop offset="1" stop-color="#3D5940"/></linearGradient></defs><path d="M16 3 L27 26 L16 20 L5 26 Z" fill="url(#apg)"/><path d="M16 3 L16 20 L5 26 Z" fill="#fff" opacity=".25"/></svg></span></div>
     <div><h1>Autopilot</h1>
       <p>Prepares a tailored application and holds it ready — you approve with one tap, nothing goes out unreviewed. Add any job yourself from Explore Jobs, or on Pro let it run on the schedule you set.</p></div>
     <div class="apbadge" id="ap-status"></div>
@@ -1232,7 +1242,7 @@ select.sel:focus{border-color:var(--moss);outline:none}
   <div class="card approg" id="ap-prog" hidden>
     <div class="approg-head"><h2 id="ap-prog-title">Autopilot run</h2><span class="approg-time" id="ap-prog-time"></span></div>
     <p class="approg-stage" id="ap-prog-stage" role="status" aria-live="polite" aria-atomic="true"></p>
-    <div class="approg-barrow" id="ap-prog-barrow"><progress id="ap-prog-bar" max="100" aria-label="Applications prepared in this run"></progress><span class="approg-count" id="ap-prog-count"></span></div>
+    <div class="approg-barrow" id="ap-prog-barrow"><span class="approg-track"><progress id="ap-prog-bar" max="100" aria-label="Applications prepared in this run"></progress><svg class="approg-plane" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 L27 26 L16 20 L5 26 Z" fill="#3D5940"/><path d="M16 3 L16 20 L5 26 Z" fill="#fff" opacity=".3"/></svg></span><span class="approg-count" id="ap-prog-count"></span></div>
     <ul class="approg-items" id="ap-prog-items" aria-label="Roles in this run"></ul>
     <div class="approg-sum" id="ap-prog-sum"></div>
     <div class="approg-acts" id="ap-prog-acts"></div>
@@ -2640,7 +2650,7 @@ function fitRing(score, size){
   const col = score>=85?"var(--moss)":score>=68?"var(--gold)":"var(--ink3)";
   return `<svg viewBox="0 0 ${size} ${size}" class="fitring" style="width:${size}px;height:${size}px">
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="4"/>
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round"
+    <circle class="fr" style="--c:${C}" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round"
       stroke-dasharray="${C}" stroke-dashoffset="${C*(1-score/100)}" transform="rotate(-90 ${cx} ${cy})"/>
     <text x="${cx}" y="${cy+size*0.05}" text-anchor="middle" font-family="var(--d)" font-weight="600"
       font-size="${size*0.32}" fill="var(--ink)">${score}</text>
@@ -5786,8 +5796,9 @@ function apRenderProg(){
     if(total && apRunning(run)){ const v=Math.min(run.prepared||0,total);
       bar.max=total; bar.value=v; bar.setAttribute("aria-valuemin","0"); bar.setAttribute("aria-valuemax",String(total)); bar.setAttribute("aria-valuenow",String(v));
       bar.setAttribute("aria-valuetext",`${v} of ${total} applications ready`);
+      row.classList.remove("indet"); row.style.setProperty("--p", String(total?v/total:0));
       setTxt("ap-prog-count",`${v} of ${total} ready`); }
-    else { bar.removeAttribute("value"); ["aria-valuenow","aria-valuemin","aria-valuemax","aria-valuetext"].forEach(a=>bar.removeAttribute(a));
+    else { row.classList.add("indet"); bar.removeAttribute("value"); ["aria-valuenow","aria-valuemin","aria-valuemax","aria-valuetext"].forEach(a=>bar.removeAttribute(a));
       setTxt("ap-prog-count", starting?"":"Working…"); }
   }
   const ICON={ready:"✓",skipped:"!",preparing:"",queued:""}, LBL={ready:"Ready",preparing:"Preparing…",queued:"Waiting",skipped:"Skipped"};
@@ -5848,6 +5859,7 @@ function apRenderStrip(t){
   const badge=t.running ? `<span class="apdot run"></span>Running now` : t.on ? `<span class="apdot on"></span>${t.paused?"Paused":"On"}` : `<span class="apdot"></span>Off`;
   const bd=$("ap-status"); if(bd && bd.innerHTML!==badge) bd.innerHTML=badge;
   const b=$("ap-strip-run"); if(b){ b.hidden = !(apLive() && AP.on && !t.running); }
+  const pg=$("p-autopilot"); if(pg){ pg.classList.toggle("ap-run",!!t.running); pg.classList.toggle("ap-on",!!t.on&&!t.paused&&!t.running); }
 }
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden){ clearTimeout(APR.timer); APR.timer=null; }
