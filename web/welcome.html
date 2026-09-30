@@ -300,6 +300,14 @@ footer a{color:var(--ink2);margin:0 8px}
 (function(){
 "use strict";
 var RM=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Opened outside the real site (a preview, a file, an email attachment)? Then
+   relative links like /?app=1 have nowhere to go, so point them at the live app
+   and open it in a new tab instead of a dead link. */
+var LIVE="https://career-pilot-ai.mamindlasreddy.workers.dev";
+var HOME=/^https?:$/.test(location.protocol)&&/(^|\.)(workers\.dev|careerpilot\.ai|localhost|127\.0\.0\.1)$/.test(location.hostname);
+if(!HOME)document.querySelectorAll("a[href^='/']").forEach(function(a){
+  var h=a.getAttribute("href");if(h==="/welcome.html"){a.href="#";return}
+  a.href=LIVE+h;a.target="_blank";a.rel="noopener"});
 try{document.querySelectorAll("[data-enter]").forEach(function(a){a.addEventListener("click",function(){try{localStorage.setItem("cp_seen_welcome","1")}catch(e){}})})}catch(e){}
 
 /* headline, word by word */
