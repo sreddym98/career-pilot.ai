@@ -28,7 +28,7 @@ h1,h2,h3{font-family:var(--d);font-weight:600;letter-spacing:-.015em;line-height
 .top{position:fixed;left:16px;top:16px;width:340px;max-width:calc(100vw - 32px);padding:16px;z-index:5}
 .brand{display:flex;align-items:center;gap:8px;font:600 17px var(--d);margin-bottom:10px}.brand em{font-style:normal;color:var(--moss)}.brand svg{width:22px;height:22px}
 .top h1{font-size:22px;margin-bottom:4px}.top p{color:var(--ink2);font-size:13px}
-.tabs{display:flex;gap:4px;margin:14px 0 4px;background:var(--sunk);border-radius:10px;padding:3px}
+.fold{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);background:#fff;font-weight:600;line-height:1}.top{position:fixed}.top.min #more,.top.min #lead{display:none}.top.min{padding-bottom:12px}.tabs{display:flex;gap:4px;margin:14px 0 4px;background:var(--sunk);border-radius:10px;padding:3px}
 .tabs button{flex:1;padding:7px 0;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink2);transition:background .2s,color .2s}
 .tabs button.on{background:#fff;color:var(--moss2);box-shadow:0 1px 2px rgba(30,33,28,.1)}
 .tabs button small{display:block;font:400 9.5px var(--m);letter-spacing:.06em;color:var(--ink3)}
@@ -36,7 +36,7 @@ h1,h2,h3{font-family:var(--d);font-weight:600;letter-spacing:-.015em;line-height
 .panel h3{font-size:15px;color:var(--ink);margin-bottom:6px}
 .note{font-size:12px;color:var(--ink3);margin-top:8px;border-left:2px solid var(--moss-l);padding-left:10px}
 .leg{display:grid;gap:5px;margin-top:8px}.leg div{display:flex;align-items:center;gap:8px;font-size:12.5px}
-.leg i{width:12px;height:12px;border-radius:3px;flex:none}.leg b{margin-left:auto;font:500 12px var(--m);color:var(--ink)}
+.leg i{width:12px;height:12px;border-radius:3px;flex:none}.lgt{display:flex;align-items:center;gap:8px;cursor:pointer}.lgt input{accent-color:var(--moss)}.leg .lgt b{margin-left:auto}.leg b{margin-left:auto;font:500 12px var(--m);color:var(--ink)}
 .row{display:flex;gap:8px;align-items:center;margin-top:10px}
 .btn{border:1px solid var(--line2);background:#fff;border-radius:9px;padding:7px 14px;font-weight:600;font-size:13px;transition:background .2s,box-shadow .2s}
 .btn:hover{box-shadow:var(--sh2)}.btn.p{background:var(--moss);border-color:var(--moss);color:#fff}.btn.p:hover{background:var(--moss2)}
@@ -70,8 +70,9 @@ tr.pick{cursor:pointer}tr.pick:hover{background:var(--moss-s)}tr.sel{background:
 
 <div class="card top">
   <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 L27 26 L16 20 L5 26 Z" fill="#4C6B4F"/></svg>careerpilot<em>.ai</em></div>
+  <button class="fold" id="fold" aria-expanded="true" aria-label="Collapse panel">–</button>
   <h1>BIM showcase</h1>
-  <p>A real IFC structural model, running in your browser. Drag to orbit, scroll to zoom, click any element.</p>
+  <p id="lead">A real IFC structural model, running in your browser. Drag to orbit, scroll to zoom, click any element.</p>
   <div class="tabs" id="tabs" role="tablist">
     <button role="tab" data-m="3d" class="on">3D<small>model</small></button>
     <button role="tab" data-m="4d">4D<small>sequence</small></button>
@@ -79,8 +80,8 @@ tr.pick{cursor:pointer}tr.pick:hover{background:var(--moss-s)}tr.sel{background:
     <button role="tab" data-m="6d">6D<small>thermal</small></button>
     <button role="tab" data-m="7d">7D<small>assets</small></button>
   </div>
-  <div class="panel" id="panel"></div>
-  <div class="row"><label class="mono" for="sec" style="flex:none">Section</label><input type="range" id="sec" min="0" max="100" value="100" aria-label="Section height"></div>
+  <div id="more"><div class="panel" id="panel"></div>
+  <div class="row"><label class="mono" for="sec" style="flex:none">Section</label><input type="range" id="sec" min="0" max="100" value="100" aria-label="Section height"></div></div>
 </div>
 
 <aside class="card insp off" id="insp" aria-live="polite"></aside>
@@ -94,7 +95,8 @@ tr.pick{cursor:pointer}tr.pick:hover{background:var(--moss-s)}tr.sel{background:
 var RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
 var $=function(i){return document.getElementById(i)};
 var esc=function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
-var TYPE={Column:{c:0x4C6B4F,l:"Columns"},Beam:{c:0xA8624A,l:"Beams"},Slab:{c:0xCFC8B4,l:"Slabs"},WallStandardCase:{c:0xB7B09C,l:"Walls"},BuildingElementProxy:{c:0x8A6D2F,l:"Other elements"}};
+var TYPE={Column:{c:0x2F6B3C,l:"Columns"},Beam:{c:0xD2561F,l:"Beams"},Slab:{c:0x5E86A8,l:"Slabs"},WallStandardCase:{c:0xC8B48C,l:"Walls"},BuildingElementProxy:{c:0x8A6D2F,l:"Other elements"}};
+var hidden={};
 var RANK={Slab:0,Column:1,Beam:2,WallStandardCase:3,BuildingElementProxy:4};
 var hex=function(n){return "#"+("000000"+n.toString(16)).slice(-6)};
 var META,EL=[],GROUP=new THREE.Group(),mode="3d",selected=null,hover=null,stepMax=0,rates={};
@@ -163,7 +165,8 @@ Promise.all(INL?[Promise.resolve(INL.json),Promise.resolve(b64buf(INL.bin))]:[fe
   clip.constant=sz.y/2+.01;CLIPMAX=sz.y/2+.01;CLIPMIN=-sz.y/2;
   var g=new THREE.GridHelper(Math.max(60,W*2),Math.round(Math.max(60,W*2)/2),0xC3D4C2,0xE5E2D8);g.position.y=-sz.y/2-.02;S.add(g);
   buildSteps();
-  sph.r=W*2.4;sph.th=2.3;sph.ph=.6;goal={r:W*.9,th:.75,ph:1.12,t:0,d:RM?0:3400};if(RM){sph.r=goal.r;sph.th=goal.th;sph.ph=goal.ph;goal=null}
+  var rad=sz.length()/2,fv=cam.fov*Math.PI/180,fh=2*Math.atan(Math.tan(fv/2)*cam.aspect),fit=rad/Math.sin(Math.min(fv,fh)/2)*.58;
+  sph.r=fit*2.3;sph.th=2.3;sph.ph=.6;goal={r:fit,th:.75,ph:1.12,t:0,d:RM?0:3400};if(RM){sph.r=goal.r;sph.th=goal.th;sph.ph=goal.ph;goal=null}
   idleAt=performance.now();place();tabs("3d");$("load").classList.add("done");
   $("foot").textContent="Model: "+META.source+". Every value shown is read from the IFC file.";
 }).catch(function(e){$("load").innerHTML="<div><div class='brand' style='justify-content:center'>careerpilot<em>.ai</em></div><p style='color:#9B4B42'>Could not load the model files ("+esc(e.message||e)+").</p></div>"});
@@ -189,13 +192,13 @@ function ramp(t){var a=new THREE.Color(0xC3D4C2),b=new THREE.Color(0xA8624A);ret
 function paint(){
   var cur=+$("step").value;
   EL.forEach(function(o){
-    var vis=true,col=o.base.clone(),op=1;
-    if(mode==="4d"){vis=o.step<=cur;if(o.step===cur)col=new THREE.Color(0x4C6B4F).lerp(new THREE.Color(0xffffff),.15)}
+    var vis=!hidden[o.t],col=o.base.clone(),op=1;
+    if(mode==="4d"){vis=vis&&o.step<=cur;if(o.step===cur)col=new THREE.Color(0x4C6B4F).lerp(new THREE.Color(0xffffff),.15)}
     else if(mode==="5d"){col=ramp(Math.sqrt(o.vol/VOLMAX))}
     else if(mode==="6d"){var u=uval(o);col=u==null?new THREE.Color(0xE5E2D8):ramp((u-UMIN)/Math.max(1e-6,UMAX-UMIN))}
     else if(mode==="7d"){}
     if(o===selected)col=new THREE.Color(0xC9A227);else if(o===hover&&false)col=col.lerp(new THREE.Color(0xffffff),.3);
-    o.mat.color.copy(col);o.mat.transparent=false;o.mesh.visible=vis;
+    o.mat.color.copy(col);var seeThru=mode==='3d'&&o.t==='WallStandardCase'&&o!==selected;o.mat.transparent=seeThru;o.mat.opacity=seeThru?.3:1;o.mat.depthWrite=!seeThru;o.mesh.visible=vis;
   });
   if(mode==="7d")document.querySelectorAll("tr.pick").forEach(function(r){r.classList.toggle("sel",selected&&+r.dataset.id===selected.e.id)})}
 
@@ -213,7 +216,7 @@ function tabs(m){
   VOLMAX=Math.max.apply(null,EL.map(function(o){return o.vol}))||1;
   var us=EL.map(uval).filter(function(v){return v!=null});UMIN=Math.min.apply(null,us);UMAX=Math.max.apply(null,us);
   $("bot").classList.toggle("on",m==="4d");var h="",c=counts();
-  if(m==="3d"){h="<h3>Coloured by element type</h3><div class='leg'>"+Object.keys(TYPE).filter(function(k){return c[k]}).map(function(k){return "<div><i style='background:"+hex(TYPE[k].c)+"'></i>"+TYPE[k].l+"<b>"+c[k].n+"</b></div>"}).join("")+"</div><div class='note'>"+EL.length+" elements across "+new Set(EL.map(function(o){return o.e.storey})).size+" levels, read from the IFC file.</div>"}
+  if(m==="3d"){h="<h3>Coloured by element type</h3><div class='leg'>"+Object.keys(TYPE).filter(function(k){return c[k]}).map(function(k){return "<label class='lgt'><input type='checkbox' data-t='"+k+"'"+(hidden[k]?"":" checked")+"><i style='background:"+hex(TYPE[k].c)+"'></i>"+TYPE[k].l+"<b>"+c[k].n+"</b></label>"}).join("")+"</div><div class='row'><button class='btn' id='xr'>Structure only</button><button class='btn' id='all'>Show all</button></div><div class='note'>Tick a type to show or hide it. Walls are see-through so the frame is visible. "+EL.length+" elements across "+new Set(EL.map(function(o){return o.e.storey})).size+" levels, read from the IFC file.</div>"}
   if(m==="4d"){h="<h3>Build sequence</h3><p>Step through the structure level by level: slabs, columns, beams, then walls.</p><div class='note'>Illustrative order derived from element type and level. This IFC file contains no construction schedule, so no dates are shown.</div>"}
   if(m==="5d"){var tot=0,rows=Object.keys(TYPE).filter(function(k){return c[k]}).map(function(k){var r=rates[k]||"",cost=r?c[k].v*r:0;tot+=cost;return "<tr><td>"+TYPE[k].l+"</td><td class='n'>"+c[k].n+"</td><td class='n'>"+c[k].v.toFixed(2)+"</td><td><input inputmode='decimal' data-k='"+k+"' value='"+esc(r)+"' placeholder='rate' aria-label='Rate per cubic metre for "+TYPE[k].l+"'></td><td class='n'>"+(r?cost.toFixed(0):"—")+"</td></tr>"}).join("");
     h="<h3>Quantities and cost</h3><table><tr><th>Type</th><th>Qty</th><th>m³</th><th>Rate/m³</th><th>Cost</th></tr>"+rows+"<tr><td><b>Total</b></td><td></td><td class='n'>"+Object.keys(c).reduce(function(s,k){return s+c[k].v},0).toFixed(2)+"</td><td></td><td class='n'><b>"+(tot?tot.toFixed(0):"—")+"</b></td></tr></table><div class='note'>Volumes are computed from the model's geometry. The file carries no prices, so enter your own rates; nothing here is an estimate of real cost.</div>";}
@@ -223,7 +226,12 @@ function tabs(m){
   document.querySelectorAll("#panel input[data-k]").forEach(function(i){i.onchange=function(){rates[i.dataset.k]=parseFloat(i.value)||0;tabs("5d")}});
   document.querySelectorAll("tr.pick").forEach(function(r){r.onclick=function(){var o=EL.filter(function(x){return x.e.id===+r.dataset.id})[0];select(o)}});
   var cb=$("csv");if(cb)cb.onclick=csv;
+  document.querySelectorAll("#panel input[data-t]").forEach(function(i){i.onchange=function(){hidden[i.dataset.t]=!i.checked;paint()}});
+  var xr=$("xr");if(xr)xr.onclick=function(){hidden.WallStandardCase=true;hidden.Slab=false;hidden.BuildingElementProxy=true;tabs("3d")};
+  var al=$("all");if(al)al.onclick=function(){hidden={};tabs("3d")};
   if(m==="4d")stepLabel();paint()}
+$("fold").onclick=function(){var t=document.querySelector(".top"),m=t.classList.toggle("min");$("fold").textContent=m?"+":"–";$("fold").setAttribute("aria-expanded",String(!m))};
+if(innerWidth<820){document.querySelector(".top").classList.add("min");$("fold").textContent="+";$("fold").setAttribute("aria-expanded","false")}
 document.querySelectorAll("#tabs button").forEach(function(b){b.onclick=function(){tabs(b.dataset.m)}});
 function csv(){var L=[["Tag","IFC type","Name","Level","Material","Volume m3"]].concat(EL.map(function(o){return[o.e.tag||"",o.e.type,o.e.name||"",o.e.storey||"",o.e.material||"",o.vol.toFixed(3)]}));
   var t=L.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(",")}).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download="model-assets.csv";a.click()}
