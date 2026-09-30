@@ -1,0 +1,4 @@
+structure.json / structure.bin are derived from examples/example.ifc in
+https://github.com/ThatOpen/engine_web-ifc (Mozilla Public License 2.0).
+Geometry and all property values come from that file; scripts/ifc_to_web.mjs does the conversion.
+vendor/three.min.js is three.js r128 (MIT), https://threejs.org

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<!--
+  careerpilot.ai — Copyright (c) 2026 Santosh Reddy Mamindla. All rights reserved.
+  Proprietary and confidential. See LICENSE.
+-->
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BIM showcase — careerpilot.ai</title>
+<meta name="description" content="A real IFC structural model in the browser: orbit it, click any element for its data, and step through 3D to 7D views.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FAF9F5;--card:#fff;--sunk:#F3F1EA;--ink:#1E211C;--ink2:#4E544A;--ink3:#8A9083;--line:#E5E2D8;--line2:#D2CEC0;
+ --moss:#4C6B4F;--moss2:#3D5940;--moss-s:#EDF2EC;--moss-l:#C3D4C2;--clay:#A8624A;--gold:#8A6D2F;--gold-s:#FAF5E8;
+ --d:'Fraunces',Georgia,serif;--b:'Inter',-apple-system,sans-serif;--m:'JetBrains Mono',monospace;--sh2:0 2px 6px rgba(30,33,28,.05),0 10px 26px rgba(30,33,28,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--paper);color:var(--ink);font:14px/1.5 var(--b);-webkit-font-smoothing:antialiased}
+button,a,input,select{font:inherit;color:inherit}
+button,a{cursor:pointer;text-decoration:none;border:0;background:none}
+:focus-visible{outline:2px solid var(--moss);outline-offset:2px;border-radius:4px}
+h1,h2,h3{font-family:var(--d);font-weight:600;letter-spacing:-.015em;line-height:1.2}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl:active{cursor:grabbing}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh2)}
+.mono{font:400 10.5px var(--m);letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.top{position:fixed;left:16px;top:16px;width:340px;max-width:calc(100vw - 32px);padding:16px;z-index:5}
+.brand{display:flex;align-items:center;gap:8px;font:600 17px var(--d);margin-bottom:10px}.brand em{font-style:normal;color:var(--moss)}.brand svg{width:22px;height:22px}
+.top h1{font-size:22px;margin-bottom:4px}.top p{color:var(--ink2);font-size:13px}
+.tabs{display:flex;gap:4px;margin:14px 0 4px;background:var(--sunk);border-radius:10px;padding:3px}
+.tabs button{flex:1;padding:7px 0;border-radius:8px;font-weight:600;font-size:13px;color:var(--ink2);transition:background .2s,color .2s}
+.tabs button.on{background:#fff;color:var(--moss2);box-shadow:0 1px 2px rgba(30,33,28,.1)}
+.tabs button small{display:block;font:400 9.5px var(--m);letter-spacing:.06em;color:var(--ink3)}
+.panel{margin-top:12px;font-size:13px;color:var(--ink2)}
+.panel h3{font-size:15px;color:var(--ink);margin-bottom:6px}
+.note{font-size:12px;color:var(--ink3);margin-top:8px;border-left:2px solid var(--moss-l);padding-left:10px}
+.leg{display:grid;gap:5px;margin-top:8px}.leg div{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.leg i{width:12px;height:12px;border-radius:3px;flex:none}.leg b{margin-left:auto;font:500 12px var(--m);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center;margin-top:10px}
+.btn{border:1px solid var(--line2);background:#fff;border-radius:9px;padding:7px 14px;font-weight:600;font-size:13px;transition:background .2s,box-shadow .2s}
+.btn:hover{box-shadow:var(--sh2)}.btn.p{background:var(--moss);border-color:var(--moss);color:#fff}.btn.p:hover{background:var(--moss2)}
+input[type=range]{width:100%;accent-color:var(--moss)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font:400 10px var(--m);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);text-align:left;padding:4px 4px;border-bottom:1px solid var(--line)}
+td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.n{text-align:right;font-family:var(--m)}
+td input{width:70px;border:1px solid var(--line2);border-radius:6px;padding:3px 6px;text-align:right;font:12px var(--m)}
+.scroll{max-height:34vh;overflow:auto;margin-top:8px}
+tr.pick{cursor:pointer}tr.pick:hover{background:var(--moss-s)}tr.sel{background:var(--moss-s)}
+.insp{position:fixed;right:16px;top:16px;width:320px;max-width:calc(100vw - 32px);max-height:calc(100vh - 100px);overflow:auto;padding:16px;z-index:5;transition:opacity .3s,transform .3s}
+.insp.off{opacity:0;transform:translateX(14px);pointer-events:none}
+.insp h2{font-size:17px;margin:4px 0 2px;word-break:break-word}.insp .ty{font:500 11px var(--m);color:var(--moss);letter-spacing:.08em}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px;margin:8px 0}.kv span:nth-child(odd){color:var(--ink3)}.kv span:nth-child(even){text-align:right;color:var(--ink);word-break:break-word}
+.ps{margin-top:10px}.ps h4{font:400 10.5px var(--m);letter-spacing:.1em;color:var(--ink3);text-transform:uppercase;margin-bottom:2px}
+.bot{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));padding:12px 16px;z-index:5;display:none}
+.bot.on{display:block}
+.foot{position:fixed;left:16px;bottom:12px;z-index:4;font:400 10.5px var(--m);color:var(--ink3);max-width:48vw}
+.hint{position:fixed;right:18px;bottom:12px;z-index:4;font:400 10.5px var(--m);color:var(--ink3)}
+.load{position:fixed;inset:0;display:grid;place-items:center;background:var(--paper);z-index:20;transition:opacity .7s}
+.load.done{opacity:0;pointer-events:none}.load div{text-align:center}.load .bar{width:180px;height:3px;background:var(--line);border-radius:2px;margin:12px auto 0;overflow:hidden}
+.load .bar i{display:block;height:100%;width:40%;background:var(--moss);animation:ld 1.1s ease-in-out infinite}
+@keyframes ld{0%{margin-left:-40%}100%{margin-left:100%}}
+@media(max-width:820px){.insp{top:auto;bottom:12px;max-height:38vh}.top{width:auto;right:16px}.foot,.hint{display:none}.bot{bottom:auto;top:auto}.scroll{max-height:22vh}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<canvas id="gl" aria-label="3D structural model. Drag to rotate, scroll to zoom, click an element for its data."></canvas>
+<div class="load" id="load"><div><div class="brand" style="justify-content:center">careerpilot<em>.ai</em></div><div class="mono">Loading IFC model</div><div class="bar"><i></i></div></div></div>
+
+<div class="card top">
+  <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 L27 26 L16 20 L5 26 Z" fill="#4C6B4F"/></svg>careerpilot<em>.ai</em></div>
+  <h1>BIM showcase</h1>
+  <p>A real IFC structural model, running in your browser. Drag to orbit, scroll to zoom, click any element.</p>
+  <div class="tabs" id="tabs" role="tablist">
+    <button role="tab" data-m="3d" class="on">3D<small>model</small></button>
+    <button role="tab" data-m="4d">4D<small>sequence</small></button>
+    <button role="tab" data-m="5d">5D<small>quantity</small></button>
+    <button role="tab" data-m="6d">6D<small>thermal</small></button>
+    <button role="tab" data-m="7d">7D<small>assets</small></button>
+  </div>
+  <div class="panel" id="panel"></div>
+  <div class="row"><label class="mono" for="sec" style="flex:none">Section</label><input type="range" id="sec" min="0" max="100" value="100" aria-label="Section height"></div>
+</div>
+
+<aside class="card insp off" id="insp" aria-live="polite"></aside>
+<div class="card bot" id="bot"><div class="row" style="margin:0"><button class="btn p" id="play">▶ Play</button><input type="range" id="step" min="0" max="10" value="10" aria-label="Construction step"><span class="mono" id="stepl" style="flex:none;min-width:84px;text-align:right"></span></div></div>
+<div class="foot" id="foot"></div><div class="hint">drag · scroll · click</div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+var RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
+var $=function(i){return document.getElementById(i)};
+var esc=function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+var TYPE={Column:{c:0x4C6B4F,l:"Columns"},Beam:{c:0xA8624A,l:"Beams"},Slab:{c:0xCFC8B4,l:"Slabs"},WallStandardCase:{c:0xB7B09C,l:"Walls"},BuildingElementProxy:{c:0x8A6D2F,l:"Other elements"}};
+var RANK={Slab:0,Column:1,Beam:2,WallStandardCase:3,BuildingElementProxy:4};
+var hex=function(n){return "#"+("000000"+n.toString(16)).slice(-6)};
+var META,EL=[],GROUP=new THREE.Group(),mode="3d",selected=null,hover=null,stepMax=0,rates={};
+
+/* ── renderer / scene ── */
+var cv=$("gl"),R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false});
+R.setPixelRatio(Math.min(2,devicePixelRatio||1));R.setClearColor(0xFAF9F5,1);R.localClippingEnabled=true;
+var S=new THREE.Scene();S.fog=new THREE.Fog(0xFAF9F5,30,90);
+var cam=new THREE.PerspectiveCamera(40,1,.1,400);
+S.add(new THREE.HemisphereLight(0xffffff,0xd8d2c0,.78));
+var sun=new THREE.DirectionalLight(0xffffff,.75);sun.position.set(14,22,10);S.add(sun);
+var clip=new THREE.Plane(new THREE.Vector3(0,-1,0),100);
+
+/* ── orbit (own implementation: no extra libraries) ── */
+var tgt=new THREE.Vector3(),sph={r:40,th:.9,ph:1.1},goal=null,idleAt=0,drag=null,auto=!RM;
+function place(){var s=Math.sin(sph.ph);cam.position.set(tgt.x+sph.r*s*Math.sin(sph.th),tgt.y+sph.r*Math.cos(sph.ph),tgt.z+sph.r*s*Math.cos(sph.th));cam.lookAt(tgt)}
+function size(){var w=innerWidth,h=innerHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+addEventListener("resize",size);size();
+cv.addEventListener("pointerdown",function(e){cv.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,pan:e.button===2||e.shiftKey,moved:false};auto=false;goal=null});
+cv.addEventListener("pointermove",function(e){
+  if(!drag){pickAt(e,true);return}
+  var dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+  if(Math.abs(e.clientX-drag.sx)+Math.abs(e.clientY-drag.sy)>4)drag.moved=true;
+  if(drag.pan){var k=sph.r*.0012,r=new THREE.Vector3().setFromMatrixColumn(cam.matrix,0),u=new THREE.Vector3().setFromMatrixColumn(cam.matrix,1);tgt.addScaledVector(r,-dx*k).addScaledVector(u,dy*k)}
+  else{sph.th-=dx*.006;sph.ph=Math.min(3.05,Math.max(.12,sph.ph-dy*.006))}
+  place()});
+cv.addEventListener("pointerup",function(e){if(drag&&!drag.moved)pickAt(e,false);drag=null;idleAt=performance.now()});
+cv.addEventListener("contextmenu",function(e){e.preventDefault()});
+cv.addEventListener("wheel",function(e){e.preventDefault();sph.r=Math.min(120,Math.max(4,sph.r*Math.exp(e.deltaY*.0011)));auto=false;place()},{passive:false});
+var pin=null;cv.addEventListener("touchstart",function(e){if(e.touches.length===2)pin=dist(e)},{passive:true});
+cv.addEventListener("touchmove",function(e){if(e.touches.length===2&&pin){var d=dist(e);sph.r=Math.min(120,Math.max(4,sph.r*pin/d));pin=d;place()}},{passive:true});
+function dist(e){var a=e.touches[0],b=e.touches[1];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}
+
+/* ── picking ── */
+var ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+function pickAt(e,isHover){
+  ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ndc,cam);
+  var hits=ray.intersectObjects(EL.filter(function(x){return x.mesh.visible}).map(function(x){return x.mesh}),false),h=null;
+  for(var i=0;i<hits.length;i++){if(hits[i].point.y<=clip.constant+.001||clip.constant>=99){h=hits[i].object.userData.el;break}}
+  if(isHover){if(h!==hover){hover=h;cv.style.cursor=h?"pointer":""}return}
+  select(h)}
+function select(el){selected=el;paint();inspect(el)}
+
+/* ── load ── */
+var RATE=20;
+var INL=window.__BIM_INLINE;
+function b64buf(b){var s=atob(b),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer}
+Promise.all(INL?[Promise.resolve(INL.json),Promise.resolve(b64buf(INL.bin))]:[fetch("models/structure.json").then(function(r){return r.json()}),fetch("models/structure.bin").then(function(r){return r.arrayBuffer()})]).then(function(a){
+  META=a[0];var buf=a[1],nv=META.vertexFloats,V=new Float32Array(buf,0,nv),I=new Uint32Array(buf,nv*4);
+  var box=new THREE.Box3();
+  META.elements.forEach(function(e){
+    var pos=V.slice(e.vOff*6,(e.vOff+e.vCount)*6),ix=new Uint32Array(e.iCount);
+    for(var k=0;k<e.iCount;k++)ix[k]=I[e.iOff+k]-e.vOff;
+    var P=new Float32Array(e.vCount*3),N=new Float32Array(e.vCount*3);
+    for(var v=0;v<e.vCount;v++){P.set([pos[v*6],pos[v*6+1],pos[v*6+2]],v*3);N.set([pos[v*6+3],pos[v*6+4],pos[v*6+5]],v*3)}
+    var g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.BufferAttribute(P,3));g.setAttribute("normal",new THREE.BufferAttribute(N,3));g.setIndex(new THREE.BufferAttribute(ix,1));
+    var mat=new THREE.MeshStandardMaterial({color:(TYPE[e.type.replace(/^Ifc/,"")]||{c:0x999999}).c,roughness:.85,metalness:0,side:THREE.DoubleSide,clippingPlanes:[clip]});
+    var mesh=new THREE.Mesh(g,mat);
+    var ed=new THREE.LineSegments(new THREE.EdgesGeometry(g,28),new THREE.LineBasicMaterial({color:0x1E211C,transparent:true,opacity:.28,clippingPlanes:[clip]}));
+    mesh.add(ed);
+    var t=e.type.replace(/^Ifc/,""),o={e:e,t:t,mesh:mesh,edge:ed,mat:mat,vol:volume(P,ix),base:mat.color.clone(),step:0};
+    mesh.userData.el=o;EL.push(o);GROUP.add(mesh);box.expandByObject(mesh)});
+  S.add(GROUP);
+  var c=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());
+  GROUP.position.sub(c);tgt.set(0,0,0);H=sz.y;W=Math.max(sz.x,sz.z);
+  clip.constant=sz.y/2+.01;CLIPMAX=sz.y/2+.01;CLIPMIN=-sz.y/2;
+  var g=new THREE.GridHelper(Math.max(60,W*2),Math.round(Math.max(60,W*2)/2),0xC3D4C2,0xE5E2D8);g.position.y=-sz.y/2-.02;S.add(g);
+  buildSteps();
+  sph.r=W*2.4;sph.th=2.3;sph.ph=.6;goal={r:W*.9,th:.75,ph:1.12,t:0,d:RM?0:3400};if(RM){sph.r=goal.r;sph.th=goal.th;sph.ph=goal.ph;goal=null}
+  idleAt=performance.now();place();tabs("3d");$("load").classList.add("done");
+  $("foot").textContent="Model: "+META.source+". Every value shown is read from the IFC file.";
+}).catch(function(e){$("load").innerHTML="<div><div class='brand' style='justify-content:center'>careerpilot<em>.ai</em></div><p style='color:#9B4B42'>Could not load the model files ("+esc(e.message||e)+").</p></div>"});
+var H=1,W=1,CLIPMAX=1,CLIPMIN=0;
+
+function volume(P,ix){var s=0;for(var i=0;i<ix.length;i+=3){var a=ix[i]*3,b=ix[i+1]*3,c=ix[i+2]*3;
+  s+=(P[a]*(P[b+1]*P[c+2]-P[b+2]*P[c+1])-P[a+1]*(P[b]*P[c+2]-P[b+2]*P[c])+P[a+2]*(P[b]*P[c+1]-P[b+1]*P[c]))/6}return Math.abs(s)}
+
+/* 4D: an ordering derived from level and element type (the file holds no schedule) */
+var STEPS=[];
+function buildSteps(){
+  var st=[...new Set(EL.map(function(x){return x.e.storey||""}))].sort(),keys={};
+  EL.forEach(function(o){var k=st.indexOf(o.e.storey||"")*10+(RANK[o.t]==null?5:RANK[o.t]);keys[k]=1;o.key=k});
+  STEPS=Object.keys(keys).map(Number).sort(function(a,b){return a-b});
+  EL.forEach(function(o){o.step=STEPS.indexOf(o.key)+1});
+  stepMax=STEPS.length;var s=$("step");s.max=stepMax;s.value=stepMax;
+  STEPS=STEPS.map(function(k){var si=Math.floor(k/10),r=k%10,ty=Object.keys(RANK).filter(function(t){return RANK[t]===r})[0]||"Other";return{lv:st[si]||"",t:ty}})}
+
+/* ── painting by mode ── */
+var VOLMAX=1,UMIN=0,UMAX=1;
+function uval(o){var ps=o.e.psets,k=Object.keys(ps);for(var i=0;i<k.length;i++){var v=ps[k[i]].ThermalTransmittance;if(typeof v==="number")return v}return null}
+function ramp(t){var a=new THREE.Color(0xC3D4C2),b=new THREE.Color(0xA8624A);return a.lerp(b,Math.max(0,Math.min(1,t)))}
+function paint(){
+  var cur=+$("step").value;
+  EL.forEach(function(o){
+    var vis=true,col=o.base.clone(),op=1;
+    if(mode==="4d"){vis=o.step<=cur;if(o.step===cur)col=new THREE.Color(0x4C6B4F).lerp(new THREE.Color(0xffffff),.15)}
+    else if(mode==="5d"){col=ramp(Math.sqrt(o.vol/VOLMAX))}
+    else if(mode==="6d"){var u=uval(o);col=u==null?new THREE.Color(0xE5E2D8):ramp((u-UMIN)/Math.max(1e-6,UMAX-UMIN))}
+    else if(mode==="7d"){}
+    if(o===selected)col=new THREE.Color(0xC9A227);else if(o===hover&&false)col=col.lerp(new THREE.Color(0xffffff),.3);
+    o.mat.color.copy(col);o.mat.transparent=false;o.mesh.visible=vis;
+  });
+  if(mode==="7d")document.querySelectorAll("tr.pick").forEach(function(r){r.classList.toggle("sel",selected&&+r.dataset.id===selected.e.id)})}
+
+/* ── inspector: only what is in the file ── */
+function inspect(o){
+  var p=$("insp");if(!o){p.classList.add("off");return}
+  var e=o.e,ps=Object.keys(e.psets).map(function(n){var kv=Object.keys(e.psets[n]).map(function(k){var v=e.psets[n][k];if(typeof v==="number")v=Math.round(v*1000)/1000;return "<span>"+esc(k)+"</span><span>"+esc(v===true?"Yes":v===false?"No":v)+"</span>"}).join("");return "<div class='ps'><h4>"+esc(n)+"</h4><div class='kv'>"+kv+"</div></div>"}).join("");
+  p.innerHTML="<div class='ty'>"+esc(e.type.toUpperCase())+"</div><h2>"+esc(e.name||"(unnamed)")+"</h2><div class='kv'><span>Level</span><span>"+esc(e.storey||"—")+"</span><span>Material</span><span>"+esc(e.material||"—")+"</span><span>Tag</span><span>"+esc(e.tag||"—")+"</span><span>Volume (from geometry)</span><span>"+o.vol.toFixed(3)+" m³</span></div>"+ps+"<div class='row'><button class='btn' id='xc'>Close</button></div>";
+  p.classList.remove("off");$("xc").onclick=function(){select(null)}}
+
+/* ── modes ── */
+function counts(){var c={};EL.forEach(function(o){var k=o.t;c[k]=c[k]||{n:0,v:0};c[k].n++;c[k].v+=o.vol});return c}
+function tabs(m){
+  mode=m;document.querySelectorAll("#tabs button").forEach(function(b){b.classList.toggle("on",b.dataset.m===m)});
+  VOLMAX=Math.max.apply(null,EL.map(function(o){return o.vol}))||1;
+  var us=EL.map(uval).filter(function(v){return v!=null});UMIN=Math.min.apply(null,us);UMAX=Math.max.apply(null,us);
+  $("bot").classList.toggle("on",m==="4d");var h="",c=counts();
+  if(m==="3d"){h="<h3>Coloured by element type</h3><div class='leg'>"+Object.keys(TYPE).filter(function(k){return c[k]}).map(function(k){return "<div><i style='background:"+hex(TYPE[k].c)+"'></i>"+TYPE[k].l+"<b>"+c[k].n+"</b></div>"}).join("")+"</div><div class='note'>"+EL.length+" elements across "+new Set(EL.map(function(o){return o.e.storey})).size+" levels, read from the IFC file.</div>"}
+  if(m==="4d"){h="<h3>Build sequence</h3><p>Step through the structure level by level: slabs, columns, beams, then walls.</p><div class='note'>Illustrative order derived from element type and level. This IFC file contains no construction schedule, so no dates are shown.</div>"}
+  if(m==="5d"){var tot=0,rows=Object.keys(TYPE).filter(function(k){return c[k]}).map(function(k){var r=rates[k]||"",cost=r?c[k].v*r:0;tot+=cost;return "<tr><td>"+TYPE[k].l+"</td><td class='n'>"+c[k].n+"</td><td class='n'>"+c[k].v.toFixed(2)+"</td><td><input inputmode='decimal' data-k='"+k+"' value='"+esc(r)+"' placeholder='rate' aria-label='Rate per cubic metre for "+TYPE[k].l+"'></td><td class='n'>"+(r?cost.toFixed(0):"—")+"</td></tr>"}).join("");
+    h="<h3>Quantities and cost</h3><table><tr><th>Type</th><th>Qty</th><th>m³</th><th>Rate/m³</th><th>Cost</th></tr>"+rows+"<tr><td><b>Total</b></td><td></td><td class='n'>"+Object.keys(c).reduce(function(s,k){return s+c[k].v},0).toFixed(2)+"</td><td></td><td class='n'><b>"+(tot?tot.toFixed(0):"—")+"</b></td></tr></table><div class='note'>Volumes are computed from the model's geometry. The file carries no prices, so enter your own rates; nothing here is an estimate of real cost.</div>";}
+  if(m==="6d"){var n=us.length;h="<h3>Thermal transmittance (U-value)</h3><p>"+n+" of "+EL.length+" elements carry a U-value in the file (walls and some slabs). Others are shown grey.</p><div class='leg'><div><i style='background:linear-gradient(90deg,#C3D4C2,#A8624A);width:60px'></i>"+(n?UMIN.toFixed(2)+" → "+UMAX.toFixed(2):"none")+"</div></div><div class='note'>Values as stored in the file. It holds no energy or carbon data, so none is shown.</div>"}
+  if(m==="7d"){var have=EL.filter(function(o){return o.e.tag}).length;h="<h3>Asset register</h3><p>"+EL.length+" elements with type, level and material from the file. Click a row to find it in the model.</p><div class='scroll'><table><tr><th>Tag</th><th>Type</th><th>Level</th><th>Load-bearing</th></tr>"+EL.map(function(o){var lb=null;Object.keys(o.e.psets).forEach(function(s){if(typeof o.e.psets[s].LoadBearing==="boolean")lb=o.e.psets[s].LoadBearing});return "<tr class='pick' data-id='"+o.e.id+"'><td>"+esc(o.e.tag||o.e.id)+"</td><td>"+esc(TYPE[o.t]?TYPE[o.t].l.replace(/s$/,""):o.t)+"</td><td>"+esc(o.e.storey||"—")+"</td><td>"+(lb==null?"—":lb?"Yes":"No")+"</td></tr>"}).join("")+"</table></div><div class='row'>"+(window.__BIM_INLINE?"":"<button class='btn' id='csv'>Download CSV</button>")+"</div><div class='note'>Facility-management data (manufacturer, warranty, maintenance) is what a COBie-enriched model adds. This file has none, so those columns are not shown.</div>"}
+  $("panel").innerHTML=h;
+  document.querySelectorAll("#panel input[data-k]").forEach(function(i){i.onchange=function(){rates[i.dataset.k]=parseFloat(i.value)||0;tabs("5d")}});
+  document.querySelectorAll("tr.pick").forEach(function(r){r.onclick=function(){var o=EL.filter(function(x){return x.e.id===+r.dataset.id})[0];select(o)}});
+  var cb=$("csv");if(cb)cb.onclick=csv;
+  if(m==="4d")stepLabel();paint()}
+document.querySelectorAll("#tabs button").forEach(function(b){b.onclick=function(){tabs(b.dataset.m)}});
+function csv(){var L=[["Tag","IFC type","Name","Level","Material","Volume m3"]].concat(EL.map(function(o){return[o.e.tag||"",o.e.type,o.e.name||"",o.e.storey||"",o.e.material||"",o.vol.toFixed(3)]}));
+  var t=L.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(",")}).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download="model-assets.csv";a.click()}
+function stepLabel(){var v=+$("step").value,s=STEPS[v-1];$("stepl").textContent=s?"Step "+v+"/"+stepMax:"";if(s)$("stepl").title=s.lv+" · "+s.t}
+var timer=null;
+$("step").oninput=function(){stepLabel();paint()};
+$("play").onclick=function(){
+  if(timer){clearInterval(timer);timer=null;$("play").textContent="▶ Play";return}
+  var s=$("step");if(+s.value>=stepMax)s.value=0;$("play").textContent="❚❚ Pause";
+  timer=setInterval(function(){s.value=+s.value+1;stepLabel();paint();if(+s.value>=stepMax){clearInterval(timer);timer=null;$("play").textContent="▶ Play"}},RM?250:700)};
+$("sec").oninput=function(){var f=+$("sec").value/100;clip.constant=CLIPMIN+(CLIPMAX-CLIPMIN)*f+(f>=1?.01:0)};
+
+/* ── loop: intro fly-in, then a slow orbit until touched ── */
+function ease(t){return 1-Math.pow(1-t,3)}
+function tick(now){
+  if(goal){goal.t+=16.7;var k=ease(Math.min(1,goal.t/goal.d));
+    if(!goal.f){goal.f={r:sph.r,th:sph.th,ph:sph.ph}}
+    sph.r=goal.f.r+(goal.r-goal.f.r)*k;sph.th=goal.f.th+(goal.th-goal.f.th)*k;sph.ph=goal.f.ph+(goal.ph-goal.f.ph)*k;
+    if(k>=1){goal=null;auto=!RM}place()}
+  else if(!drag&&!RM&&now-idleAt>4000&&!selected){sph.th+=.0016;place()}
+  R.render(S,cam);requestAnimationFrame(tick)}
+requestAnimationFrame(tick);
+window.__bim={ready:function(){return EL.length},select:function(i){select(EL[i])},mode:tabs,count:function(){return EL.length}};
+})();
+</script>
